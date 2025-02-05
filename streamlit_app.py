@@ -58,7 +58,8 @@ def sample():
     sub_page = st.sidebar.selectbox("Pilih sub-halaman", ["AHP", "MUS", "Benford Law"])
     
     if sub_page == "AHP":
-        ahp()
+        from page.ahp import app as ahp_app
+        ahp_app()
     elif sub_page == "MUS":
         mus()
     elif sub_page == "Benford Law":
