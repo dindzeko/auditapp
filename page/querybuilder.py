@@ -159,7 +159,7 @@ class SQLSimulatorStreamlit:
 
     def reset_state(self):
         """Reset semua state ke nilai awal."""
-        st.session_state.step = 0
+        st.session_state.step = 0  # Kembali ke langkah awal
         st.session_state.tables = []
         st.session_state.joins = []
         st.session_state.select_columns = {}
