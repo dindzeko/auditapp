@@ -1,3 +1,7 @@
 streamlit
 pandas
 xlsxwriter
+numpy
+matplotlib
+seaborn
+plotly
