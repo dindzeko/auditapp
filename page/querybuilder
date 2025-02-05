@@ -1,5 +1,7 @@
 import streamlit as st
-
+def app():
+    st.title("Query Builder")
+    st.write("Halaman untuk Query Builder.")
 class SQLSimulatorStreamlit:
     def __init__(self):
         self.tables = []
