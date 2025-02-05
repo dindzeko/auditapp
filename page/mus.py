@@ -8,11 +8,11 @@ def app():
     st.title("Monetary Unit Sampling (MUS) Application")
 
     # Sidebar untuk input parameter
-    st.sidebar.header("Input Parameters")
-    total_population = st.sidebar.number_input("Total Population Value", min_value=1.0, value=1000000.0)
-    tolerable_misstatement = st.sidebar.number_input("Tolerable Misstatement", min_value=1.0, value=50000.0)
-    expected_misstatement = st.sidebar.number_input("Expected Misstatement", min_value=0.0, value=10000.0)
-    risk_of_incorrect_acceptance = st.sidebar.slider("Risk of Incorrect Acceptance (%)", min_value=0.0, max_value=100.0, value=5.0)
+    st.header("Input Parameters")
+    total_population = st.number_input("Total Population Value", min_value=1.0, value=1000000.0)
+    tolerable_misstatement = st.number_input("Tolerable Misstatement", min_value=1.0, value=50000.0)
+    expected_misstatement = st.number_input("Expected Misstatement", min_value=0.0, value=10000.0)
+    risk_of_incorrect_acceptance = st.slider("Risk of Incorrect Acceptance (%)", min_value=0.0, max_value=100.0, value=5.0)
 
     # Upload file populasi
     st.header("Step 1: Upload Population File")
