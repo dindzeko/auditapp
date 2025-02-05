@@ -1,12 +1,10 @@
 import streamlit as st
-import pandas as pd
-from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
-
 
 class SQLSimulatorStreamlit:
     def __init__(self):
+        # Inisialisasi state jika belum ada
         if "step" not in st.session_state:
-            st.session_state.step = 0
+            st.session_state.step = 0  # Step 0: Input jumlah tabel
         if "tables" not in st.session_state:
             st.session_state.tables = []
         if "joins" not in st.session_state:
@@ -30,8 +28,8 @@ class SQLSimulatorStreamlit:
             num_tables = st.number_input("Jumlah Tabel:", min_value=1, value=1, step=1)
             if st.button("Submit Jumlah Tabel"):
                 st.session_state.num_tables = num_tables
-                st.session_state.step = 1
-                st.rerun()
+                st.session_state.step = 1  # Lanjut ke langkah berikutnya
+                st.rerun()  # Refresh halaman untuk melanjutkan ke langkah berikutnya
 
     def show_table_details(self):
         if st.session_state.step == 1:
@@ -40,176 +38,197 @@ class SQLSimulatorStreamlit:
             for i in range(st.session_state.num_tables):
                 st.write(f"Tabel {i+1}")
                 name = st.text_input(f"Nama Tabel {i+1}", key=f"table_name_{i}")
-                cols = st.text_input(
-                    f"Kolom (pisahkan koma) untuk Tabel {i+1}", key=f"table_cols_{i}"
-                )
-                table_entries.append(
-                    {"name": name.strip(), "columns": [c.strip() for c in cols.split(",") if c.strip()]}
-                )
-
+                cols = st.text_input(f"Kolom (pisahkan koma) untuk Tabel {i+1}", key=f"table_cols_{i}")
+                table_entries.append({"name": name.strip(), "columns": [c.strip() for c in cols.split(",") if c.strip()]})
+            
             if st.button("Submit Detail Tabel"):
-                st.session_state.tables = [
-                    entry for entry in table_entries if entry["name"] and entry["columns"]
-                ]
-                st.session_state.step = 2
-                st.rerun()
+                # Validasi input tabel
+                valid_tables = [entry for entry in table_entries if entry["name"] and entry["columns"]]
+                if len(valid_tables) != st.session_state.num_tables:
+                    st.error("Semua tabel harus memiliki nama dan setidaknya satu kolom.")
+                    return
+                
+                st.session_state.tables = valid_tables
+                st.session_state.step = 2  # Lanjut ke langkah berikutnya
+                st.rerun()  # Refresh halaman untuk melanjutkan ke langkah berikutnya
 
     def show_join_options(self):
         if st.session_state.step == 2:
-            st.subheader("Pengurutan Tabel (Drag-and-Drop)")
-
-            # Membuat DataFrame untuk tabel
-            tables_df = pd.DataFrame(
-                [
-                    {"Tabel": table["name"], "Kolom": ", ".join(table["columns"])}
-                    for table in st.session_state.tables
-                ]
-            )
-
-            # Konfigurasi AgGrid untuk drag-and-drop
-            gb = GridOptionsBuilder.from_dataframe(tables_df)
-            gb.configure_selection()
-            gb.configure_grid_options(
-                rowDragManaged=True,
-                suppressRowDrag=False,
-                animateRows=True,
-                enableRowGroup=False,
-            )
-            gb.configure_column("Tabel", editable=False)
-            gb.configure_column("Kolom", editable=False)
-            grid_options = gb.build()
-
-            grid_response = AgGrid(
-                tables_df,
-                gridOptions=grid_options,
-                update_mode=GridUpdateMode.MODEL_CHANGED,
-                fit_columns_on_grid_load=True,
-                height=200,
-                key="tables_grid",
-            )
-
-            # Update urutan tabel jika ada perubahan
-            if st.button("Simpan Urutan Tabel"):
-                new_order = [row["Tabel"] for row in grid_response["data"].to_dict("records")]
-                st.session_state.tables = sorted(
-                    st.session_state.tables,
-                    key=lambda x: new_order.index(x["name"]),
-                )
-                st.success("Urutan tabel berhasil disimpan!")
-                st.rerun()
-
-            st.subheader("Konfigurasi Join")
+            st.subheader("Join Options")
             join_entries = []
 
-            for i in range(len(st.session_state.tables) - 1):
-                table1 = st.session_state.tables[i]["name"]
-                table2 = st.session_state.tables[i + 1]["name"]
+            # Tampilkan kotak dengan daftar tabel dan kolom
+            st.write("Daftar Tabel dan Kolom:")
+            for table in st.session_state.tables:
+                with st.expander(f"{table['name']}"):
+                    st.write(", ".join(table['columns']))
 
-                st.write(f"Join antara {table1} dan {table2}")
+            # Pilih tabel dan kolom untuk join
+            for i in range(len(st.session_state.tables) - 1):
+                st.write(f"Join antara Tabel {i + 1} dan {i + 2}")
+                
+                # Pilih tabel pertama
+                table1 = st.selectbox(
+                    f"Pilih Tabel Pertama untuk Join {i + 1}",
+                    [table['name'] for table in st.session_state.tables],
+                    key=f"join_table1_{i}"
+                )
+                # Cari kolom untuk tabel pertama
+                table1_columns = []
+                for table in st.session_state.tables:
+                    if table['name'] == table1:
+                        table1_columns = table['columns']
+                        break
+
+                if not table1_columns:
+                    st.error(f"Tidak ditemukan kolom untuk tabel '{table1}'. Silakan periksa input tabel.")
+                    return
+
                 col1 = st.selectbox(
-                    f"Kolom dari {table1}",
-                    st.session_state.tables[i]["columns"],
-                    key=f"join_col1_{i}",
+                    f"Pilih Kolom dari Tabel {table1}",
+                    table1_columns,
+                    key=f"join_col1_{i}"
                 )
+
+                # Pilih tabel kedua
+                table2 = st.selectbox(
+                    f"Pilih Tabel Kedua untuk Join {i + 1}",
+                    [table['name'] for table in st.session_state.tables],
+                    key=f"join_table2_{i}"
+                )
+                # Cari kolom untuk tabel kedua
+                table2_columns = []
+                for table in st.session_state.tables:
+                    if table['name'] == table2:
+                        table2_columns = table['columns']
+                        break
+
+                if not table2_columns:
+                    st.error(f"Tidak ditemukan kolom untuk tabel '{table2}'. Silakan periksa input tabel.")
+                    return
+
                 col2 = st.selectbox(
-                    f"Kolom dari {table2}",
-                    st.session_state.tables[i + 1]["columns"],
-                    key=f"join_col2_{i}",
+                    f"Pilih Kolom dari Tabel {table2}",
+                    table2_columns,
+                    key=f"join_col2_{i}"
                 )
+
                 join_type = st.selectbox(
-                    f"Jenis Join",
+                    f"Jenis Join untuk Tabel {i + 1} dan {i + 2}",
                     ["INNER JOIN", "LEFT JOIN", "RIGHT JOIN", "FULL JOIN"],
-                    key=f"join_type_{i}",
+                    key=f"join_type_{i}"
                 )
-                join_entries.append(
-                    {
-                        "type": join_type,
-                        "condition": f"{table1}.{col1} = {table2}.{col2}",
-                    }
-                )
+                join_entries.append({
+                    "type": join_type,
+                    "condition": f"{table1}.{col1} = {table2}.{col2}"
+                })
 
             if st.button("Submit Join Options"):
                 st.session_state.joins = join_entries
-                st.session_state.step = 3
-                st.rerun()
+                st.session_state.step = 3  # Lanjut ke langkah berikutnya
+                st.rerun()  # Refresh halaman untuk melanjutkan ke langkah berikutnya
 
     def show_query_options(self):
         if st.session_state.step == 3:
             st.subheader("Query Options")
-            tab_select, tab_where, tab_group, tab_order = st.tabs(
-                ["SELECT", "WHERE", "GROUP BY/HAVING", "ORDER BY"]
-            )
+            tab_select, tab_where, tab_group, tab_order = st.tabs(["SELECT", "WHERE", "GROUP BY/HAVING", "ORDER BY"])
 
             with tab_select:
                 st.session_state.distinct = st.checkbox("DISTINCT")
                 select_vars = {}
-
-                # AgGrid untuk pemilihan kolom
-                columns_data = []
                 for table in st.session_state.tables:
-                    for col in table["columns"]:
-                        columns_data.append(
-                            {
-                                "Tabel": table["name"],
-                                "Kolom": col,
-                                "Pilih": False,
-                                "Agregasi": "None",
-                                "Alias": "",
-                            }
+                    st.write(f"Tabel {table['name']}:")
+                    for col in table['columns']:
+                        full_name = f"{table['name']}.{col}"
+                        aggregation = st.selectbox(
+                            f"Pilih Agregasi untuk Kolom {col}",
+                            ["None", "SUM", "COUNT", "AVG", "MIN", "MAX"],
+                            key=f"agg_{full_name}"
                         )
-
-                columns_df = pd.DataFrame(columns_data)
-
-                gb = GridOptionsBuilder.from_dataframe(columns_df)
-                gb.configure_selection(selection_mode="multiple", use_checkbox=True)
-                gb.configure_column("Pilih", headerCheckboxSelection=True)
-                gb.configure_column(
-                    "Agregasi",
-                    editable=True,
-                    cellEditor="agSelectCellEditor",
-                    cellEditorParams={"values": ["None", "SUM", "COUNT", "AVG", "MIN", "MAX"]},
-                )
-                grid_options = gb.build()
-
-                grid_response = AgGrid(
-                    columns_df,
-                    gridOptions=grid_options,
-                    update_mode=GridUpdateMode.SELECTION_CHANGED,
-                    fit_columns_on_grid_load=True,
-                    height=300,
-                    key="columns_grid",
-                )
-
-                selected_rows = grid_response["selected_rows"]
-                for row in selected_rows:
-                    full_name = f"{row['Tabel']}.{row['Kolom']}"
-                    if row["Agregasi"] != "None":
-                        full_name = f"{row['Agregasi']}({full_name})"
-                    if row["Alias"]:
-                        full_name += f" AS {row['Alias']}"
-                    select_vars[full_name] = True
+                        alias = st.text_input(f"Alias untuk Kolom {col} (opsional)", key=f"alias_{full_name}")
+                        if aggregation != "None":
+                            full_name = f"{aggregation}({full_name})"
+                            if alias:
+                                full_name += f" AS {alias}"
+                        elif alias:
+                            full_name += f" AS {alias}"
+                        select_vars[full_name] = st.checkbox(col, key=f"select_{full_name}")
                 st.session_state.select_columns = select_vars
 
             with tab_where:
-                pass  # Implementasi WHERE di sini
+                where_conditions = []
+                columns = self.get_all_columns()
+                num_conditions = st.number_input("Jumlah Kondisi WHERE:", min_value=0, value=0, step=1)
+                for i in range(num_conditions):
+                    col = st.selectbox(f"Kolom untuk kondisi WHERE {i+1}", columns, key=f"where_col_{i}")
+                    op = st.selectbox(
+                        f"Operator untuk kondisi WHERE {i+1}",
+                        ["=", "!=", ">", "<", ">=", "<=", "LIKE"],
+                        key=f"where_op_{i}"
+                    )
+                    val = st.text_input(f"Nilai untuk kondisi WHERE {i+1}", key=f"where_val_{i}")
+                    condition = f"{col} {op} {val}"
+                    if i > 0:
+                        logic_operator = st.selectbox(
+                            f"Logika untuk kondisi WHERE {i+1}",
+                            ["AND", "OR"],
+                            key=f"logic_op_{i}"
+                        )
+                        condition = f" {logic_operator} {condition}"
+                    where_conditions.append(condition)
+                st.session_state.where_conditions = where_conditions
 
             with tab_group:
-                pass  # Implementasi GROUP BY/HAVING di sini
+                st.session_state.group_by = st.text_input("GROUP BY (pisahkan koma):")
+                st.session_state.having_conditions = st.text_input("HAVING:")
 
             with tab_order:
-                pass  # Implementasi ORDER BY di sini
+                st.session_state.order_by = st.text_input("ORDER BY (pisahkan koma):")
 
             if st.button("Generate SQL"):
                 self.generate_sql()
 
     def generate_sql(self):
-        # Implementasi pembuatan query SQL di sini
-        pass
+        select = "SELECT "
+        if st.session_state.distinct:
+            select += "DISTINCT "
+        
+        selected = [col for col, var in st.session_state.select_columns.items() if var]
+        select += ", ".join(selected) if selected else "*"
+        
+        from_clause = f"\nFROM {st.session_state.tables[0]['name']}"
+        for i, join in enumerate(st.session_state.joins):
+            from_clause += f"\n{join['type']} {st.session_state.tables[i+1]['name']} ON {join['condition']}"
+        
+        where = ""
+        if st.session_state.where_conditions:
+            where = "\nWHERE " + "".join(st.session_state.where_conditions)
+        
+        group = ""
+        if st.session_state.group_by:
+            group = f"\nGROUP BY {st.session_state.group_by}"
+        
+        having = ""
+        if st.session_state.having_conditions:
+            having = f"\nHAVING {st.session_state.having_conditions}"
+        
+        order = ""
+        if st.session_state.order_by:
+            order = f"\nORDER BY {st.session_state.order_by}"
+        
+        sql = select + from_clause + where + group + having + order
+        
+        st.subheader("Hasil Query SQL")
+        st.code(sql, language="sql")
 
+    def get_all_columns(self):
+        return [f"{table['name']}.{col}" for table in st.session_state.tables for col in table['columns']]
 
+# Fungsi app() untuk multipage Streamlit
 def app():
     app_instance = SQLSimulatorStreamlit()
-
+    
+    # Jalankan langkah-langkah sesuai state
     if st.session_state.step == 0:
         app_instance.initialize_table_input()
     elif st.session_state.step == 1:
@@ -218,7 +237,3 @@ def app():
         app_instance.show_join_options()
     elif st.session_state.step == 3:
         app_instance.show_query_options()
-
-
-if __name__ == "__main__":
-    app()
