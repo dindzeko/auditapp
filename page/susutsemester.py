@@ -245,7 +245,31 @@ def app():
                         del st.session_state.edit_corr_index
                         st.rerun()
 
-    # Tombol Aksi
+  # Hitung Penyusutan
+    if st.button("🧮 Hitung Penyusutan"):
+        try:
+            schedule = calculate_depreciation(
+                initial_cost=initial_cost,
+                acquisition_date=acquisition_date,
+                useful_life=useful_life,
+                reporting_date=reporting_date,
+                capitalizations=st.session_state.capitalizations,
+                corrections=st.session_state.corrections
+            )
+            st.session_state.schedule = schedule
+
+            # Format hasil untuk tampilan
+            df = pd.DataFrame(schedule)
+            df['Semester'] = df['semester'].apply(lambda x: f"Semester {x}")
+            df['Penyusutan'] = df['depreciation'].apply(lambda x: f"Rp{x:,.2f}")
+            df['Akumulasi'] = df['accumulated'].apply(lambda x: f"Rp{x:,.2f}")
+            df['Nilai Buku'] = df['book_value'].apply(lambda x: f"Rp{x:,.2f}")
+
+            st.subheader("📊 Jadwal Penyusutan")
+            st.dataframe(df[['year', 'Semester', 'Penyusutan', 'Akumulasi', 'Nilai Buku', 'sisa_mm']].rename(
+                columns={'year': 'Tahun', 'sisa_mm': 'Sisa MM'}
+            ), use_container_width=True, hide_index=True)  
+  # Tombol Aksi
     action_col1, action_col2, action_col3 = st.columns([1, 1, 2])
     with action_col1:
         if st.button("🔄 Reset Semua"):
@@ -292,31 +316,6 @@ def app():
                     file_name="jadwal_penyusutan.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 )
-
-    # Hitung Penyusutan
-    if st.button("🧮 Hitung Penyusutan"):
-        try:
-            schedule = calculate_depreciation(
-                initial_cost=initial_cost,
-                acquisition_date=acquisition_date,
-                useful_life=useful_life,
-                reporting_date=reporting_date,
-                capitalizations=st.session_state.capitalizations,
-                corrections=st.session_state.corrections
-            )
-            st.session_state.schedule = schedule
-
-            # Format hasil untuk tampilan
-            df = pd.DataFrame(schedule)
-            df['Semester'] = df['semester'].apply(lambda x: f"Semester {x}")
-            df['Penyusutan'] = df['depreciation'].apply(lambda x: f"Rp{x:,.2f}")
-            df['Akumulasi'] = df['accumulated'].apply(lambda x: f"Rp{x:,.2f}")
-            df['Nilai Buku'] = df['book_value'].apply(lambda x: f"Rp{x:,.2f}")
-
-            st.subheader("📊 Jadwal Penyusutan")
-            st.dataframe(df[['year', 'Semester', 'Penyusutan', 'Akumulasi', 'Nilai Buku', 'sisa_mm']].rename(
-                columns={'year': 'Tahun', 'sisa_mm': 'Sisa MM'}
-            ), use_container_width=True, hide_index=True)
 
         except Exception as e:
             st.error(f"❌ Terjadi kesalahan: {str(e)}")
