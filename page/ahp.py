@@ -79,7 +79,7 @@ class AHPApp:
                 for i, comp in enumerate(self.comparisons):
                     col1, col2 = st.columns([5, 1])
                     with col1:
-                        st.write(f"{comp['a']} vs {comp['b']}: Skala {comp['scale']}, Lebih Penting: {comp['more']}")
+                        st.write(f"{comp['a']} vs {comp['b']}: Lebih Penting: {comp['more']} Skala {comp['scale']}")
                     with col2:
                         if st.button(f"Hapus {i}", key=f"delete_{i}"):
                             # Remove the comparison
