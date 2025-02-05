@@ -103,7 +103,8 @@ def benford_law():
     st.title("Benford's Law")
     st.write("Halaman untuk analisis menggunakan Benford's Law.")
     st.markdown('</div>', unsafe_allow_html=True)
-
+    from page.benfords import app benfords_app
+    benfords_app()
 # Navigasi
 page_names_to_funcs = {
     "Main Page": main_page,
