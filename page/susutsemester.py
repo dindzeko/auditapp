@@ -299,4 +299,9 @@ def app():
             df['Akumulasi'] = df['accumulated'].apply(lambda x: f"Rp{x:,.2f}")
             df['Nilai Buku'] = df['book_value'].apply(lambda x: f"Rp{x:,.2f}")
             
-            st.subheader("Jadwal
+            st.subheader("Jadwal Penyusutan")
+            st.dataframe(df[['year', 'Semester', 'Penyusutan', 'Akumulasi', 'Nilai Buku', 'sisa_mm']].rename(
+                columns={'year': 'Tahun', 'sisa_mm': 'Sisa MM'}
+            ), use_container_width=True, hide_index=True)
+        except Exception as e:
+            st.error(f"Terjadi kesalahan: {str(e)}")
