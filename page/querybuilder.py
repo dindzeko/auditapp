@@ -42,7 +42,13 @@ class SQLSimulatorStreamlit:
                 table_entries.append({"name": name.strip(), "columns": [c.strip() for c in cols.split(",") if c.strip()]})
             
             if st.button("Submit Detail Tabel"):
-                st.session_state.tables = [entry for entry in table_entries if entry["name"] and entry["columns"]]
+                # Validasi input tabel
+                valid_tables = [entry for entry in table_entries if entry["name"] and entry["columns"]]
+                if len(valid_tables) != st.session_state.num_tables:
+                    st.error("Semua tabel harus memiliki nama dan setidaknya satu kolom.")
+                    return
+                
+                st.session_state.tables = valid_tables
                 st.session_state.step = 2  # Lanjut ke langkah berikutnya
                 st.rerun()  # Refresh halaman untuk melanjutkan ke langkah berikutnya
 
@@ -58,30 +64,57 @@ class SQLSimulatorStreamlit:
                     st.write(", ".join(table['columns']))
 
             # Pilih tabel dan kolom untuk join
-            for i in range(len(st.session_state.tables)-1):
-                st.write(f"Join antara Tabel {i+1} dan {i+2}")
+            for i in range(len(st.session_state.tables) - 1):
+                st.write(f"Join antara Tabel {i + 1} dan {i + 2}")
+                
+                # Pilih tabel pertama
                 table1 = st.selectbox(
-                    f"Pilih Tabel Pertama untuk Join {i+1}",
+                    f"Pilih Tabel Pertama untuk Join {i + 1}",
                     [table['name'] for table in st.session_state.tables],
                     key=f"join_table1_{i}"
                 )
+                # Cari kolom untuk tabel pertama
+                table1_columns = []
+                for table in st.session_state.tables:
+                    if table['name'] == table1:
+                        table1_columns = table['columns']
+                        break
+
+                if not table1_columns:
+                    st.error(f"Tidak ditemukan kolom untuk tabel '{table1}'. Silakan periksa input tabel.")
+                    return
+
                 col1 = st.selectbox(
                     f"Pilih Kolom dari Tabel {table1}",
-                    [col for table in st.session_state.tables if table['name'] == table1][0]['columns'],
+                    table1_columns,
                     key=f"join_col1_{i}"
                 )
+
+                # Pilih tabel kedua
                 table2 = st.selectbox(
-                    f"Pilih Tabel Kedua untuk Join {i+1}",
+                    f"Pilih Tabel Kedua untuk Join {i + 1}",
                     [table['name'] for table in st.session_state.tables],
                     key=f"join_table2_{i}"
                 )
+                # Cari kolom untuk tabel kedua
+                table2_columns = []
+                for table in st.session_state.tables:
+                    if table['name'] == table2:
+                        table2_columns = table['columns']
+                        break
+
+                if not table2_columns:
+                    st.error(f"Tidak ditemukan kolom untuk tabel '{table2}'. Silakan periksa input tabel.")
+                    return
+
                 col2 = st.selectbox(
                     f"Pilih Kolom dari Tabel {table2}",
-                    [col for table in st.session_state.tables if table['name'] == table2][0]['columns'],
+                    table2_columns,
                     key=f"join_col2_{i}"
                 )
+
                 join_type = st.selectbox(
-                    f"Jenis Join untuk Tabel {i+1} dan {i+2}",
+                    f"Jenis Join untuk Tabel {i + 1} dan {i + 2}",
                     ["INNER JOIN", "LEFT JOIN", "RIGHT JOIN", "FULL JOIN"],
                     key=f"join_type_{i}"
                 )
@@ -89,7 +122,7 @@ class SQLSimulatorStreamlit:
                     "type": join_type,
                     "condition": f"{table1}.{col1} = {table2}.{col2}"
                 })
-            
+
             if st.button("Submit Join Options"):
                 st.session_state.joins = join_entries
                 st.session_state.step = 3  # Lanjut ke langkah berikutnya
