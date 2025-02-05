@@ -62,7 +62,8 @@ def sample():
         from page.ahp import app as ahp_app
         ahp_app()
     elif sub_page == "MUS":
-        mus()
+        from page.mus import app as mus_app
+        mus_app()
     elif sub_page == "Benford Law":
         from page.benfords import app as benfords_app
         benfords_app()
