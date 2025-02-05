@@ -65,7 +65,7 @@ def sample():
         mus()
     elif sub_page == "Benford Law":
         from page.benfords import app as benfords_app
-        benfords_app(
+        benfords_app()
             
     st.markdown('</div>', unsafe_allow_html=True)
 
