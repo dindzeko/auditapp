@@ -29,7 +29,7 @@ class SQLSimulatorStreamlit:
             if st.button("Submit Jumlah Tabel"):
                 st.session_state.num_tables = num_tables
                 st.session_state.step = 1  # Lanjut ke langkah berikutnya
-                st.experimental_rerun()  # Refresh halaman untuk melanjutkan ke langkah berikutnya
+                st.rerun()  # Refresh halaman untuk melanjutkan ke langkah berikutnya
 
     def show_table_details(self):
         if st.session_state.step == 1:
@@ -44,7 +44,7 @@ class SQLSimulatorStreamlit:
             if st.button("Submit Detail Tabel"):
                 st.session_state.tables = [entry for entry in table_entries if entry["name"] and entry["columns"]]
                 st.session_state.step = 2  # Lanjut ke langkah berikutnya
-                st.experimental_rerun()  # Refresh halaman untuk melanjutkan ke langkah berikutnya
+                st.rerun()  # Refresh halaman untuk melanjutkan ke langkah berikutnya
 
     def show_join_options(self):
         if st.session_state.step == 2:
@@ -61,7 +61,7 @@ class SQLSimulatorStreamlit:
             if st.button("Submit Join Options"):
                 st.session_state.joins = join_entries
                 st.session_state.step = 3  # Lanjut ke langkah berikutnya
-                st.experimental_rerun()  # Refresh halaman untuk melanjutkan ke langkah berikutnya
+                st.rerun()  # Refresh halaman untuk melanjutkan ke langkah berikutnya
 
     def show_query_options(self):
         if st.session_state.step == 3:
