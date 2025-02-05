@@ -14,10 +14,10 @@ if choice == "Home":
 
 elif choice == "Susut Semester":
     # Memuat halaman Susut Semester
-    from susutsemester import app as susutsemester_app
+    from page.susutsemester import app as susutsemester_app
     susutsemester_app()
 
 elif choice == "Susut Tahunan":
     # Memuat halaman Susut Tahunan
-    from susuttahunan import app as susuttahunan_app
+    from page.susuttahunan import app as susuttahunan_app
     susuttahunan_app()
