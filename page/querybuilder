@@ -1,35 +1,123 @@
 import streamlit as st
 
-# Fungsi utama untuk halaman Query Builder
+class SQLSimulatorStreamlit:
+    def __init__(self):
+        self.tables = []
+        self.joins = []
+        self.select_columns = []
+        self.where_conditions = []
+        self.group_by = []
+        self.having_conditions = []
+        self.order_by = []
+        self.distinct = False
+
+    def initialize_table_input(self):
+        st.title("SQL Query Simulator")
+        num_tables = st.number_input("Jumlah Tabel:", min_value=1, value=1, step=1)
+        if st.button("Submit Jumlah Tabel"):
+            self.show_table_details(int(num_tables))
+
+    def show_table_details(self, num_tables):
+        st.subheader("Detail Tabel")
+        self.table_entries = []
+        for i in range(num_tables):
+            st.write(f"Tabel {i+1}")
+            name = st.text_input(f"Nama Tabel {i+1}", key=f"table_name_{i}")
+            cols = st.text_input(f"Kolom (pisahkan koma) untuk Tabel {i+1}", key=f"table_cols_{i}")
+            self.table_entries.append((name.strip(), [c.strip() for c in cols.split(",") if c.strip()]))
+        
+        if st.button("Submit Detail Tabel"):
+            self.tables = [{"name": name, "columns": cols} for name, cols in self.table_entries if name and cols]
+            self.show_join_options()
+
+    def show_join_options(self):
+        st.subheader("Join Options")
+        self.join_entries = []
+        for i in range(len(self.tables)-1):
+            st.write(f"Join antara Tabel {i+1} dan {i+2}")
+            join_type = st.selectbox(f"Jenis Join untuk Tabel {i+1} dan {i+2}", 
+                                     ["INNER JOIN", "LEFT JOIN", "RIGHT JOIN", "FULL JOIN"], 
+                                     key=f"join_type_{i}")
+            on_condition = st.text_input(f"Kondisi ON untuk Tabel {i+1} dan {i+2}", key=f"on_condition_{i}")
+            self.join_entries.append({"type": join_type, "condition": on_condition})
+        
+        if st.button("Submit Join Options"):
+            self.joins = self.join_entries
+            self.show_query_options()
+
+    def show_query_options(self):
+        st.subheader("Query Options")
+        tab_select, tab_where, tab_group, tab_order = st.tabs(["SELECT", "WHERE", "GROUP BY/HAVING", "ORDER BY"])
+
+        with tab_select:
+            self.distinct = st.checkbox("DISTINCT")
+            self.select_vars = {}
+            for table in self.tables:
+                st.write(f"Tabel {table['name']}:")
+                for col in table['columns']:
+                    full_name = f"{table['name']}.{col}"
+                    self.select_vars[full_name] = st.checkbox(col, key=f"select_{full_name}")
+
+        with tab_where:
+            self.where_conditions = []
+            columns = self.get_all_columns()
+            num_conditions = st.number_input("Jumlah Kondisi WHERE:", min_value=0, value=0, step=1)
+            for i in range(num_conditions):
+                col = st.selectbox(f"Kolom untuk kondisi WHERE {i+1}", columns, key=f"where_col_{i}")
+                op = st.selectbox(f"Operator untuk kondisi WHERE {i+1}", 
+                                  ["=", "!=", ">", "<", ">=", "<=", "LIKE", "BETWEEN", "IN"], 
+                                  key=f"where_op_{i}")
+                val = st.text_input(f"Nilai untuk kondisi WHERE {i+1}", key=f"where_val_{i}")
+                self.where_conditions.append(f"{col} {op} {val}")
+
+        with tab_group:
+            self.group_by = st.text_input("GROUP BY (pisahkan koma):")
+            self.having_conditions = st.text_input("HAVING:")
+
+        with tab_order:
+            self.order_by = st.text_input("ORDER BY (pisahkan koma):")
+
+        if st.button("Generate SQL"):
+            self.generate_sql()
+
+    def generate_sql(self):
+        select = "SELECT "
+        if self.distinct:
+            select += "DISTINCT "
+        
+        selected = [col for col, var in self.select_vars.items() if var]
+        select += ", ".join(selected) if selected else "*"
+        
+        from_clause = f"\nFROM {self.tables[0]['name']}"
+        for i, join in enumerate(self.joins):
+            from_clause += f"\n{join['type']} {self.tables[i+1]['name']} ON {join['condition']}"
+        
+        where = ""
+        if self.where_conditions:
+            where = "\nWHERE " + " AND ".join(self.where_conditions)
+        
+        group = ""
+        if self.group_by:
+            group = f"\nGROUP BY {self.group_by}"
+        
+        having = ""
+        if self.having_conditions:
+            having = f"\nHAVING {self.having_conditions}"
+        
+        order = ""
+        if self.order_by:
+            order = f"\nORDER BY {self.order_by}"
+        
+        sql = select + from_clause + where + group + having + order
+        
+        st.subheader("Hasil Query SQL")
+        st.code(sql, language="sql")
+
+    def get_all_columns(self):
+        return [f"{table['name']}.{col}" for table in self.tables for col in table['columns']]
+
+
+# Fungsi app() untuk multipage Streamlit
 def app():
-    # Efek fade-in (opsional)
-    st.markdown('<div class="fade-in">', unsafe_allow_html=True)
-    
-    # Judul halaman
-    st.title("Query Builder")
-    st.write("Halaman untuk Query Builder.")
-    
-    # Pilihan sub-halaman
-    sub_page = st.sidebar.selectbox("Pilih sub-halaman", ["AHP", "MUS", "Benford Law"])
-    
-    # Logika untuk memuat sub-halaman
-    if sub_page == "AHP":
-        from pages.ahp import app as ahp_app
-        ahp_app()
-    elif sub_page == "MUS":
-        mus()
-    elif sub_page == "Benford Law":
-        benford_law()
-    
-    # Menutup div fade-in
-    st.markdown('</div>', unsafe_allow_html=True)
-
-# Contoh fungsi untuk sub-halaman MUS
-def mus():
-    st.subheader("MUS Sub-page")
-    st.write("Ini adalah halaman MUS.")
-
-# Contoh fungsi untuk sub-halaman Benford Law
-def benford_law():
-    st.subheader("Benford Law Sub-page")
-    st.write("Ini adalah halaman Benford Law.")
+    app_instance = SQLSimulatorStreamlit()
+    app_instance.initialize_table_input()
