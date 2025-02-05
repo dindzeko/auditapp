@@ -1,1 +1,35 @@
+import streamlit as st
 
+# Fungsi utama untuk halaman Query Builder
+def app():
+    # Efek fade-in (opsional)
+    st.markdown('<div class="fade-in">', unsafe_allow_html=True)
+    
+    # Judul halaman
+    st.title("Query Builder")
+    st.write("Halaman untuk Query Builder.")
+    
+    # Pilihan sub-halaman
+    sub_page = st.sidebar.selectbox("Pilih sub-halaman", ["AHP", "MUS", "Benford Law"])
+    
+    # Logika untuk memuat sub-halaman
+    if sub_page == "AHP":
+        from pages.ahp import app as ahp_app
+        ahp_app()
+    elif sub_page == "MUS":
+        mus()
+    elif sub_page == "Benford Law":
+        benford_law()
+    
+    # Menutup div fade-in
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# Contoh fungsi untuk sub-halaman MUS
+def mus():
+    st.subheader("MUS Sub-page")
+    st.write("Ini adalah halaman MUS.")
+
+# Contoh fungsi untuk sub-halaman Benford Law
+def benford_law():
+    st.subheader("Benford Law Sub-page")
+    st.write("Ini adalah halaman Benford Law.")
