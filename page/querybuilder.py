@@ -67,7 +67,6 @@ class SQLSimulatorStreamlit:
         if st.session_state.step == 3:
             st.subheader("Query Options")
             tab_select, tab_where, tab_group, tab_order = st.tabs(["SELECT", "WHERE", "GROUP BY/HAVING", "ORDER BY"])
-
             with tab_select:
                 st.session_state.distinct = st.checkbox("DISTINCT")
                 select_vars = {}
@@ -89,7 +88,6 @@ class SQLSimulatorStreamlit:
                             full_name += f" AS {alias}"
                         select_vars[full_name] = st.checkbox(col, key=f"select_{full_name}")
                 st.session_state.select_columns = select_vars
-
             with tab_where:
                 where_conditions = []
                 columns = self.get_all_columns()
@@ -112,14 +110,11 @@ class SQLSimulatorStreamlit:
                         condition = f" {logic_operator} {condition}"
                     where_conditions.append(condition)
                 st.session_state.where_conditions = where_conditions
-
             with tab_group:
                 st.session_state.group_by = st.text_input("GROUP BY (pisahkan koma):")
                 st.session_state.having_conditions = st.text_input("HAVING:")
-
             with tab_order:
                 st.session_state.order_by = st.text_input("ORDER BY (pisahkan koma):")
-
             if st.button("Generate SQL"):
                 self.generate_sql()
 
@@ -156,6 +151,23 @@ class SQLSimulatorStreamlit:
         st.subheader("Hasil Query SQL")
         st.code(sql, language="sql")
 
+        # Tombol Restart
+        if st.button("Restart"):
+            self.reset_state()
+            st.rerun()
+
+    def reset_state(self):
+        """Reset semua state ke nilai awal."""
+        st.session_state.step = 0
+        st.session_state.tables = []
+        st.session_state.joins = []
+        st.session_state.select_columns = {}
+        st.session_state.where_conditions = []
+        st.session_state.group_by = ""
+        st.session_state.having_conditions = ""
+        st.session_state.order_by = ""
+        st.session_state.distinct = False
+
     def get_all_columns(self):
         return [f"{table['name']}.{col}" for table in st.session_state.tables for col in table['columns']]
 
@@ -172,3 +184,6 @@ def app():
         app_instance.show_join_options()
     elif st.session_state.step == 3:
         app_instance.show_query_options()
+
+if __name__ == "__main__":
+    app()
