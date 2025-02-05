@@ -75,6 +75,18 @@ class SQLSimulatorStreamlit:
                     st.write(f"Tabel {table['name']}:")
                     for col in table['columns']:
                         full_name = f"{table['name']}.{col}"
+                        aggregation = st.selectbox(
+                            f"Pilih Agregasi untuk Kolom {col}",
+                            ["None", "SUM", "COUNT", "AVG", "MIN", "MAX"],
+                            key=f"agg_{full_name}"
+                        )
+                        alias = st.text_input(f"Alias untuk Kolom {col} (opsional)", key=f"alias_{full_name}")
+                        if aggregation != "None":
+                            full_name = f"{aggregation}({full_name})"
+                            if alias:
+                                full_name += f" AS {alias}"
+                        elif alias:
+                            full_name += f" AS {alias}"
                         select_vars[full_name] = st.checkbox(col, key=f"select_{full_name}")
                 st.session_state.select_columns = select_vars
 
@@ -84,11 +96,21 @@ class SQLSimulatorStreamlit:
                 num_conditions = st.number_input("Jumlah Kondisi WHERE:", min_value=0, value=0, step=1)
                 for i in range(num_conditions):
                     col = st.selectbox(f"Kolom untuk kondisi WHERE {i+1}", columns, key=f"where_col_{i}")
-                    op = st.selectbox(f"Operator untuk kondisi WHERE {i+1}", 
-                                      ["=", "!=", ">", "<", ">=", "<=", "LIKE", "BETWEEN", "IN"], 
-                                      key=f"where_op_{i}")
+                    op = st.selectbox(
+                        f"Operator untuk kondisi WHERE {i+1}",
+                        ["=", "!=", ">", "<", ">=", "<=", "LIKE"],
+                        key=f"where_op_{i}"
+                    )
                     val = st.text_input(f"Nilai untuk kondisi WHERE {i+1}", key=f"where_val_{i}")
-                    where_conditions.append(f"{col} {op} {val}")
+                    condition = f"{col} {op} {val}"
+                    if i > 0:
+                        logic_operator = st.selectbox(
+                            f"Logika untuk kondisi WHERE {i+1}",
+                            ["AND", "OR"],
+                            key=f"logic_op_{i}"
+                        )
+                        condition = f" {logic_operator} {condition}"
+                    where_conditions.append(condition)
                 st.session_state.where_conditions = where_conditions
 
             with tab_group:
@@ -115,7 +137,7 @@ class SQLSimulatorStreamlit:
         
         where = ""
         if st.session_state.where_conditions:
-            where = "\nWHERE " + " AND ".join(st.session_state.where_conditions)
+            where = "\nWHERE " + "".join(st.session_state.where_conditions)
         
         group = ""
         if st.session_state.group_by:
