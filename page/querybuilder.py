@@ -29,7 +29,7 @@ class SQLSimulatorStreamlit:
             if st.button("Submit Jumlah Tabel"):
                 st.session_state.num_tables = num_tables
                 st.session_state.step = 1  # Lanjut ke langkah berikutnya
-                st.rerun()  # Refresh halaman untuk melanjutkan ke langkah berikutnya
+                st.experimental_rerun()
 
     def show_table_details(self):
         if st.session_state.step == 1:
@@ -44,7 +44,7 @@ class SQLSimulatorStreamlit:
             if st.button("Submit Detail Tabel"):
                 st.session_state.tables = [entry for entry in table_entries if entry["name"] and entry["columns"]]
                 st.session_state.step = 2  # Lanjut ke langkah berikutnya
-                st.rerun()  # Refresh halaman untuk melanjutkan ke langkah berikutnya
+                st.experimental_rerun()
 
     def show_join_options(self):
         if st.session_state.step == 2:
@@ -61,7 +61,7 @@ class SQLSimulatorStreamlit:
             if st.button("Submit Join Options"):
                 st.session_state.joins = join_entries
                 st.session_state.step = 3  # Lanjut ke langkah berikutnya
-                st.rerun()  # Refresh halaman untuk melanjutkan ke langkah berikutnya
+                st.experimental_rerun()
 
     def show_query_options(self):
         if st.session_state.step == 3:
@@ -152,9 +152,10 @@ class SQLSimulatorStreamlit:
         st.code(sql, language="sql")
 
         # Tombol Restart
+        st.write("")  # Menambahkan jarak agar tombol tidak terlalu dekat dengan hasil query
         if st.button("Restart"):
             self.reset_state()
-            st.rerun()
+            st.experimental_rerun()
 
     def reset_state(self):
         """Reset semua state ke nilai awal."""
