@@ -1,50 +1,61 @@
 import streamlit as st
-def app():
-    st.title("Query Builder")
-    st.write("Halaman untuk Query Builder.")
+
 class SQLSimulatorStreamlit:
     def __init__(self):
-        self.tables = []
-        self.joins = []
-        self.select_columns = []
-        self.where_conditions = []
-        self.group_by = []
-        self.having_conditions = []
-        self.order_by = []
-        self.distinct = False
+        # Inisialisasi state jika belum ada
+        if "tables" not in st.session_state:
+            st.session_state.tables = []
+        if "joins" not in st.session_state:
+            st.session_state.joins = []
+        if "select_columns" not in st.session_state:
+            st.session_state.select_columns = []
+        if "where_conditions" not in st.session_state:
+            st.session_state.where_conditions = []
+        if "group_by" not in st.session_state:
+            st.session_state.group_by = []
+        if "having_conditions" not in st.session_state:
+            st.session_state.having_conditions = []
+        if "order_by" not in st.session_state:
+            st.session_state.order_by = []
+        if "distinct" not in st.session_state:
+            st.session_state.distinct = False
 
     def initialize_table_input(self):
         st.title("SQL Query Simulator")
         num_tables = st.number_input("Jumlah Tabel:", min_value=1, value=1, step=1)
         if st.button("Submit Jumlah Tabel"):
+            # Reset state untuk tabel baru
+            st.session_state.tables = []
             self.show_table_details(int(num_tables))
 
     def show_table_details(self, num_tables):
         st.subheader("Detail Tabel")
-        self.table_entries = []
+        table_entries = []
         for i in range(num_tables):
             st.write(f"Tabel {i+1}")
             name = st.text_input(f"Nama Tabel {i+1}", key=f"table_name_{i}")
             cols = st.text_input(f"Kolom (pisahkan koma) untuk Tabel {i+1}", key=f"table_cols_{i}")
-            self.table_entries.append((name.strip(), [c.strip() for c in cols.split(",") if c.strip()]))
+            table_entries.append({"name": name.strip(), "columns": [c.strip() for c in cols.split(",") if c.strip()]})
         
         if st.button("Submit Detail Tabel"):
-            self.tables = [{"name": name, "columns": cols} for name, cols in self.table_entries if name and cols]
+            # Simpan tabel ke session state
+            st.session_state.tables = [entry for entry in table_entries if entry["name"] and entry["columns"]]
             self.show_join_options()
 
     def show_join_options(self):
         st.subheader("Join Options")
-        self.join_entries = []
-        for i in range(len(self.tables)-1):
+        join_entries = []
+        for i in range(len(st.session_state.tables)-1):
             st.write(f"Join antara Tabel {i+1} dan {i+2}")
             join_type = st.selectbox(f"Jenis Join untuk Tabel {i+1} dan {i+2}", 
                                      ["INNER JOIN", "LEFT JOIN", "RIGHT JOIN", "FULL JOIN"], 
                                      key=f"join_type_{i}")
             on_condition = st.text_input(f"Kondisi ON untuk Tabel {i+1} dan {i+2}", key=f"on_condition_{i}")
-            self.join_entries.append({"type": join_type, "condition": on_condition})
+            join_entries.append({"type": join_type, "condition": on_condition})
         
         if st.button("Submit Join Options"):
-            self.joins = self.join_entries
+            # Simpan join ke session state
+            st.session_state.joins = join_entries
             self.show_query_options()
 
     def show_query_options(self):
@@ -52,16 +63,17 @@ class SQLSimulatorStreamlit:
         tab_select, tab_where, tab_group, tab_order = st.tabs(["SELECT", "WHERE", "GROUP BY/HAVING", "ORDER BY"])
 
         with tab_select:
-            self.distinct = st.checkbox("DISTINCT")
-            self.select_vars = {}
-            for table in self.tables:
+            st.session_state.distinct = st.checkbox("DISTINCT")
+            select_vars = {}
+            for table in st.session_state.tables:
                 st.write(f"Tabel {table['name']}:")
                 for col in table['columns']:
                     full_name = f"{table['name']}.{col}"
-                    self.select_vars[full_name] = st.checkbox(col, key=f"select_{full_name}")
+                    select_vars[full_name] = st.checkbox(col, key=f"select_{full_name}")
+            st.session_state.select_columns = select_vars
 
         with tab_where:
-            self.where_conditions = []
+            where_conditions = []
             columns = self.get_all_columns()
             num_conditions = st.number_input("Jumlah Kondisi WHERE:", min_value=0, value=0, step=1)
             for i in range(num_conditions):
@@ -70,45 +82,46 @@ class SQLSimulatorStreamlit:
                                   ["=", "!=", ">", "<", ">=", "<=", "LIKE", "BETWEEN", "IN"], 
                                   key=f"where_op_{i}")
                 val = st.text_input(f"Nilai untuk kondisi WHERE {i+1}", key=f"where_val_{i}")
-                self.where_conditions.append(f"{col} {op} {val}")
+                where_conditions.append(f"{col} {op} {val}")
+            st.session_state.where_conditions = where_conditions
 
         with tab_group:
-            self.group_by = st.text_input("GROUP BY (pisahkan koma):")
-            self.having_conditions = st.text_input("HAVING:")
+            st.session_state.group_by = st.text_input("GROUP BY (pisahkan koma):")
+            st.session_state.having_conditions = st.text_input("HAVING:")
 
         with tab_order:
-            self.order_by = st.text_input("ORDER BY (pisahkan koma):")
+            st.session_state.order_by = st.text_input("ORDER BY (pisahkan koma):")
 
         if st.button("Generate SQL"):
             self.generate_sql()
 
     def generate_sql(self):
         select = "SELECT "
-        if self.distinct:
+        if st.session_state.distinct:
             select += "DISTINCT "
         
-        selected = [col for col, var in self.select_vars.items() if var]
+        selected = [col for col, var in st.session_state.select_columns.items() if var]
         select += ", ".join(selected) if selected else "*"
         
-        from_clause = f"\nFROM {self.tables[0]['name']}"
-        for i, join in enumerate(self.joins):
-            from_clause += f"\n{join['type']} {self.tables[i+1]['name']} ON {join['condition']}"
+        from_clause = f"\nFROM {st.session_state.tables[0]['name']}"
+        for i, join in enumerate(st.session_state.joins):
+            from_clause += f"\n{join['type']} {st.session_state.tables[i+1]['name']} ON {join['condition']}"
         
         where = ""
-        if self.where_conditions:
-            where = "\nWHERE " + " AND ".join(self.where_conditions)
+        if st.session_state.where_conditions:
+            where = "\nWHERE " + " AND ".join(st.session_state.where_conditions)
         
         group = ""
-        if self.group_by:
-            group = f"\nGROUP BY {self.group_by}"
+        if st.session_state.group_by:
+            group = f"\nGROUP BY {st.session_state.group_by}"
         
         having = ""
-        if self.having_conditions:
-            having = f"\nHAVING {self.having_conditions}"
+        if st.session_state.having_conditions:
+            having = f"\nHAVING {st.session_state.having_conditions}"
         
         order = ""
-        if self.order_by:
-            order = f"\nORDER BY {self.order_by}"
+        if st.session_state.order_by:
+            order = f"\nORDER BY {st.session_state.order_by}"
         
         sql = select + from_clause + where + group + having + order
         
@@ -116,8 +129,7 @@ class SQLSimulatorStreamlit:
         st.code(sql, language="sql")
 
     def get_all_columns(self):
-        return [f"{table['name']}.{col}" for table in self.tables for col in table['columns']]
-
+        return [f"{table['name']}.{col}" for table in st.session_state.tables for col in table['columns']]
 
 # Fungsi app() untuk multipage Streamlit
 def app():
