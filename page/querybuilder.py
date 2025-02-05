@@ -50,13 +50,45 @@ class SQLSimulatorStreamlit:
         if st.session_state.step == 2:
             st.subheader("Join Options")
             join_entries = []
+
+            # Tampilkan kotak dengan daftar tabel dan kolom
+            st.write("Daftar Tabel dan Kolom:")
+            for table in st.session_state.tables:
+                with st.expander(f"{table['name']}"):
+                    st.write(", ".join(table['columns']))
+
+            # Pilih tabel dan kolom untuk join
             for i in range(len(st.session_state.tables)-1):
                 st.write(f"Join antara Tabel {i+1} dan {i+2}")
-                join_type = st.selectbox(f"Jenis Join untuk Tabel {i+1} dan {i+2}", 
-                                         ["INNER JOIN", "LEFT JOIN", "RIGHT JOIN", "FULL JOIN"], 
-                                         key=f"join_type_{i}")
-                on_condition = st.text_input(f"Kondisi ON untuk Tabel {i+1} dan {i+2}", key=f"on_condition_{i}")
-                join_entries.append({"type": join_type, "condition": on_condition})
+                table1 = st.selectbox(
+                    f"Pilih Tabel Pertama untuk Join {i+1}",
+                    [table['name'] for table in st.session_state.tables],
+                    key=f"join_table1_{i}"
+                )
+                col1 = st.selectbox(
+                    f"Pilih Kolom dari Tabel {table1}",
+                    [col for table in st.session_state.tables if table['name'] == table1][0]['columns'],
+                    key=f"join_col1_{i}"
+                )
+                table2 = st.selectbox(
+                    f"Pilih Tabel Kedua untuk Join {i+1}",
+                    [table['name'] for table in st.session_state.tables],
+                    key=f"join_table2_{i}"
+                )
+                col2 = st.selectbox(
+                    f"Pilih Kolom dari Tabel {table2}",
+                    [col for table in st.session_state.tables if table['name'] == table2][0]['columns'],
+                    key=f"join_col2_{i}"
+                )
+                join_type = st.selectbox(
+                    f"Jenis Join untuk Tabel {i+1} dan {i+2}",
+                    ["INNER JOIN", "LEFT JOIN", "RIGHT JOIN", "FULL JOIN"],
+                    key=f"join_type_{i}"
+                )
+                join_entries.append({
+                    "type": join_type,
+                    "condition": f"{table1}.{col1} = {table2}.{col2}"
+                })
             
             if st.button("Submit Join Options"):
                 st.session_state.joins = join_entries
