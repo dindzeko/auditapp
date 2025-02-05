@@ -57,15 +57,16 @@ def sample():
     # Sub-halaman untuk Sample
     sub_page = st.sidebar.selectbox("Pilih sub-halaman", ["AHP", "MUS", "Benford Law"])
     
+    # Navigasi antar halaman
     if sub_page == "AHP":
         from page.ahp import app as ahp_app
         ahp_app()
     elif sub_page == "MUS":
         mus()
     elif sub_page == "Benford Law":
-         from page.benfords import app as benfords_app
-          benfords_app()
-    
+        from page.benfords import app as benfords_app
+        benfords_app(
+            
     st.markdown('</div>', unsafe_allow_html=True)
 
 # Halaman Vouching
