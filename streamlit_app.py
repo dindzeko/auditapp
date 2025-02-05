@@ -41,10 +41,10 @@ def depresiasi():
     sub_page = st.sidebar.selectbox("Pilih jenis depresiasi", ["Tahunan", "Semesteran"])
     
     if sub_page == "Tahunan":
-        from pages.susuttahunan import app as susuttahunan_app
+        from page.susuttahunan import app as susuttahunan_app
         susuttahunan_app()
     elif sub_page == "Semesteran":
-        from pages.susutsemester import app as susutsemester_app
+        from page.susutsemester import app as susutsemester_app
         susutsemester_app()
     
     st.markdown('</div>', unsafe_allow_html=True)
