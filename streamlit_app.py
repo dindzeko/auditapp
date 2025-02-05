@@ -80,7 +80,7 @@ def querybuilder():
     st.title("Query Builder")
     st.write("Halaman untuk Query Builder.")
     st.markdown('</div>', unsafe_allow_html=True)
-    from pages.querybuilder import app as querybuilder_app
+    from page.querybuilder import app as querybuilder_app
     querybuilder_app()
     
 # Halaman AHP (sub-halaman dari Sample)
