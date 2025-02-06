@@ -76,6 +76,8 @@ def vouching():
     st.title("Vouching")
     st.write("Halaman untuk Vouching.")
     st.markdown('</div>', unsafe_allow_html=True)
+    from page.querybuilder import app as querybuilder_app
+    querybuilder_app()
 
 # Halaman Query Builder
 def querybuilder():
@@ -83,8 +85,8 @@ def querybuilder():
     st.title("Query Builder")
     st.write("Halaman untuk Query Builder.")
     st.markdown('</div>', unsafe_allow_html=True)
-    from page.querybuilder import app as querybuilder_app
-    querybuilder_app()
+    from page.fuzzysearch import app as fuzzysearch_app
+    fuzzysearch_app()
     
 # Halaman AHP (sub-halaman dari Sample)
 def ahp():
