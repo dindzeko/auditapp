@@ -92,7 +92,7 @@ def calculate_depreciation(initial_cost, acquisition_date, useful_life, reportin
 
 # Fungsi utama aplikasi
 def app():
-    st.title("📊 Kalkulator Penyusutan Semesteran")
+    st.title("📊 SHZ_Penyusutan Semesteran")
 
     # Inisialisasi session state
     if 'capitalizations' not in st.session_state:
