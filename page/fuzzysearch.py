@@ -1,9 +1,12 @@
 import streamlit as st
 import pandas as pd
 from fuzzywuzzy import fuzz
-def (app) 
+
+# Fungsi untuk menjalankan aplikasi Streamlit
+def app():
     # Judul aplikasi
     st.title("Fuzzy Searching")
+
 # Fungsi untuk mencari string dengan toleransi typo
 def lookup_with_typo(target, data_list, threshold=80):
     """
@@ -26,7 +29,6 @@ def lookup_with_typo(target, data_list, threshold=80):
 # Variabel session state untuk menyimpan data list dan target
 if 'data_list' not in st.session_state:
     st.session_state['data_list'] = []
-
 if 'target' not in st.session_state:
     st.session_state['target'] = None
 
@@ -36,7 +38,6 @@ st.title("Pencarian dengan Toleransi Typo")
 # Bagian Upload Data List
 st.subheader("Upload Data List")
 uploaded_data_file = st.file_uploader("Pilih file Excel untuk Data List", type=["xlsx", "xls"])
-
 if uploaded_data_file is not None:
     try:
         df = pd.read_excel(uploaded_data_file)
@@ -56,7 +57,6 @@ if st.session_state['data_list']:
 # Bagian Upload Target
 st.subheader("Upload Target")
 uploaded_target_file = st.file_uploader("Pilih file Excel untuk Target", type=["xlsx", "xls"])
-
 if uploaded_target_file is not None:
     try:
         df = pd.read_excel(uploaded_target_file)
@@ -83,10 +83,8 @@ if st.button("Mulai Pencarian"):
     else:
         data_list = st.session_state['data_list']
         target = st.session_state['target']
-
         # Lakukan pencarian
         results = lookup_with_typo(target, data_list)
-
         if results:
             result_message = "\n".join([f"{item} (Skor: {score})" for item, score in results])
             st.success(f"String '{target}' ditemukan sebagai kemiripan dengan:\n{result_message}")
