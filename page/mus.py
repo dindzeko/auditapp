@@ -12,30 +12,41 @@ def app():
     total_population = st.number_input("Total Population Value", min_value=1.0, value=1000000.0)
     tolerable_misstatement = st.number_input("Tolerable Misstatement", min_value=1.0, value=50000.0)
     expected_misstatement = st.number_input("Expected Misstatement", min_value=0.0, value=10000.0)
-    risk_of_incorrect_acceptance = st.slider("Risk of Incorrect Acceptance (%)", min_value=0.0, max_value=100.0, value=5.0)
+    risk_of_incorrect_acceptance = st.selectbox(
+        "Risk of Incorrect Acceptance (%)",
+        options=[10, 5, 2.5],
+        index=1  # Default: 5%
+    )
 
     # Faktor Keandalan (Reliability Factor) berdasarkan Risk of Incorrect Acceptance
     reliability_factors = {
-        1: 1.9,   # 1% Risk
-        5: 1.6,   # 5% Risk
-        10: 1.5,  # 10% Risk
-        15: 1.4,  # 15% Risk
-        20: 1.3,  # 20% Risk
-        25: 1.25, # 25% Risk
-        30: 1.2,  # 30% Risk
-        37: 1.15  # 37% Risk
+        10: 1.5,   # 10% Risk
+        5: 1.6,    # 5% Risk
+        2.5: 1.9   # 2.5% Risk
     }
 
-    # Mengambil Reliability Factor berdasarkan Risk of Incorrect Acceptance
-    reliability_factor = reliability_factors.get(risk_of_incorrect_acceptance, 3.0)  # Default RF = 3.0
+    # Expansion Factor berdasarkan Risk of Incorrect Acceptance
+    expansion_factors = {
+        10: 2.4,   # 10% Risk
+        5: 3.0,    # 5% Risk
+        2.5: 3.7   # 2.5% Risk
+    }
+
+    # Mengambil Reliability Factor dan Expansion Factor berdasarkan Risk of Incorrect Acceptance
+    reliability_factor = reliability_factors.get(risk_of_incorrect_acceptance, 1.6)  # Default RF = 1.6
+    expansion_factor = expansion_factors.get(risk_of_incorrect_acceptance, 3.0)      # Default EF = 3.0
     st.write(f"Reliability Factor (RF): {reliability_factor}")
+    st.write(f"Expansion Factor (EF): {expansion_factor}")
 
     # Hitung jumlah sampel menggunakan rumus MUS
-    if tolerable_misstatement <= expected_misstatement:
-        st.error("Tolerable Misstatement must be greater than Expected Misstatement.")
+    if tolerable_misstatement <= (expected_misstatement * expansion_factor):
+        st.error("Tolerable Misstatement must be greater than (Expected Misstatement × Expansion Factor).")
         sample_size = None
     else:
-        sample_size = int((total_population * reliability_factor) / (tolerable_misstatement - expected_misstatement))
+        sample_size = int(
+            (total_population * reliability_factor) /
+            (tolerable_misstatement - (expected_misstatement * expansion_factor))
+        )
         st.write(f"Calculated Sample Size: {sample_size}")
 
     # Upload file populasi
