@@ -32,7 +32,7 @@ def app():
 
     # Bagian Upload Data List
     st.subheader("Upload Data List")
-    uploaded_data_file = st.file_uploader("Pilih file Excel untuk Data List", type=["xlsx", "xls"])
+    uploaded_data_file = st.file_uploader("Upload Excel dengan Nama Kolom Data", type=["xlsx", "xls"])
     if uploaded_data_file is not None:
         try:
             df = pd.read_excel(uploaded_data_file)
@@ -51,7 +51,7 @@ def app():
 
     # Bagian Upload Target
     st.subheader("Upload Target")
-    uploaded_target_file = st.file_uploader("Pilih file Excel untuk Target", type=["xlsx", "xls"])
+    uploaded_target_file = st.file_uploader("Upload Excel dengen Nama Kolom Target", type=["xlsx", "xls"])
     if uploaded_target_file is not None:
         try:
             df = pd.read_excel(uploaded_target_file)
