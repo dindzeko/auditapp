@@ -14,16 +14,29 @@ def app():
     expected_misstatement = st.number_input("Expected Misstatement", min_value=0.0, value=10000.0)
     risk_of_incorrect_acceptance = st.slider("Risk of Incorrect Acceptance (%)", min_value=0.0, max_value=100.0, value=5.0)
 
-    # Pilihan untuk menghitung sample size atau memasukkan nilai manual
-    use_formula = st.checkbox("Calculate Sample Size Using Formula?", value=True)
-    if use_formula:
-        # Hitung sample size menggunakan rumus
-        sample_size = int(total_population / tolerable_misstatement)
-        st.write(f"Calculated Sample Size: {sample_size}")
+    # Faktor Keandalan (Reliability Factor) berdasarkan Risk of Incorrect Acceptance
+    reliability_factors = {
+        0.0: 4.61,  # 0% Risk
+        5.0: 3.0,   # 5% Risk
+        10.0: 2.3,  # 10% Risk
+        15.0: 1.9,  # 15% Risk
+        20.0: 1.6,  # 20% Risk
+        25.0: 1.4,  # 25% Risk
+        30.0: 1.2,  # 30% Risk
+        37.0: 1.0,  # 37% Risk
+    }
+
+    # Mengambil Reliability Factor berdasarkan Risk of Incorrect Acceptance
+    reliability_factor = reliability_factors.get(risk_of_incorrect_acceptance, 3.0)  # Default RF = 3.0
+    st.write(f"Reliability Factor (RF): {reliability_factor}")
+
+    # Hitung jumlah sampel menggunakan rumus MUS
+    if tolerable_misstatement <= expected_misstatement:
+        st.error("Tolerable Misstatement must be greater than Expected Misstatement.")
+        sample_size = None
     else:
-        # Input manual untuk sample size
-        sample_size = st.number_input("Enter Sample Size Manually", min_value=1, value=20)
-        st.write(f"Manual Sample Size: {sample_size}")
+        sample_size = int((total_population * reliability_factor) / (tolerable_misstatement - expected_misstatement))
+        st.write(f"Calculated Sample Size: {sample_size}")
 
     # Upload file populasi
     st.header("Step 1: Upload Population File")
@@ -45,7 +58,7 @@ def app():
 
     # Generate sample
     st.header("Step 2: Generate Sample")
-    if population_df is not None:
+    if population_df is not None and sample_size is not None:
         # Pilihan untuk menentukan titik awal acak atau manual
         use_random_start = st.checkbox("Use Random Starting Point?", value=True)
         sampling_interval = total_population / sample_size
