@@ -22,7 +22,7 @@ def lookup_with_typo(target, data_list, threshold=80):
 
 def app():
     st.title("Fuzzy Searching")
-    st.write("Ini adalah halaman untuk pencarian dengan toleransi typo.")
+    st.write("Ini adalah halaman untuk pencarian dengan toleransi typo.Masukkan file excel dengan nama kolom Data dan Target. case senstif jangan sampai salah")
     
     # Variabel session state untuk menyimpan data list dan target
     if 'data_list' not in st.session_state:
