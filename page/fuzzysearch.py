@@ -22,7 +22,7 @@ def lookup_with_typo(target, data_list, threshold=80):
 
 def app():
     st.title("Fuzzy Searching")
-    st.write("Fuzzy Searching merupkaan teknik pencocokan data berupa text atau string yang memungkinkan adanya toleransi terhadap ketidaksesuaian kecil dalam teks. Ini berbeda dengan pencarian teks biasa yang hanya mencocokkan string secara eksak.")
+    st.write("Fuzzy Searching merupakan teknik pencocokan data berupa text atau string yang memungkinkan adanya toleransi terhadap ketidaksesuaian kecil dalam teks. Ini berbeda dengan pencarian teks biasa yang hanya mencocokkan string secara eksak. pada intinya Aplikasi Vlookup tetapi targetnya adalah kata.")
     
     # Variabel session state untuk menyimpan data list dan target
     if 'data_list' not in st.session_state:
