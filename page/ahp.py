@@ -98,7 +98,7 @@ class AHPApp:
             with col2:
                 crit_b = st.selectbox("Kriteria B", [c for c in self.criteria_list if c != crit_a])
             with col3:
-                scale = st.slider("Skala Keutamaan", min_value=1, max_value=9, value=1, step=1)
+                scale = st.slider("Skala Keutamaan", min_value=1, max_value=10, value=1, step=1)
             more_important = st.radio("Mana yang lebih penting?", [crit_a, crit_b])
             if st.button("Tambah Perbandingan"):
                 pair = frozenset({crit_a, crit_b})
