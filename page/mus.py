@@ -9,9 +9,9 @@ def app():
 
     # Sidebar untuk input parameter
     st.header("Input Parameters")
-    total_population = st.number_input("Total Population Value", min_value=1.0, value=1000000.0)
-    tolerable_misstatement = st.number_input("Tolerable Misstatement", min_value=1.0, value=50000.0)
-    expected_misstatement = st.number_input("Expected Misstatement", min_value=0.0, value=10000.0)
+    total_population = st.number_input("Total Populasi", min_value=1.0, value=1000000.0)
+    tolerable_misstatement = st.number_input("Tolerable Misstatement (TM)", min_value=1.0, value=50000.0)
+    expected_misstatement = st.number_input("Expected Misstatement (TE)", min_value=0.0, value=10000.0)
     risk_of_incorrect_acceptance = st.selectbox(
         "Risk of Incorrect Acceptance (%)",
         options=[10, 5, 2.5],
