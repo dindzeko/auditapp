@@ -149,7 +149,7 @@ def app():
             st.error(f"Error reading the file: {e}")
 
     # Analyze sample
-    st.header("Step 5: Analyze Sample")
+    st.header("Step 5: Kesimpulan Sample")
     if sample_filled_df is not None:
         if st.button("Analyze Sample"):
             try:
