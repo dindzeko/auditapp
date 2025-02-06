@@ -70,14 +70,14 @@ def sample():
             
     st.markdown('</div>', unsafe_allow_html=True)
 
-# Halaman Vouching
-def vouching():
+# Halaman Fuzzy Searching
+def fuzzysearch():
     st.markdown('<div class="fade-in">', unsafe_allow_html=True)
     st.title("Vouching")
     st.write("Halaman untuk Vouching.")
     st.markdown('</div>', unsafe_allow_html=True)
-    from page.querybuilder import app as querybuilder_app
-    querybuilder_app()
+    from page.fuzzysearch import app as fuzzysearch_app
+    fuzzysearch_app()
 
 # Halaman Query Builder
 def querybuilder():
@@ -85,8 +85,8 @@ def querybuilder():
     st.title("Query Builder")
     st.write("Halaman untuk Query Builder.")
     st.markdown('</div>', unsafe_allow_html=True)
-    from page.fuzzysearch import app as fuzzysearch_app
-    fuzzysearch_app()
+    from page.querybuilder import app as querybuilder_app
+    querybuilder_app()
     
 # Halaman AHP (sub-halaman dari Sample)
 def ahp():
@@ -114,7 +114,7 @@ page_names_to_funcs = {
     "Main Page": main_page,
     "Depresiasi": depresiasi,
     "Sample": sample,
-    "Vouching": vouching,
+    "Fuzzysearch": fuzzy searching,
     "Query Builder": querybuilder,
 }
 
