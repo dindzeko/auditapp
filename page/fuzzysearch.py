@@ -2,12 +2,10 @@ import streamlit as st
 import pandas as pd
 from fuzzywuzzy import fuzz
 
-# Fungsi untuk menjalankan aplikasi Streamlit
-def app():
-      # Judul aplikasi
-    st.title("Fuzzy Searching")
+# Judul aplikasi
+st.title("Fuzzy Searching")
 
-# # Fungsi untuk mencari string dengan toleransi typo
+# Fungsi untuk mencari string dengan toleransi typo
 def lookup_with_typo(target, data_list, threshold=80):
     """
     Fungsi untuk mencari string dalam daftar dengan toleransi typo.
@@ -31,9 +29,6 @@ if 'data_list' not in st.session_state:
     st.session_state['data_list'] = []
 if 'target' not in st.session_state:
     st.session_state['target'] = None
-
-# Judul halaman
-st.title("Pencarian dengan Toleransi Typo")
 
 # Bagian Upload Data List
 st.subheader("Upload Data List")
@@ -90,7 +85,7 @@ if st.button("Mulai Pencarian"):
             st.success(f"String '{target}' ditemukan sebagai kemiripan dengan:\n{result_message}")
         else:
             st.info(f"String '{target}' tidak ditemukan dalam daftar.")
-
+        
         # Buat DataFrame untuk hasil pencarian
         df = pd.DataFrame(data_list, columns=["Data"])
         df["Target"] = target
@@ -100,11 +95,11 @@ if st.button("Mulai Pencarian"):
         df["Tingkat/Skor Kemiripan"] = df["Data"].apply(
             lambda x: next((score for item, score in results if item == x), None)
         )
-
+        
         # Tampilkan hasil dalam tabel
         st.write("Hasil Pencarian:")
         st.dataframe(df)
-
+        
         # Ekspor ke file Excel
         excel_file = df.to_excel("hasil_pencarian.xlsx", index=False)
         with open("hasil_pencarian.xlsx", "rb") as file:
