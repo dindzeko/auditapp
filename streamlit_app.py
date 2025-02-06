@@ -73,8 +73,8 @@ def sample():
 # Halaman Fuzzy Searching
 def fuzzysearch():
     st.markdown('<div class="fade-in">', unsafe_allow_html=True)
-    st.title("Vouching")
-    st.write("Halaman untuk Vouching.")
+    st.title("Search")
+    st.write("Halaman untuk Fuzzy Searching.")
     st.markdown('</div>', unsafe_allow_html=True)
     from page.fuzzysearch import app as fuzzysearch_app
     fuzzysearch_app()
