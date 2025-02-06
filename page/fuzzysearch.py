@@ -7,8 +7,7 @@ def app():
       # Judul aplikasi
     st.title("Fuzzy Searching")
 
-
-# vlookup versi kata
+# # Fungsi untuk mencari string dengan toleransi typo
 def lookup_with_typo(target, data_list, threshold=80):
     """
     Fungsi untuk mencari string dalam daftar dengan toleransi typo.
