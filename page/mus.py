@@ -13,7 +13,7 @@ def app():
     tolerable_misstatement = st.number_input("Tolerable Misstatement (TM)", min_value=1.0, value=50000.0)
     expected_misstatement = st.number_input("Expected Misstatement (TE)", min_value=0.0, value=10000.0)
     risk_of_incorrect_acceptance = st.selectbox(
-        "Risk of Incorrect Acceptance (%)",
+        "Risiko Audit (%)",
         options=[10, 5, 2.5],
         index=1  # Default: 5%
     )
