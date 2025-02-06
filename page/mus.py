@@ -129,10 +129,7 @@ def app():
             file_name="sample.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
-    st.markdown("""
-    **Keterangan:**  
-    Tambah kolom file Excel sample dengan nama `Misstatement` dan isi dengan jumlah nilai salah saji yang ditemukan pada sample tersebut.
-    """)
+
     # Upload filled sample file
     st.header("Step 4: Upload Sample File Pasca Audit")
     uploaded_sample = st.file_uploader("Upload File Sample Untuk Dianalisa", type=["xlsx"])
