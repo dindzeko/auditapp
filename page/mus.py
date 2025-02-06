@@ -131,7 +131,7 @@ def app():
         )
 
     # Upload filled sample file
-    st.header("Step 4: Upload Filled Sample File")
+    st.header("Step 4: Upload Sample File setelah diisi")
     uploaded_sample = st.file_uploader("Upload File Sample Untuk Dianalisa", type=["xlsx"])
     sample_filled_df = None
     if uploaded_sample:
