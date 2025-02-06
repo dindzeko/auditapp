@@ -114,7 +114,7 @@ page_names_to_funcs = {
     "Main Page": main_page,
     "Depresiasi": depresiasi,
     "Sample": sample,
-    "Fuzzysearch": fuzzy searching,
+    "Fuzzy Searching": fuzzysearch,
     "Query Builder": querybuilder,
 }
 
