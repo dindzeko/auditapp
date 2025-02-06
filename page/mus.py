@@ -57,6 +57,7 @@ def app():
                 # Simpan sampel ke session state
                 st.session_state.sample_df = sample_df
                 st.success("Sample generated successfully!")
+                st.write(f"Number of Samples: {len(sample_df)}")
                 st.write("Preview of Generated Sample:")
                 st.dataframe(sample_df)
 
@@ -114,9 +115,14 @@ def app():
                     result = "Populasi dapat diterima (Tidak ada Material Misstatement)."
 
                 # Tampilkan hasil analisis
+                st.write(f"Total Misstatement in Sample: {total_misstatement:.2f}")
                 st.write(f"Projection Misstatement: {projection_misstatement:.2f}")
-                st.write(result)
+                st.write(f"Tolerable Misstatement: {tolerable_misstatement:.2f}")
+                st.write(f"Conclusion: {result}")
                 st.success("Analysis complete!")
 
             except Exception as e:
                 st.error(f"Error analyzing sample: {e}")
+
+if __name__ == "__main__":
+    app()
