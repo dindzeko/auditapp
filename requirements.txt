@@ -8,3 +8,4 @@ plotly
 streamlit-aggrid
 openpyxl
 seaborn
+fuzzywuzzy
