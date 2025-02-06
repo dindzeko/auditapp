@@ -124,7 +124,7 @@ def app():
             min_value=2006,
             max_value=2100,
             step=1,
-            value=datetime.now().year
+            value=datetime.now().year-1
         )
 
     # Capitalization Management
