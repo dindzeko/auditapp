@@ -7,14 +7,13 @@ from collections import Counter
 def app():
     # Judul aplikasi
     st.title("Analisis Benford's Law")
-
     # Penjelasan singkat
     st.write("""
     Aplikasi ini memeriksa apakah data Anda mengikuti distribusi Benford's Law.
     Silakan unggah file Excel (.xlsx), dan aplikasi akan menghitung distribusi angka pertama serta membandingkannya dengan Benford's Law.
     Hasil analisis dapat diekspor ke file Excel.
     """)
-
+    
     # Fungsi untuk menghitung distribusi Benford
     def calculate_benford_distribution(data):
         # Ekstrak angka pertama (non-nol)
@@ -25,14 +24,13 @@ def app():
         # Hitung frekuensi relatif
         observed_distribution = {digit: count / total_count for digit, count in digit_counts.items()}
         return observed_distribution, total_count
-
+    
     # Fungsi untuk menghitung distribusi teoretis Benford
     def benford_theoretical():
         return {d: np.log10(1 + 1/d) for d in range(1, 10)}
-
+    
     # Upload file Excel
     uploaded_file = st.file_uploader("Unggah file Excel (.xlsx)", type=["xlsx"])
-
     if uploaded_file is not None:
         # Baca file Excel
         df = pd.read_excel(uploaded_file)
@@ -85,4 +83,13 @@ def app():
                 # Simpan hasil ke file Excel
                 output_filename = "benford_analysis_result.xlsx"
                 result_df.to_excel(output_filename, index=False)
-                st.success(f"Hasil analisis berhasil disimpan sebagai '{output_filename}'!")
+                
+                # Gunakan st.download_button untuk mengunduh file
+                with open(output_filename, "rb") as f:
+                    st.download_button(
+                        label="Unduh File Excel",
+                        data=f,
+                        file_name=output_filename,
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    )
+                st.success(f"File '{output_filename}' siap diunduh!")
