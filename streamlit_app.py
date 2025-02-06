@@ -30,7 +30,7 @@ add_css(css_animation)
 def main_page():
     st.markdown('<div class="fade-in">', unsafe_allow_html=True)
     st.title("Main Page")
-    st.write("Selamat datang di aplikasi multipage Streamlit!")
+    st.write("Selamat datang !")
     st.markdown('</div>', unsafe_allow_html=True)
 
 # Halaman Depresiasi
