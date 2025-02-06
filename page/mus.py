@@ -18,13 +18,17 @@ def app():
     st.header("Step 1: Upload Population File")
     uploaded_population = st.file_uploader("Upload Population Excel File", type=["xlsx"])
     population_df = None
-
     if uploaded_population:
         try:
             population_df = pd.read_excel(uploaded_population)
             st.success("Population file successfully uploaded!")
             st.write("Preview of Population Data:")
             st.dataframe(population_df.head())
+
+            # Validasi kolom 'Nomor' dan 'Jumlah'
+            if 'Nomor' not in population_df.columns or 'Jumlah' not in population_df.columns:
+                st.error("The uploaded file must contain columns named 'Nomor' and 'Jumlah'. Please check your file.")
+                population_df = None
         except Exception as e:
             st.error(f"Error reading the file: {e}")
 
@@ -46,7 +50,7 @@ def app():
                 cumulative_value = 0
                 selected_samples = []
                 for _, row in population_df.iterrows():
-                    cumulative_value += row['Value']
+                    cumulative_value += row['Jumlah']  # Menggunakan kolom 'Jumlah'
                     while random_start <= cumulative_value:
                         selected_samples.append(row)
                         random_start += sampling_interval
@@ -60,13 +64,13 @@ def app():
                 st.write(f"Number of Samples: {len(sample_df)}")
                 st.write("Preview of Generated Sample:")
                 st.dataframe(sample_df)
-
             except Exception as e:
                 st.error(f"Error generating sample: {e}")
 
     # Download sample file (Excel format)
     if "sample_df" in st.session_state:
         st.header("Step 3: Download Sample File")
+
         @st.cache_data
         def convert_df_to_excel(df):
             # Create an in-memory Excel file
@@ -87,13 +91,17 @@ def app():
     st.header("Step 4: Upload Filled Sample File")
     uploaded_sample = st.file_uploader("Upload Filled Sample Excel File", type=["xlsx"])
     sample_filled_df = None
-
     if uploaded_sample:
         try:
             sample_filled_df = pd.read_excel(uploaded_sample)
             st.success("Filled sample file successfully uploaded!")
             st.write("Preview of Filled Sample Data:")
             st.dataframe(sample_filled_df)
+
+            # Validasi kolom 'Misstatement'
+            if 'Misstatement' not in sample_filled_df.columns:
+                st.error("The uploaded file must contain a column named 'Misstatement'. Please check your file.")
+                sample_filled_df = None
         except Exception as e:
             st.error(f"Error reading the file: {e}")
 
@@ -120,9 +128,9 @@ def app():
                 st.write(f"Tolerable Misstatement: {tolerable_misstatement:.2f}")
                 st.write(f"Conclusion: {result}")
                 st.success("Analysis complete!")
-
             except Exception as e:
                 st.error(f"Error analyzing sample: {e}")
+
 
 if __name__ == "__main__":
     app()
