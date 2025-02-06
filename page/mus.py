@@ -5,7 +5,7 @@ from io import BytesIO
 
 def app():
     # Judul aplikasi
-    st.title("Monetary Unit Sampling (MUS) Application")
+    st.title("Metode Monetary Unit Sampling (MUS)")
 
     # Sidebar untuk input parameter
     st.header("Input Parameters")
