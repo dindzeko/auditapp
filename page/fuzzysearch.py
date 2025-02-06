@@ -1,7 +1,9 @@
 import streamlit as st
 import pandas as pd
 from fuzzywuzzy import fuzz
-
+def (app) 
+    # Judul aplikasi
+    st.title("Fuzzy Searching"
 # Fungsi untuk mencari string dengan toleransi typo
 def lookup_with_typo(target, data_list, threshold=80):
     """
