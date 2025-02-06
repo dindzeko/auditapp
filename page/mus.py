@@ -50,7 +50,7 @@ def app():
         st.write(f"Calculated Sample Size: {sample_size}")
 
     # Upload file populasi
-    st.header("Step 1: Upload Population File")
+    st.header("Step 1: Upload Daftar Populasi")
     uploaded_population = st.file_uploader("Upload Population Excel File", type=["xlsx"])
     population_df = None
     if uploaded_population:
@@ -68,7 +68,7 @@ def app():
             st.error(f"Error reading the file: {e}")
 
     # Generate sample
-    st.header("Step 2: Generate Sample")
+    st.header("Step 2: Proses Pengambilan Sample")
     if population_df is not None and sample_size is not None:
         # Pilihan untuk menentukan titik awal acak atau manual
         use_random_start = st.checkbox("mau gunakan angka random?", value=True)
@@ -112,7 +112,7 @@ def app():
 
     # Download sample file (Excel format)
     if "sample_df" in st.session_state:
-        st.header("Step 3: Download Sample File")
+        st.header("Step 3: Download File Sample")
 
         @st.cache_data
         def convert_df_to_excel(df):
@@ -132,7 +132,7 @@ def app():
 
     # Upload filled sample file
     st.header("Step 4: Upload Filled Sample File")
-    uploaded_sample = st.file_uploader("Upload Filled Sample Excel File", type=["xlsx"])
+    uploaded_sample = st.file_uploader("Upload File Sample Untuk Dianalisa", type=["xlsx"])
     sample_filled_df = None
     if uploaded_sample:
         try:
