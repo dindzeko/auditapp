@@ -14,6 +14,17 @@ def app():
     expected_misstatement = st.number_input("Expected Misstatement", min_value=0.0, value=10000.0)
     risk_of_incorrect_acceptance = st.slider("Risk of Incorrect Acceptance (%)", min_value=0.0, max_value=100.0, value=5.0)
 
+    # Pilihan untuk menghitung sample size atau memasukkan nilai manual
+    use_formula = st.checkbox("Calculate Sample Size Using Formula?", value=True)
+    if use_formula:
+        # Hitung sample size menggunakan rumus
+        sample_size = int(total_population / tolerable_misstatement)
+        st.write(f"Calculated Sample Size: {sample_size}")
+    else:
+        # Input manual untuk sample size
+        sample_size = st.number_input("Enter Sample Size Manually", min_value=1, value=20)
+        st.write(f"Manual Sample Size: {sample_size}")
+
     # Upload file populasi
     st.header("Step 1: Upload Population File")
     uploaded_population = st.file_uploader("Upload Population Excel File", type=["xlsx"])
@@ -37,9 +48,6 @@ def app():
     if population_df is not None:
         if st.button("Generate Sample"):
             try:
-                # Hitung ukuran sampel
-                sample_size = int(total_population / tolerable_misstatement)
-
                 # Hitung interval sampling
                 sampling_interval = total_population / sample_size
 
