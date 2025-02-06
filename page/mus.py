@@ -17,7 +17,7 @@ def app():
         5. Masukkan nilai inisiasi jika tidak akan dirandom oleh aplikasi. sebaiknya nilai inisiasi dimasukkan sendiri 
         6. setelah sample berhasil digenerate lakukan pemeriksaan dan tambahkan kolom di excel sample dengan nama Misstatement (case sensitf)
         7. isi pada kolom Misstatement sebesar nilai yang miss atau salah. setelah itu generate kesimpulan
-        8. Pada Aplikasi yang dibuat dengan kode python nama kolom sangat sensitif. ikuti aturan penamaan sesuai petunjuk.  
+        8. Aplikasi  dibuat dengan kode python sehingga nama kolom excel yang akan diuji sangat sensitif. ikuti aturan penamaan sesuai petunjuk.  
         """)
     # Sidebar untuk input parameter
     st.header("Input Parameters")
