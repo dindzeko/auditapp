@@ -16,14 +16,14 @@ def app():
 
     # Faktor Keandalan (Reliability Factor) berdasarkan Risk of Incorrect Acceptance
     reliability_factors = {
-        0.0: 4.61,  # 0% Risk
-        5.0: 3.0,   # 5% Risk
-        10.0: 2.3,  # 10% Risk
-        15.0: 1.9,  # 15% Risk
-        20.0: 1.6,  # 20% Risk
-        25.0: 1.4,  # 25% Risk
-        30.0: 1.2,  # 30% Risk
-        37.0: 1.0,  # 37% Risk
+        1: 1.9,   # 1% Risk
+        5: 1.6,   # 5% Risk
+        10: 1.5,  # 10% Risk
+        15: 1.4,  # 15% Risk
+        20: 1.3,  # 20% Risk
+        25: 1.25, # 25% Risk
+        30: 1.2,  # 30% Risk
+        37: 1.15  # 37% Risk
     }
 
     # Mengambil Reliability Factor berdasarkan Risk of Incorrect Acceptance
