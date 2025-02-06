@@ -94,7 +94,7 @@ def format_number_indonesia(number):
 
 # Fungsi utama aplikasi
 def app():
-    st.title("📉 Shz_Calc_Depre_Yearly")
+    st.title("📉 Shz_Calc_Depre_Tahunan")
 
     # Main Content
     st.header("📥 Parameter Input")
