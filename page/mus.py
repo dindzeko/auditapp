@@ -71,7 +71,7 @@ def app():
     st.header("Step 2: Generate Sample")
     if population_df is not None and sample_size is not None:
         # Pilihan untuk menentukan titik awal acak atau manual
-        use_random_start = st.checkbox("Use Random Starting Point?", value=True)
+        use_random_start = st.checkbox("mau gunakan angka random?", value=True)
         sampling_interval = total_population / sample_size
         if use_random_start:
             # Generate titik awal acak
@@ -80,7 +80,7 @@ def app():
         else:
             # Input manual untuk titik awal
             random_start = st.number_input(
-                "Enter Starting Point Manually",
+                "Masukkan Nilai Inisiasi",
                 min_value=1.0,
                 max_value=sampling_interval,
                 value=1.0
