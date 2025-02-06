@@ -13,7 +13,7 @@ def app():
         1. Isi Rp dalam GUI Input untuk Total Populasi, Tolerable Misstatement (TM), dan Expected Misstatement (TE)
         2. Input Risk Audit (default-nya adalah 5%)
         3. Upload data Populasi dengan excel hanya dua kolom saja yaitu Nomor dan Jumlah (case di python sangat sensitif)
-        4. Besaran sample mengikuti risk audit dan dihitung sesuai dengan rumus Juknis Uji Petik (Halaman 35)
+        4. Besaran sample mengikuti risk audit dan dihitung sesuai dengan rumus Juknis Uji Petik BPK (Halaman 35)
         5. Masukkan nilai inisiasi jika tidak akan dirandom oleh aplikasi. sebaiknya nilai inisiasi dimasukkan sendiri 
         6. setelah sample berhasil digenerate lakukan pemeriksaan dan tambahkan kolom di excel sample dengan nama Misstatement (case sensitf)
         7. isi pada kolom Misstatement sebesar nilai yang miss atau salah. setelah itu generate kesimpulan
