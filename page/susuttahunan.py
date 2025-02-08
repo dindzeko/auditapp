@@ -20,19 +20,16 @@ def calculate_depreciation(initial_cost, acquisition_year, useful_life, reportin
         capitalizations = []
     if corrections is None:
         corrections = []
-
     # Organize capitalizations by year
     cap_dict = {}
     for cap in capitalizations:
         year = cap['year']
         cap_dict.setdefault(year, []).append(cap)
-
     # Organize corrections by year
     corr_dict = {}
     for corr in corrections:
         year = corr['year']
         corr_dict.setdefault(year, []).append(corr)
-
     # Initialize variables
     book_value = initial_cost
     remaining_life = useful_life
@@ -40,7 +37,6 @@ def calculate_depreciation(initial_cost, acquisition_year, useful_life, reportin
     original_life = useful_life
     accumulated_dep = 0
     schedule = []
-
     # Calculate yearly depreciation
     while remaining_life > 0 and current_year <= reporting_year:
         # Process capitalizations first
@@ -51,18 +47,15 @@ def calculate_depreciation(initial_cost, acquisition_year, useful_life, reportin
                 book_value += cap['amount']
                 life_extension = cap.get('life_extension', 0)
                 remaining_life = min(remaining_life + life_extension, original_life)
-
         # Process corrections
         if current_year in corr_dict:
             for corr in corr_dict[current_year]:
                 if corr['year'] > reporting_year:
                     continue
                 book_value -= corr['amount']
-
         # Calculate annual depreciation
         annual_dep = book_value / remaining_life if remaining_life > 0 else 0
         accumulated_dep += annual_dep
-
         # Add to schedule
         schedule.append({
             'year': current_year,
@@ -71,12 +64,10 @@ def calculate_depreciation(initial_cost, acquisition_year, useful_life, reportin
             'book_value': round(book_value - annual_dep, 2),
             'sisa_mm': remaining_life - 1
         })
-
         # Update values for next year
         book_value -= annual_dep
         remaining_life -= 1
         current_year += 1
-
     return schedule
 
 def convert_df_to_excel(df):
@@ -95,6 +86,32 @@ def format_number_indonesia(number):
 # Fungsi utama aplikasi
 def app():
     st.title("📉 Shz_Calc_Depre_Tahunan")
+
+    # Informasi Penggunaan dengan Toggle (Expander)
+    with st.expander("📝 Panduan Penggunaan ▼", expanded=False):
+        st.markdown("""
+        ### Cara Menggunakan Aplikasi Ini:
+        1. **Masukkan Parameter Input**:
+           - **Harga Perolehan Awal**: Masukkan harga awal aset dalam Rupiah.
+           - **Tahun Perolehan**: Tahun ketika aset diperoleh.
+           - **Masa Manfaat**: Jumlah tahun aset akan disusutkan.
+           - **Tahun Pelaporan**: Tahun hingga penyusutan dihitung.
+        
+        2. **Tambahkan Kapitalisasi**:
+           - Masukkan tahun, jumlah kapitalisasi, dan tambahan masa manfaat (jika ada).
+           - Klik tombol **Tambah Kapitalisasi** untuk menyimpan data.
+        
+        3. **Tambahkan Koreksi**:
+           - Masukkan tahun dan jumlah koreksi.
+           - Klik tombol **Tambah Koreksi** untuk menyimpan data.
+        
+        4. **Hitung Penyusutan**:
+           - Setelah semua data dimasukkan, klik tombol **Hitung Penyusutan**.
+           - Hasil perhitungan akan ditampilkan dalam tabel.
+        
+        5. **Download Hasil**:
+           - Anda dapat mendownload hasil perhitungan dalam format Excel dengan mengklik tombol **Download Excel**.
+        """)
 
     # Main Content
     st.header("📥 Parameter Input")
@@ -131,7 +148,6 @@ def app():
     st.header("➕ Input Kapitalisasi")
     if "capitalizations" not in st.session_state:
         st.session_state.capitalizations = []
-
     col_cap1, col_cap2, col_cap3 = st.columns(3)
     with col_cap1:
         cap_year = st.number_input("Tahun", key="cap_year", min_value=1900, max_value=2100, step=1)
@@ -139,7 +155,6 @@ def app():
         cap_amount = st.number_input("Jumlah", key="cap_amount", min_value=0.0, step=1000000.0)
     with col_cap3:
         cap_life = st.number_input("Tambahan Usia", key="cap_life", min_value=0, step=1)
-
     if st.button("Tambah Kapitalisasi", key="add_cap"):
         if cap_year < acquisition_year:
             st.error("Tahun Kapitalisasi tidak boleh lebih awal dari Tahun Perolehan")
@@ -154,13 +169,11 @@ def app():
     st.header("✏️ Input Koreksi")
     if "corrections" not in st.session_state:
         st.session_state.corrections = []
-
     col_corr1, col_corr2 = st.columns(2)
     with col_corr1:
         corr_year = st.number_input("Tahun", key="corr_year", min_value=0, max_value=2100, step=1)
     with col_corr2:
         corr_amount = st.number_input("Jumlah", key="corr_amount", min_value=0.0, step=1000000.0)
-
     if st.button("Tambah Koreksi", key="add_corr"):
         if corr_year < acquisition_year:
             st.error("Tahun Koreksi tidak boleh lebih awal dari Tahun Perolehan")
@@ -217,7 +230,6 @@ def app():
                     st.rerun()
         else:
             st.info("Tidak ada data kapitalisasi")
-
     with col2:
         st.subheader("Koreksi")
         if st.session_state.corrections:
@@ -320,3 +332,6 @@ def app():
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     use_container_width=True
                 )
+
+if __name__ == "__main__":
+    app()
