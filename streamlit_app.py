@@ -1,4 +1,3 @@
-# streamlit_app.py
 import streamlit as st
 
 # Fungsi untuk menambahkan CSS ke aplikasi Streamlit
@@ -22,7 +21,6 @@ css_animation = """
 }
 </style>
 """
-
 # Tambahkan CSS ke aplikasi
 add_css(css_animation)
 
@@ -87,26 +85,59 @@ def querybuilder():
     st.markdown('</div>', unsafe_allow_html=True)
     from page.querybuilder import app as querybuilder_app
     querybuilder_app()
+
+# Halaman PDF
+def pdf():
+    st.markdown('<div class="fade-in">', unsafe_allow_html=True)
+    st.title("PDF Operations")
     
-# Halaman AHP (sub-halaman dari Sample)
-def ahp():
-    st.markdown('<div class="fade-in">', unsafe_allow_html=True)
-    st.title("Analytic Hierarchy Process (AHP)")
-    st.write("Halaman untuk metode Analytic Hierarchy Process (AHP).")
+    # Sub-halaman untuk PDF
+    sub_page = st.sidebar.selectbox("Pilih operasi PDF", ["Merge", "Ekstrak"])
+    
+    # Navigasi antar sub-halaman
+    if sub_page == "Merge":
+        merge_pdf()
+    elif sub_page == "Ekstrak":
+        extract_pdf()
+    
     st.markdown('</div>', unsafe_allow_html=True)
 
-# Halaman MUS (sub-halaman dari Sample)
-def mus():
+# Sub-Halaman Merge PDF
+def merge_pdf():
     st.markdown('<div class="fade-in">', unsafe_allow_html=True)
-    st.title("Monetary Unit Sampling (MUS)")
-    st.write("Halaman untuk metode Monetary Unit Sampling (MUS).")
+    st.title("Merge PDF")
+    st.write("Gabungkan beberapa file PDF menjadi satu file.")
+    
+    # Contoh input untuk file PDF
+    uploaded_files = st.file_uploader("Upload file PDF", type=["pdf"], accept_multiple_files=True)
+    
+    if uploaded_files:
+        st.write(f"{len(uploaded_files)} file PDF berhasil diupload.")
+        if st.button("Merge PDF"):
+            st.write("Proses penggabungan PDF...")
+            # Logika untuk menggabungkan PDF bisa ditambahkan di sini
+            st.success("PDF berhasil digabungkan!")
+    
     st.markdown('</div>', unsafe_allow_html=True)
 
-# Halaman Benford Law (sub-halaman dari Sample)
-def benford_law():
+# Sub-Halaman Ekstrak PDF
+def extract_pdf():
     st.markdown('<div class="fade-in">', unsafe_allow_html=True)
-    st.title("Benford's Law")
-    st.write("Halaman untuk analisis menggunakan Benford's Law.")
+    st.title("Ekstrak PDF")
+    st.write("Ekstrak halaman tertentu dari file PDF.")
+    
+    # Contoh input untuk file PDF
+    uploaded_file = st.file_uploader("Upload file PDF", type=["pdf"])
+    
+    if uploaded_file:
+        st.write("File PDF berhasil diupload.")
+        page_range = st.text_input("Masukkan rentang halaman (contoh: 1-5):")
+        
+        if st.button("Ekstrak Halaman"):
+            st.write("Proses ekstraksi halaman PDF...")
+            # Logika untuk mengekstrak halaman PDF bisa ditambahkan di sini
+            st.success("Halaman PDF berhasil diekstrak!")
+    
     st.markdown('</div>', unsafe_allow_html=True)
 
 # Navigasi
@@ -116,6 +147,7 @@ page_names_to_funcs = {
     "Sample": sample,
     "Fuzzy Searching": fuzzysearch,
     "Query Builder": querybuilder,
+    "PDF Operations": pdf,  # Menambahkan halaman PDF
 }
 
 # Sidebar untuk memilih halaman
