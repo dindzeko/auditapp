@@ -95,10 +95,10 @@ def pdf():
     sub_page = st.sidebar.selectbox("Pilih operasi PDF", ["Merge", "Ekstrak"])
     
     # Navigasi antar sub-halaman
-    if sub_page == "Merge":
+    if sub_page == "Ekstract":
         from page.mergepdf import app as mergepdf_app
         mergepdf_app()
-    elif sub_page == "Extract":
+    elif sub_page == "Merge":
         from page.extractpdf import app as extractpdf_app
         extractpdf_app()
     
