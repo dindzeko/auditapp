@@ -23,10 +23,8 @@ def extract_pdf_pages(input_pdf, page_input):
     except ValueError as e:
         st.error(str(e))
         return None
-
     # Hapus duplikat dan urutkan halaman
     pages = sorted(set(pages))
-
     # Buat nama file output berdasarkan dua angka awal dan dua angka akhir
     if pages:
         first_page = pages[0]
@@ -35,16 +33,13 @@ def extract_pdf_pages(input_pdf, page_input):
     else:
         st.error("Tidak ada halaman yang valid untuk diekstrak!")
         return None
-
     # Tambahkan halaman ke writer
     for page_num in pages:
         writer.add_page(reader.pages[page_num - 1])  # Halaman dimulai dari indeks 0
-
     # Simpan file PDF hasil ekstraksi
     output_path = os.path.join("/tmp", output_pdf)
     with open(output_path, "wb") as output_file:
         writer.write(output_file)
-
     return output_path
 
 # Fungsi utama untuk halaman Streamlit
@@ -56,21 +51,20 @@ def app():
     Anda dapat memasukkan rentang halaman (contoh: `6-12`) atau daftar halaman individu (contoh: `8,9,12`).
     """)
 
-    # informasi tambahan Aplikasi
-        st.header("📝 Panduan Penggunaan")
-        st.markdown("""
-        1. Unggah file PDF yang ingin Anda ekstrak.
-        2. Masukkan nomor halaman yang ingin diekstrak:
-           - Gunakan tanda koma (`,`) untuk memisahkan halaman individu.
-           - Gunakan tanda hubung (`-`) untuk menentukan rentang halaman.
-        3. Klik tombol **Proses** untuk mengekstrak halaman.
-        4. Unduh file hasil ekstraksi.
-        """)
-        st.info("Contoh input halaman: `6-12` atau `8,9,12`")
+    # Panduan Penggunaan dipindahkan dari sidebar ke halaman utama
+    st.header("📝 Panduan Penggunaan")
+    st.markdown("""
+    1. Unggah file PDF yang ingin Anda ekstrak.
+    2. Masukkan nomor halaman yang ingin diekstrak:
+       - Gunakan tanda koma (`,`) untuk memisahkan halaman individu.
+       - Gunakan tanda hubung (`-`) untuk menentukan rentang halaman.
+    3. Klik tombol **Proses** untuk mengekstrak halaman.
+    4. Unduh file hasil ekstraksi.
+    """)
+    st.info("Contoh input halaman: `6-12` atau `8,9,12`")
 
     # Layout utama
     col1, col2 = st.columns([2, 1])
-
     with col1:
         # Upload file PDF
         uploaded_file = st.file_uploader(
@@ -78,7 +72,6 @@ def app():
             type="pdf",
             help="Unggah file PDF yang ingin Anda ekstrak."
         )
-
     with col2:
         # Input untuk halaman yang ingin diekstrak
         page_input = st.text_input(
@@ -98,10 +91,8 @@ def app():
             temp_file_path = os.path.join("/tmp", uploaded_file.name)
             with open(temp_file_path, "wb") as f:
                 f.write(uploaded_file.getbuffer())
-
             # Proses ekstraksi halaman
             output_path = extract_pdf_pages(temp_file_path, page_input)
-
             if output_path:
                 # Tampilkan link untuk mendownload file hasil ekstraksi
                 with open(output_path, "rb") as file:
@@ -113,7 +104,6 @@ def app():
                         mime="application/pdf",
                         use_container_width=True
                     )
-
                 # Bersihkan file sementara
                 os.remove(temp_file_path)
                 os.remove(output_path)
