@@ -3,7 +3,7 @@ import streamlit as st
 from pypdf import PdfReader, PdfWriter
 
 # Fungsi untuk mengekstrak halaman tertentu dari PDF
-def extractpdf(input_pdf, page_input):
+def extract_pdf_pages(input_pdf, page_input):
     reader = PdfReader(input_pdf)
     writer = PdfWriter()
     pages = []
@@ -101,7 +101,7 @@ def app():
                 f.write(uploaded_file.getbuffer())
 
             # Proses ekstraksi halaman
-            output_path = extractpdf(temp_file_path, page_input)
+            output_path = extract_pdf_pages(temp_file_path, page_input)
 
             if output_path:
                 # Tampilkan link untuk mendownload file hasil ekstraksi
