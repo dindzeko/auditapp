@@ -102,44 +102,6 @@ def pdf():
     
     st.markdown('</div>', unsafe_allow_html=True)
 
-# Sub-Halaman Merge PDF
-def merge_pdf():
-    st.markdown('<div class="fade-in">', unsafe_allow_html=True)
-    st.title("Merge PDF")
-    st.write("Gabungkan beberapa file PDF menjadi satu file.")
-    
-    # Contoh input untuk file PDF
-    uploaded_files = st.file_uploader("Upload file PDF", type=["pdf"], accept_multiple_files=True)
-    
-    if uploaded_files:
-        st.write(f"{len(uploaded_files)} file PDF berhasil diupload.")
-        if st.button("Merge PDF"):
-            st.write("Proses penggabungan PDF...")
-            # Logika untuk menggabungkan PDF bisa ditambahkan di sini
-            st.success("PDF berhasil digabungkan!")
-    
-    st.markdown('</div>', unsafe_allow_html=True)
-
-# Sub-Halaman Ekstrak PDF
-def extract_pdf():
-    st.markdown('<div class="fade-in">', unsafe_allow_html=True)
-    st.title("Ekstrak PDF")
-    st.write("Ekstrak halaman tertentu dari file PDF.")
-    
-    # Contoh input untuk file PDF
-    uploaded_file = st.file_uploader("Upload file PDF", type=["pdf"])
-    
-    if uploaded_file:
-        st.write("File PDF berhasil diupload.")
-        page_range = st.text_input("Masukkan rentang halaman (contoh: 1-5):")
-        
-        if st.button("Ekstrak Halaman"):
-            st.write("Proses ekstraksi halaman PDF...")
-            # Logika untuk mengekstrak halaman PDF bisa ditambahkan di sini
-            st.success("Halaman PDF berhasil diekstrak!")
-    
-    st.markdown('</div>', unsafe_allow_html=True)
-
 # Navigasi
 page_names_to_funcs = {
     "Main Page": main_page,
