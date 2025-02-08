@@ -93,6 +93,31 @@ def calculate_depreciation(initial_cost, acquisition_date, useful_life, reportin
 # Fungsi utama aplikasi
 def app():
     st.title("📊 SHZ_Penyusutan Semesteran")
+    # Informasi Penggunaan dengan Toggle (Expander)
+    with st.expander("📝 Panduan Penggunaan ▼", expanded=False):
+        st.markdown("""
+        ### Cara Menggunakan Aplikasi Ini:
+        1. **Masukkan Parameter Input**:
+           - **Tanggal Perolehan**: Masukkan tanggal ketika aset diperoleh.
+           - **Harga Perolehan Awal**: Masukkan harga awal aset dalam Rupiah.
+           - **Masa Manfaat**: Jumlah tahun aset akan disusutkan.
+           - **Tanggal Pelaporan**: Tanggal hingga penyusutan dihitung.
+        
+        2. **Tambahkan Kapitalisasi**:
+           - Masukkan tanggal, jumlah kapitalisasi, dan tambahan masa manfaat (jika ada).
+           - Klik tombol **Tambah Kapitalisasi** untuk menyimpan data.
+        
+        3. **Tambahkan Koreksi**:
+           - Masukkan tanggal dan jumlah koreksi.
+           - Klik tombol **Tambah Koreksi** untuk menyimpan data.
+        
+        4. **Hitung Penyusutan**:
+           - Setelah semua data dimasukkan, klik tombol **Hitung Penyusutan**.
+           - Hasil perhitungan akan ditampilkan dalam tabel.
+        
+        5. **Download Hasil**:
+           - Anda dapat mendownload hasil perhitungan dalam format Excel dengan mengklik tombol **Export Excel**.
+        """)
 
     # Inisialisasi session state
     if 'capitalizations' not in st.session_state:
