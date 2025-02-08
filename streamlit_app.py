@@ -96,8 +96,8 @@ def pdf():
     
     # Navigasi antar sub-halaman
     if sub_page == "Merge":
-        from page.mergepdf import app as merge_pdf_app
-        merge_pdf()
+        from page.mergepdf import app as mergepdf_app
+        mergepdf_app()
     elif sub_page == "Ekstrak":
         extract_pdf()
     
