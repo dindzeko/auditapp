@@ -100,7 +100,7 @@ def pdf():
         mergepdf_app()
     elif sub_page == "Extract":
         from page.extractpdf import app as extractpdf_app
-        extractpdf()
+        extractpdf_app()
     
     st.markdown('</div>', unsafe_allow_html=True)
 
