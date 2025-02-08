@@ -9,12 +9,10 @@ def calculate_depreciation(initial_cost, acquisition_date, useful_life, reportin
         capitalizations = []
     if corrections is None:
         corrections = []
-
     # Konversi masa manfaat ke semester
     useful_life_semesters = useful_life * 2
     remaining_life = useful_life_semesters
     original_life = useful_life_semesters
-
     # Organize capitalizations by year and semester
     cap_dict = {}
     for cap in capitalizations:
@@ -22,7 +20,6 @@ def calculate_depreciation(initial_cost, acquisition_date, useful_life, reportin
         cap_semester = 1 if cap['date'].month <= 6 else 2
         key = (cap_year, cap_semester)
         cap_dict.setdefault(key, []).append(cap)
-
     # Organize corrections by year and semester
     correction_dict = {}
     for corr in corrections:
@@ -30,7 +27,6 @@ def calculate_depreciation(initial_cost, acquisition_date, useful_life, reportin
         corr_semester = 1 if corr['date'].month <= 6 else 2
         key = (corr_year, corr_semester)
         correction_dict.setdefault(key, []).append(corr)
-
     # Initialize variables
     book_value = initial_cost
     current_year = acquisition_date.year
@@ -40,33 +36,26 @@ def calculate_depreciation(initial_cost, acquisition_date, useful_life, reportin
     reporting_key = (reporting_year, reporting_semester)
     accumulated_dep = 0
     schedule = []
-
     # Calculate depreciation semester by semester
     while remaining_life > 0 and (current_year, current_semester) <= reporting_key:
         current_key = (current_year, current_semester)
-
         # Process capitalizations
         if current_key in cap_dict:
             for cap in cap_dict[current_key]:
                 book_value += cap['amount']
                 life_extension = cap.get('life_extension', 0) * 2  # Convert years to semesters
                 remaining_life = min(remaining_life + life_extension, original_life)
-
         # Process corrections
         if current_key in correction_dict:
             for corr in correction_dict[current_key]:
                 book_value -= corr['amount']
-
         # Ensure book value does not become negative
         book_value = max(book_value, 0)
-
         if remaining_life <= 0 or book_value <= 0:
             break
-
         # Calculate depreciation for the current semester
         dep_per_semester = book_value / remaining_life
         accumulated_dep += dep_per_semester
-
         # Add to schedule
         schedule.append({
             'year': current_year,
@@ -76,23 +65,46 @@ def calculate_depreciation(initial_cost, acquisition_date, useful_life, reportin
             'book_value': round(book_value - dep_per_semester, 2),
             'sisa_mm': remaining_life - 1
         })
-
         # Update values for the next semester
         book_value -= dep_per_semester
         remaining_life -= 1
-
         # Move to the next semester
         if current_semester == 1:
             current_semester = 2
         else:
             current_semester = 1
             current_year += 1
-
     return schedule
 
 # Fungsi utama aplikasi
 def app():
     st.title("📊 SHZ_Penyusutan Semesteran")
+
+    # Informasi Penggunaan dengan Toggle (Expander)
+    with st.expander("📝 Panduan Penggunaan ▼", expanded=False):
+        st.markdown("""
+        ### Cara Menggunakan Aplikasi Ini:
+        1. **Masukkan Parameter Input**:
+           - **Tanggal Perolehan**: Masukkan tanggal ketika aset diperoleh.
+           - **Harga Perolehan Awal**: Masukkan harga awal aset dalam Rupiah.
+           - **Masa Manfaat**: Jumlah tahun aset akan disusutkan.
+           - **Tanggal Pelaporan**: Tanggal hingga penyusutan dihitung.
+        
+        2. **Tambahkan Kapitalisasi**:
+           - Masukkan tanggal, jumlah kapitalisasi, dan tambahan masa manfaat (jika ada).
+           - Klik tombol **Tambah Kapitalisasi** untuk menyimpan data.
+        
+        3. **Tambahkan Koreksi**:
+           - Masukkan tanggal dan jumlah koreksi.
+           - Klik tombol **Tambah Koreksi** untuk menyimpan data.
+        
+        4. **Hitung Penyusutan**:
+           - Setelah semua data dimasukkan, klik tombol **Hitung Penyusutan**.
+           - Hasil perhitungan akan ditampilkan dalam tabel.
+        
+        5. **Download Hasil**:
+           - Anda dapat mendownload hasil perhitungan dalam format Excel dengan mengklik tombol **Export Excel**.
+        """)
 
     # Inisialisasi session state
     if 'capitalizations' not in st.session_state:
@@ -113,7 +125,6 @@ def app():
         if acquisition_date.year < 1900 or acquisition_date.year > 2024:
             st.error("❌ Tanggal Perolehan harus antara tahun 1900 sampai 2024")
             st.stop()
-
     with col2:
         useful_life = st.number_input("⏳ Masa Manfaat (tahun)", min_value=1, step=1)
         reporting_date = st.date_input(
@@ -133,7 +144,6 @@ def app():
                 cap_amount = st.number_input("💰 Jumlah (Rp)", key="cap_amount", min_value=0.0)
             with cap_col3:
                 life_extension = st.number_input("⏳ Perpanjangan Masa Manfaat (tahun)", key="life_ext", min_value=0, step=1)
-
             if st.form_submit_button("Tambah Kapitalisasi"):
                 if cap_date < acquisition_date or cap_date > reporting_date:
                     st.error("❌ Tanggal harus antara Tanggal Perolehan dan Pelaporan")
@@ -163,31 +173,6 @@ def app():
                     st.session_state.capitalizations.pop(i)
                     st.rerun()
 
-        # Form Edit Kapitalisasi
-        if 'edit_cap_index' in st.session_state:
-            edit_index = st.session_state.edit_cap_index
-            cap_to_edit = st.session_state.capitalizations[edit_index]
-            with st.form(f"edit_kapitalisasi_form_{edit_index}"):
-                cap_col1, cap_col2, cap_col3 = st.columns(3)
-                with cap_col1:
-                    new_cap_date = st.date_input("📅 Tanggal Baru", value=cap_to_edit['date'], key=f"new_cap_date_{edit_index}")
-                with cap_col2:
-                    new_cap_amount = st.number_input("💰 Jumlah Baru (Rp)", value=cap_to_edit['amount'], min_value=0.0, key=f"new_cap_amount_{edit_index}")
-                with cap_col3:
-                    new_life_extension = st.number_input("⏳ Perpanjangan Baru (tahun)", value=cap_to_edit['life_extension'], min_value=0, step=1, key=f"new_life_ext_{edit_index}")
-
-                if st.form_submit_button("💾 Simpan Perubahan"):
-                    if new_cap_date < acquisition_date or new_cap_date > reporting_date:
-                        st.error("❌ Tanggal harus antara Tanggal Perolehan dan Pelaporan")
-                    else:
-                        st.session_state.capitalizations[edit_index] = {
-                            'date': new_cap_date,
-                            'amount': new_cap_amount,
-                            'life_extension': new_life_extension
-                        }
-                        del st.session_state.edit_cap_index
-                        st.rerun()
-
     # Form Koreksi
     with st.expander("✏️ Tambah Koreksi"):
         with st.form("koreksi_form"):
@@ -196,7 +181,6 @@ def app():
                 corr_date = st.date_input("📅 Tanggal Koreksi", key="corr_date")
             with corr_col2:
                 corr_amount = st.number_input("💰 Jumlah Koreksi (Rp)", key="corr_amount", min_value=0.0)
-
             if st.form_submit_button("Tambah Koreksi"):
                 if corr_date < acquisition_date or corr_date > reporting_date:
                     st.error("❌ Tanggal harus antara Tanggal Perolehan dan Pelaporan")
@@ -223,28 +207,6 @@ def app():
                     st.session_state.corrections.pop(i)
                     st.rerun()
 
-        # Form Edit Koreksi
-        if 'edit_corr_index' in st.session_state:
-            edit_index = st.session_state.edit_corr_index
-            corr_to_edit = st.session_state.corrections[edit_index]
-            with st.form(f"edit_koreksi_form_{edit_index}"):
-                corr_col1, corr_col2 = st.columns(2)
-                with corr_col1:
-                    new_corr_date = st.date_input("📅 Tanggal Baru", value=corr_to_edit['date'], key=f"new_corr_date_{edit_index}")
-                with corr_col2:
-                    new_corr_amount = st.number_input("💰 Jumlah Baru (Rp)", value=corr_to_edit['amount'], min_value=0.0, key=f"new_corr_amount_{edit_index}")
-
-                if st.form_submit_button("💾 Simpan Perubahan"):
-                    if new_corr_date < acquisition_date or new_corr_date > reporting_date:
-                        st.error("❌ Tanggal harus antara Tanggal Perolehan dan Pelaporan")
-                    else:
-                        st.session_state.corrections[edit_index] = {
-                            'date': new_corr_date,
-                            'amount': new_corr_amount
-                        }
-                        del st.session_state.edit_corr_index
-                        st.rerun()
-
     # Tombol Aksi
     action_col1, action_col2, action_col3 = st.columns([1, 1, 2])
     with action_col1:
@@ -252,7 +214,6 @@ def app():
             st.session_state.capitalizations = []
             st.session_state.corrections = []
             st.rerun()
-
     with action_col2:
         if st.button("💾 Export Excel"):
             if 'schedule' in st.session_state:
@@ -266,17 +227,14 @@ def app():
                     'book_value': 'Nilai Buku',
                     'sisa_mm': 'Sisa MM'
                 })
-
                 # Konversi format mata uang
                 currency_cols = ['Penyusutan', 'Akumulasi', 'Nilai Buku']
                 for col in currency_cols:
                     df[col] = df[col].apply(lambda x: f"Rp{x:,.2f}")
-
                 # Export ke Excel
                 excel_buffer = io.BytesIO()
                 with pd.ExcelWriter(excel_buffer, engine='xlsxwriter') as writer:
                     df.to_excel(writer, index=False, sheet_name='Jadwal Penyusutan')
-
                     # Format kolom mata uang di Excel
                     workbook = writer.book
                     worksheet = writer.sheets['Jadwal Penyusutan']
@@ -284,7 +242,6 @@ def app():
                     for i, col in enumerate(df.columns):
                         if col in currency_cols:
                             worksheet.set_column(i, i, None, money_format)
-
                 excel_buffer.seek(0)
                 st.download_button(
                     label="📥 Download Excel",
@@ -305,18 +262,18 @@ def app():
                 corrections=st.session_state.corrections
             )
             st.session_state.schedule = schedule
-
             # Format hasil untuk tampilan
             df = pd.DataFrame(schedule)
             df['Semester'] = df['semester'].apply(lambda x: f"Semester {x}")
             df['Penyusutan'] = df['depreciation'].apply(lambda x: f"Rp{x:,.2f}")
             df['Akumulasi'] = df['accumulated'].apply(lambda x: f"Rp{x:,.2f}")
             df['Nilai Buku'] = df['book_value'].apply(lambda x: f"Rp{x:,.2f}")
-
             st.subheader("📊 Jadwal Penyusutan")
             st.dataframe(df[['year', 'Semester', 'Penyusutan', 'Akumulasi', 'Nilai Buku', 'sisa_mm']].rename(
                 columns={'year': 'Tahun', 'sisa_mm': 'Sisa MM'}
             ), use_container_width=True, hide_index=True)
-
         except Exception as e:
             st.error(f"❌ Terjadi kesalahan: {str(e)}")
+
+if __name__ == "__main__":
+    app()
