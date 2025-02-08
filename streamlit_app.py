@@ -91,7 +91,7 @@ def querybuilder():
 # Halaman PDF
 def pdf():
     st.markdown('<div class="fade-in">', unsafe_allow_html=True)
-    st.title("PDF Operations")
+    st.title("PDF Tools")
     
     sub_page = st.sidebar.selectbox("Pilih operasi PDF", ["Merge", "Ekstrak"])
     
@@ -112,7 +112,7 @@ page_names_to_funcs = {
     "Sample": sample,
     "Fuzzy Searching": fuzzysearch,
     "Query Builder": querybuilder,
-    "PDF Operations": pdf,
+    "PDF Tools": pdf,
 }
 
 # Sidebar untuk memilih halaman
