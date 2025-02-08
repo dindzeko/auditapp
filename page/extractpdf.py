@@ -56,8 +56,7 @@ def app():
     Anda dapat memasukkan rentang halaman (contoh: `6-12`) atau daftar halaman individu (contoh: `8,9,12`).
     """)
 
-    # Sidebar untuk navigasi dan informasi tambahan
-    with st.sidebar:
+    # informasi tambahan Aplikasi
         st.header("📝 Panduan Penggunaan")
         st.markdown("""
         1. Unggah file PDF yang ingin Anda ekstrak.
