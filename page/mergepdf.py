@@ -3,7 +3,7 @@ import streamlit as st
 from pypdf import PdfReader, PdfWriter
 
 # Fungsi untuk menggabungkan beberapa file PDF menjadi satu
-def merge_pdfs(pdf_files, output_pdf):
+def mergepdf(pdf_files, output_pdf):
     writer = PdfWriter()
     try:
         for pdf_file in pdf_files:
@@ -54,7 +54,7 @@ def app():
             output_path = os.path.join("/tmp", output_file_name)
 
             # Proses penggabungan PDF
-            merge_pdfs(temp_files, output_path)
+            mergepdf(temp_files, output_path)
 
             # Tampilkan link untuk mendownload file hasil gabungan
             with open(output_path, "rb") as file:
