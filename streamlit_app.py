@@ -24,6 +24,17 @@ css_animation = """
 # Tambahkan CSS ke aplikasi
 add_css(css_animation)
 
+# Import semua modul di awal file
+from page.susuttahunan import app as susuttahunan_app
+from page.susutsemester import app as susutsemester_app
+from page.ahp import app as ahp_app
+from page.mus import app as mus_app
+from page.benfords import app as benfords_app
+from page.fuzzysearch import app as fuzzysearch_app
+from page.querybuilder import app as querybuilder_app
+from page.mergepdf import app as mergepdf_app
+from page.extractpdf import app as extractpdf_app
+
 # Halaman utama
 def main_page():
     st.markdown('<div class="fade-in">', unsafe_allow_html=True)
@@ -39,10 +50,8 @@ def depresiasi():
     sub_page = st.sidebar.selectbox("Pilih jenis depresiasi", ["Tahunan", "Semesteran"])
     
     if sub_page == "Tahunan":
-        from page.susuttahunan import app as susuttahunan_app
         susuttahunan_app()
     elif sub_page == "Semesteran":
-        from page.susutsemester import app as susutsemester_app
         susutsemester_app()
     
     st.markdown('</div>', unsafe_allow_html=True)
@@ -52,20 +61,15 @@ def sample():
     st.markdown('<div class="fade-in">', unsafe_allow_html=True)
     st.title("Sample")
     
-    # Sub-halaman untuk Sample
     sub_page = st.sidebar.selectbox("Pilih sub-halaman", ["AHP", "MUS", "Benford Law"])
     
-    # Navigasi antar halaman
     if sub_page == "AHP":
-        from page.ahp import app as ahp_app
         ahp_app()
     elif sub_page == "MUS":
-        from page.mus import app as mus_app
         mus_app()
     elif sub_page == "Benford Law":
-        from page.benfords import app as benfords_app
         benfords_app()
-            
+    
     st.markdown('</div>', unsafe_allow_html=True)
 
 # Halaman Fuzzy Searching
@@ -73,34 +77,31 @@ def fuzzysearch():
     st.markdown('<div class="fade-in">', unsafe_allow_html=True)
     st.title("Search")
     st.write("Bentuk Data String")
-    st.markdown('</div>', unsafe_allow_html=True)
-    from page.fuzzysearch import app as fuzzysearch_app
     fuzzysearch_app()
+    st.markdown('</div>', unsafe_allow_html=True)
 
 # Halaman Query Builder
 def querybuilder():
     st.markdown('<div class="fade-in">', unsafe_allow_html=True)
     st.title("Query Builder")
     st.write("Halaman untuk Query Builder.")
-    st.markdown('</div>', unsafe_allow_html=True)
-    from page.querybuilder import app as querybuilder_app
     querybuilder_app()
+    st.markdown('</div>', unsafe_allow_html=True)
 
 # Halaman PDF
 def pdf():
     st.markdown('<div class="fade-in">', unsafe_allow_html=True)
     st.title("PDF Operations")
     
-    # Sub-halaman untuk PDF
     sub_page = st.sidebar.selectbox("Pilih operasi PDF", ["Merge", "Ekstrak"])
     
-    # Navigasi antar sub-halaman
-    if sub_page == "Merge":
-        from page.mergepdf import app as mergepdf_app
-        mergepdf_app()
-    elif sub_page == "Ekstract":
-        from page.extractpdf import app as extractpdf_app
-        extractpdf_app()
+    try:
+        if sub_page == "Merge":
+            mergepdf_app()
+        elif sub_page == "Ekstrak":
+            extractpdf_app()
+    except Exception as e:
+        st.error(f"Error: {str(e)}")
     
     st.markdown('</div>', unsafe_allow_html=True)
 
@@ -111,7 +112,7 @@ page_names_to_funcs = {
     "Sample": sample,
     "Fuzzy Searching": fuzzysearch,
     "Query Builder": querybuilder,
-    "PDF Operations": pdf,  # Menambahkan halaman PDF
+    "PDF Operations": pdf,
 }
 
 # Sidebar untuk memilih halaman
