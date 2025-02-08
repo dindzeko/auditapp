@@ -2,122 +2,73 @@ import os
 import streamlit as st
 from pypdf import PdfReader, PdfWriter
 
-# Fungsi untuk mengekstrak halaman tertentu dari PDF
-def extract_pdf_pages(input_pdf, page_input):
-    reader = PdfReader(input_pdf)
+# Fungsi untuk menggabungkan beberapa file PDF menjadi satu
+def mergepdf(pdf_files, output_pdf):
     writer = PdfWriter()
-    pages = []
     try:
-        # Parsing input halaman
-        for part in page_input.split(","):
-            if "-" in part:  # Rentang halaman (contoh: 6-12)
-                start, end = map(int, part.split("-"))
-                if start < 1 or end > len(reader.pages) or start > end:
-                    raise ValueError(f"Rentang halaman {part} tidak valid!")
-                pages.extend(range(start, end + 1))
-            else:  # Halaman tunggal (contoh: 8)
-                page = int(part.strip())
-                if page < 1 or page > len(reader.pages):
-                    raise ValueError(f"Halaman {page} tidak valid!")
-                pages.append(page)
-    except ValueError as e:
-        st.error(str(e))
-        return None
-
-    # Hapus duplikat dan urutkan halaman
-    pages = sorted(set(pages))
-
-    # Buat nama file output berdasarkan dua angka awal dan dua angka akhir
-    if pages:
-        first_page = pages[0]
-        last_page = pages[-1]
-        output_pdf = f"pages_{first_page:02d}_to_{last_page:02d}.pdf"
-    else:
-        st.error("Tidak ada halaman yang valid untuk diekstrak!")
-        return None
-
-    # Tambahkan halaman ke writer
-    for page_num in pages:
-        writer.add_page(reader.pages[page_num - 1])  # Halaman dimulai dari indeks 0
-
-    # Simpan file PDF hasil ekstraksi
-    output_path = os.path.join("/tmp", output_pdf)
-    with open(output_path, "wb") as output_file:
-        writer.write(output_file)
-
-    return output_path
+        for pdf_file in pdf_files:
+            reader = PdfReader(pdf_file)
+            for page in reader.pages:
+                writer.add_page(page)
+        # Simpan file PDF hasil penggabungan
+        with open(output_pdf, "wb") as output_file:
+            writer.write(output_file)
+        st.success(f"File PDF berhasil digabungkan sebagai {output_pdf}")
+    except Exception as e:
+        st.error(f"Gagal menggabungkan PDF: {str(e)}")
 
 # Fungsi utama untuk halaman Streamlit
 def app():
-    # Judul dan deskripsi
-    st.title("📚 Ekstrak Halaman PDF")
-    st.markdown("""
-    Aplikasi ini memungkinkan Anda mengekstrak halaman tertentu dari file PDF.
-    Anda dapat memasukkan rentang halaman (contoh: `6-12`) atau daftar halaman individu (contoh: `8,9,12`).
-    """)
+    st.title("Penggabung PDF")
+    st.markdown("### Gabungkan beberapa file PDF menjadi satu file.")
 
-    # Sidebar untuk navigasi dan informasi tambahan
-    with st.sidebar:
-        st.header("📝 Panduan Penggunaan")
-        st.markdown("""
-        1. Unggah file PDF yang ingin Anda ekstrak.
-        2. Masukkan nomor halaman yang ingin diekstrak:
-           - Gunakan tanda koma (`,`) untuk memisahkan halaman individu.
-           - Gunakan tanda hubung (`-`) untuk menentukan rentang halaman.
-        3. Klik tombol **Proses** untuk mengekstrak halaman.
-        4. Unduh file hasil ekstraksi.
-        """)
-        st.info("Contoh input halaman: `6-12` atau `8,9,12`")
+    # Upload file PDF
+    uploaded_files = st.file_uploader(
+        "Pilih file PDF yang ingin digabungkan",
+        type="pdf",
+        accept_multiple_files=True
+    )
 
-    # Layout utama
-    col1, col2 = st.columns([2, 1])
+    # Input untuk nama file output
+    output_file_name = st.text_input(
+        "Nama file output (contoh: hasil_gabungan.pdf)",
+        value="hasil_gabungan.pdf"
+    )
 
-    with col1:
-        # Upload file PDF
-        uploaded_file = st.file_uploader(
-            "📂 Pilih File PDF",
-            type="pdf",
-            help="Unggah file PDF yang ingin Anda ekstrak."
-        )
-
-    with col2:
-        # Input untuk halaman yang ingin diekstrak
-        page_input = st.text_input(
-            "📄 Halaman (contoh: 6-12 atau 8,9,12):",
-            value="",
-            help="Masukkan nomor halaman yang ingin diekstrak."
-        )
-
-    # Tombol Proses
-    if st.button("🚀 Proses", use_container_width=True):
-        if not uploaded_file:
-            st.error("⚠️ Silakan unggah file PDF terlebih dahulu!")
-        elif not page_input.strip():
-            st.error("⚠️ Masukkan halaman yang ingin diekstrak (contoh: 6-12 atau 8,9,12)!")
+    # Tombol untuk memulai proses penggabungan
+    if st.button("Gabungkan"):
+        if not uploaded_files:
+            st.error("Tidak ada file PDF yang dipilih!")
+        elif not output_file_name.strip():
+            st.error("Masukkan nama file output!")
         else:
             # Simpan file yang diupload ke direktori sementara
-            temp_file_path = os.path.join("/tmp", uploaded_file.name)
-            with open(temp_file_path, "wb") as f:
-                f.write(uploaded_file.getbuffer())
+            temp_files = []
+            for uploaded_file in uploaded_files:
+                temp_file_path = os.path.join("/tmp", uploaded_file.name)
+                with open(temp_file_path, "wb") as f:
+                    f.write(uploaded_file.getbuffer())
+                temp_files.append(temp_file_path)
 
-            # Proses ekstraksi halaman
-            output_path = extract_pdf_pages(temp_file_path, page_input)
+            # Tentukan path untuk file output
+            output_path = os.path.join("/tmp", output_file_name)
 
-            if output_path:
-                # Tampilkan link untuk mendownload file hasil ekstraksi
-                with open(output_path, "rb") as file:
-                    st.success("✅ Halaman berhasil diekstrak!")
-                    st.download_button(
-                        label="📥 Download File Hasil Ekstraksi",
-                        data=file,
-                        file_name=os.path.basename(output_path),
-                        mime="application/pdf",
-                        use_container_width=True
-                    )
+            # Proses penggabungan PDF
+            mergepdf(temp_files, output_path)
 
-                # Bersihkan file sementara
-                os.remove(temp_file_path)
-                os.remove(output_path)
+            # Tampilkan link untuk mendownload file hasil gabungan
+            with open(output_path, "rb") as file:
+                st.download_button(
+                    label="Download File Hasil Gabungan",
+                    data=file,
+                    file_name=output_file_name,
+                    mime="application/pdf"
+                )
+
+            # Bersihkan file sementara
+            for temp_file in temp_files:
+                os.remove(temp_file)
+            os.remove(output_path)
 
 # Jalankan aplikasi Streamlit
 if __name__ == "__main__":
