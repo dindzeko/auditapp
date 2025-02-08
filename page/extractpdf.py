@@ -49,51 +49,27 @@ def extractpdf(input_pdf, page_input):
 
 # Fungsi utama untuk halaman Streamlit
 def app():
-    # Judul dan deskripsi
-    st.title("📚 Ekstrak Halaman PDF")
-    st.markdown("""
-    Aplikasi ini memungkinkan Anda mengekstrak halaman tertentu dari file PDF.
-    Anda dapat memasukkan rentang halaman (contoh: `6-12`) atau daftar halaman individu (contoh: `8,9,12`).
-    """)
+    st.title("Ekstrak Halaman PDF")
+    st.markdown("### Ekstrak halaman tertentu dari file PDF.")
 
-    # Sidebar untuk navigasi dan informasi tambahan
-    with st.sidebar:
-        st.header("📝 Panduan Penggunaan")
-        st.markdown("""
-        1. Unggah file PDF yang ingin Anda ekstrak.
-        2. Masukkan nomor halaman yang ingin diekstrak:
-           - Gunakan tanda koma (`,`) untuk memisahkan halaman individu.
-           - Gunakan tanda hubung (`-`) untuk menentukan rentang halaman.
-        3. Klik tombol **Proses** untuk mengekstrak halaman.
-        4. Unduh file hasil ekstraksi.
-        """)
-        st.info("Contoh input halaman: `6-12` atau `8,9,12`")
+    # Upload file PDF
+    uploaded_file = st.file_uploader(
+        "Pilih file PDF",
+        type="pdf"
+    )
 
-    # Layout utama
-    col1, col2 = st.columns([2, 1])
+    # Input untuk halaman yang ingin diekstrak
+    page_input = st.text_input(
+        "Halaman (contoh: 6-12 atau 8,9,12):",
+        value=""
+    )
 
-    with col1:
-        # Upload file PDF
-        uploaded_file = st.file_uploader(
-            "📂 Pilih File PDF",
-            type="pdf",
-            help="Unggah file PDF yang ingin Anda ekstrak."
-        )
-
-    with col2:
-        # Input untuk halaman yang ingin diekstrak
-        page_input = st.text_input(
-            "📄 Halaman (contoh: 6-12 atau 8,9,12):",
-            value="",
-            help="Masukkan nomor halaman yang ingin diekstrak."
-        )
-
-    # Tombol Proses
-    if st.button("🚀 Proses", use_container_width=True):
+    # Tombol untuk memulai proses ekstraksi
+    if st.button("Proses"):
         if not uploaded_file:
-            st.error("⚠️ Silakan unggah file PDF terlebih dahulu!")
+            st.error("Tidak ada file PDF yang dipilih!")
         elif not page_input.strip():
-            st.error("⚠️ Masukkan halaman yang ingin diekstrak (contoh: 6-12 atau 8,9,12)!")
+            st.error("Masukkan halaman yang ingin diekstrak (contoh: 6-12 atau 8,9,12)!")
         else:
             # Simpan file yang diupload ke direktori sementara
             temp_file_path = os.path.join("/tmp", uploaded_file.name)
@@ -106,13 +82,11 @@ def app():
             if output_path:
                 # Tampilkan link untuk mendownload file hasil ekstraksi
                 with open(output_path, "rb") as file:
-                    st.success("✅ Halaman berhasil diekstrak!")
                     st.download_button(
-                        label="📥 Download File Hasil Ekstraksi",
+                        label="Download File Hasil Ekstraksi",
                         data=file,
                         file_name=os.path.basename(output_path),
-                        mime="application/pdf",
-                        use_container_width=True
+                        mime="application/pdf"
                     )
 
                 # Bersihkan file sementara
