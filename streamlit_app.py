@@ -98,7 +98,7 @@ def pdf():
     if sub_page == "Merge":
         from page.mergepdf import app as mergepdf_app
         mergepdf_app()
-    elif sub_page == "Ekstrak":
+    elif sub_page == "Extract":
         from page.extractpdf import app as extractpdf_app
         extractpdf()
     
