@@ -76,15 +76,19 @@ button:hover {
 add_css(css_styles)
 
 # Impor semua modul di awal file
-from page.susuttahunan import app as susuttahunan_app
-from page.susutsemester import app as susutsemester_app
-from page.ahp import app as ahp_app
-from page.mus import app as mus_app
-from page.benfords import app as benfords_app
-from page.fuzzysearch import app as fuzzysearch_app
-from page.querybuilder import app as querybuilder_app
-from page.mergepdf import app as mergepdf_app
-from page.extractpdf import app as extractpdf_app
+try:
+    from page.susuttahunan import app as susuttahunan_app
+    from page.susutsemester import app as susutsemester_app
+    from page.ahp import app as ahp_app
+    from page.mus import app as mus_app
+    from page.benfords import app as benfords_app
+    from page.fuzzysearch import app as fuzzysearch_app
+    from page.querybuilder import app as querybuilder_app
+    from page.mergepdf import app as mergepdf_app
+    from page.extractpdf import app as extractpdf_app
+except ImportError as e:
+    st.error(f"Error importing modules: {str(e)}")
+    st.stop()
 
 # Inisialisasi session state
 if "subpage" not in st.session_state:
@@ -95,15 +99,19 @@ def main_page():
     st.markdown('<div class="fade-in main-content">', unsafe_allow_html=True)
     st.title("Selamat Datang!")
     st.write("""
-    Aplikasi ini dirancang untuk membantu mempermudah berbagai kebutuhan audit dan manajemen data Anda. Di halaman utama ini, Anda akan menemukan informasi dasar dan panduan untuk memulai.
-    Modul-modul yang tersedia dalam aplikasi ini mencakup:
-    Depresiasi: Untuk menghitung nilai penyusutan aset secara cepat dan akurat.
-    Sample: Membantu Anda melakukan pengambilan sampel data untuk audit.
-    Fuzzy Searching: Mencari data dengan toleransi terhadap kesalahan penulisan.
-    Query Builder: Membuat dan mengeksekusi kueri database dengan antarmuka yang mudah.
-    PDF Tools: Alat bantu untuk memanipulasi dokumen PDF.
-    Gunakan menu navigasi untuk memilih modul yang sesuai dengan kebutuhan Anda. Semoga aplikasi ini dapat mendukung produktivitas Anda!""")
+    Aplikasi ini dirancang untuk membantu mempermudah berbagai kebutuhan audit dan manajemen data Anda. 
+    Di halaman utama ini, Anda akan menemukan informasi dasar dan panduan untuk memulai.
     
+    Modul-modul yang tersedia dalam aplikasi ini mencakup:
+    - **Depresiasi**: Untuk menghitung nilai penyusutan aset secara cepat dan akurat.
+    - **Sample**: Membantu Anda melakukan pengambilan sampel data untuk audit.
+    - **Fuzzy Searching**: Mencari data dengan toleransi terhadap kesalahan penulisan.
+    - **Query Builder**: Membuat dan mengeksekusi kueri database dengan antarmuka yang mudah.
+    - **PDF Tools**: Alat bantu untuk memanipulasi dokumen PDF.
+    
+    Gunakan menu navigasi untuk memilih modul yang sesuai dengan kebutuhan Anda. 
+    Semoga aplikasi ini dapat mendukung produktivitas Anda!
+    """)
     st.markdown('</div>', unsafe_allow_html=True)
 
 # Halaman Depresiasi
@@ -122,10 +130,16 @@ def depresiasi():
     
     if st.session_state["subpage"] == "Tahunan":
         st.write("### Depresiasi Tahunan")
-        susuttahunan_app()
+        try:
+            susuttahunan_app()
+        except Exception as e:
+            st.error(f"Error loading Depresiasi Tahunan: {str(e)}")
     elif st.session_state["subpage"] == "Semesteran":
         st.write("### Depresiasi Semesteran")
-        susutsemester_app()
+        try:
+            susutsemester_app()
+        except Exception as e:
+            st.error(f"Error loading Depresiasi Semesteran: {str(e)}")
     
     st.markdown('</div>', unsafe_allow_html=True)
 
@@ -148,13 +162,22 @@ def sample():
     
     if st.session_state["subpage"] == "AHP":
         st.write("### Analytic Hierarchy Process (AHP)")
-        ahp_app()
+        try:
+            ahp_app()
+        except Exception as e:
+            st.error(f"Error loading AHP: {str(e)}")
     elif st.session_state["subpage"] == "MUS":
         st.write("### Monetary Unit Sampling (MUS)")
-        mus_app()
+        try:
+            mus_app()
+        except Exception as e:
+            st.error(f"Error loading MUS: {str(e)}")
     elif st.session_state["subpage"] == "Benford Law":
         st.write("### Benford Law Analysis")
-        benfords_app()
+        try:
+            benfords_app()
+        except Exception as e:
+            st.error(f"Error loading Benford Law: {str(e)}")
     
     st.markdown('</div>', unsafe_allow_html=True)
 
@@ -163,7 +186,10 @@ def fuzzysearch():
     st.markdown('<div class="fade-in main-content">', unsafe_allow_html=True)
     st.title("Fuzzy Searching")
     st.write("Halaman untuk pencarian data string menggunakan metode fuzzy search.")
-    fuzzysearch_app()
+    try:
+        fuzzysearch_app()
+    except Exception as e:
+        st.error(f"Error loading Fuzzy Search: {str(e)}")
     st.markdown('</div>', unsafe_allow_html=True)
 
 # Halaman Query Builder
@@ -171,7 +197,10 @@ def querybuilder():
     st.markdown('<div class="fade-in main-content">', unsafe_allow_html=True)
     st.title("Query Builder")
     st.write("Halaman untuk membangun query secara dinamis.")
-    querybuilder_app()
+    try:
+        querybuilder_app()
+    except Exception as e:
+        st.error(f"Error loading Query Builder: {str(e)}")
     st.markdown('</div>', unsafe_allow_html=True)
 
 # Halaman PDF Tools
@@ -190,10 +219,16 @@ def pdf():
     
     if st.session_state["subpage"] == "Merge":
         st.write("### Merge PDF Files")
-        mergepdf_app()
+        try:
+            mergepdf_app()
+        except Exception as e:
+            st.error(f"Error loading Merge PDF: {str(e)}")
     elif st.session_state["subpage"] == "Extract":
         st.write("### Extract PDF Pages")
-        extractpdf_app()
+        try:
+            extractpdf_app()
+        except Exception as e:
+            st.error(f"Error loading Extract PDF: {str(e)}")
     
     st.markdown('</div>', unsafe_allow_html=True)
 
@@ -218,4 +253,7 @@ with st.sidebar:
     )
 
 # Panggil fungsi halaman yang dipilih
-page_names_to_funcs[selected]()
+try:
+    page_names_to_funcs[selected]()
+except KeyError:
+    st.error("Halaman tidak ditemukan.")
