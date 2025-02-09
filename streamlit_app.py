@@ -99,7 +99,7 @@ def main_page():
     st.markdown('<div class="fade-in main-content">', unsafe_allow_html=True)
     st.title("Selamat Datang!")
     st.write("""
-    Aplikasi ini dirancang untuk membantu mempermudah berbagai kebutuhan audit dan manajemen data Anda. 
+    Aplikasi ini dirancang untuk membantu mempermudah pekerjaan Audit. 
     Di halaman utama ini, Anda akan menemukan informasi dasar dan panduan untuk memulai.
     
     Modul-modul yang tersedia dalam aplikasi ini mencakup:
