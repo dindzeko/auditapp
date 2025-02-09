@@ -10,3 +10,4 @@ openpyxl
 seaborn
 fuzzywuzzy
 pypdf
+streamlit-option-menu
