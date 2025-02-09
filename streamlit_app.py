@@ -94,15 +94,16 @@ if "subpage" not in st.session_state:
 def main_page():
     st.markdown('<div class="fade-in main-content">', unsafe_allow_html=True)
     st.title("Selamat Datang!")
-    st.write("Aplikasi ini dirancang untuk membantu mempermudah berbagai kebutuhan audit dan manajemen data Anda. Di halaman utama ini, Anda akan menemukan informasi dasar dan panduan untuk memulai.
-
+    st.write("""
+    Aplikasi ini dirancang untuk membantu mempermudah berbagai kebutuhan audit dan manajemen data Anda. Di halaman utama ini, Anda akan menemukan informasi dasar dan panduan untuk memulai.
     Modul-modul yang tersedia dalam aplikasi ini mencakup:
     Depresiasi: Untuk menghitung nilai penyusutan aset secara cepat dan akurat.
     Sample: Membantu Anda melakukan pengambilan sampel data untuk audit.
     Fuzzy Searching: Mencari data dengan toleransi terhadap kesalahan penulisan.
     Query Builder: Membuat dan mengeksekusi kueri database dengan antarmuka yang mudah.
     PDF Tools: Alat bantu untuk memanipulasi dokumen PDF.
-    Gunakan menu navigasi untuk memilih modul yang sesuai dengan kebutuhan Anda. Semoga aplikasi ini dapat mendukung produktivitas Anda!")
+    Gunakan menu navigasi untuk memilih modul yang sesuai dengan kebutuhan Anda. Semoga aplikasi ini dapat mendukung produktivitas Anda!""")
+    
     st.markdown('</div>', unsafe_allow_html=True)
 
 # Halaman Depresiasi
