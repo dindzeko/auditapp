@@ -16,23 +16,62 @@ css_styles = """
     from { opacity: 0; }
     to { opacity: 1; }
 }
+
+/* Gaya Sidebar */
+.sidebar .sidebar-content {
+    background-color: #ffffff;
+    border-right: 1px solid #eaeaea;
+    padding: 20px;
+    box-shadow: 2px 0 6px rgba(0, 0, 0, 0.05);
+}
+
 /* Konten utama styling */
 .main-content {
     padding: 20px;
-    background-color: #ffffff;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    background-color: #f9f9f9;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    margin: 20px 0;
     text-align: center;
 }
-.button-container {
+
+/* Efek Hover pada Tombol */
+button {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 20px;
+    cursor: pointer;
+    transition: all 0.3s ease-in-out;
+}
+button:hover {
+    background-color: #0056b3;
+    transform: scale(1.05);
+}
+
+/* Styling Tabs */
+.tabs {
     display: flex;
     justify-content: center;
-    gap: 10px;
-    margin-top: 20px;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+.tabs button {
+    background-color: #eaeaea;
+    color: #333;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 20px;
+    cursor: pointer;
+    transition: all 0.3s ease-in-out;
+}
+.tabs button.active {
+    background-color: #007bff;
+    color: white;
 }
 </style>
 """
-
 # Tambahkan CSS
 add_css(css_styles)
 
@@ -54,8 +93,8 @@ if "subpage" not in st.session_state:
 # Halaman Main Page
 def main_page():
     st.markdown('<div class="fade-in main-content">', unsafe_allow_html=True)
-    st.title("Main Page")
-    st.write("Selamat datang di aplikasi ini!")
+    st.title("Selamat Datang!")
+    st.write("Ini adalah aplikasi modern dengan Streamlit.")
     st.markdown('</div>', unsafe_allow_html=True)
 
 # Halaman Depresiasi
@@ -159,8 +198,15 @@ page_names_to_funcs = {
     "PDF Tools": pdf,
 }
 
-# Sidebar untuk navigasi
-selected_page = st.sidebar.selectbox("Pilih halaman", page_names_to_funcs.keys())
+# Sidebar Menu Modern dengan Icons
+with st.sidebar:
+    selected = option_menu(
+        menu_title="Main Menu",  # Judul menu
+        options=["Main Page", "Depresiasi", "Sample", "Fuzzy Searching", "Query Builder", "PDF Tools"],  # Pilihan menu
+        icons=["house", "calculator", "clipboard-data", "search", "code-slash", "file-earmark-pdf"],  # Ikon dari Font Awesome
+        menu_icon="cast",  # Ikon utama
+        default_index=0,  # Halaman awal
+    )
 
 # Panggil fungsi halaman yang dipilih
-page_names_to_funcs[selected_page]()
+page_names_to_funcs[selected]()
