@@ -54,7 +54,7 @@ def app():
         st.error("Tolerable Misstatement must be greater than (Expected Misstatement × Expansion Factor).")
         sample_size = None
     else:
-        sample_size = match.ceil(
+        sample_size = math.ceil(
             (total_population * reliability_factor) /
             (tolerable_misstatement - (expected_misstatement * expansion_factor))
         )
