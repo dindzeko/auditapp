@@ -38,7 +38,7 @@ def app():
 
     # Expansion Factor berdasarkan Risk of Incorrect Acceptance
     expansion_factors = {
-        10: 2,4,  # 10% Risk
+        10: 2.4,  # 10% Risk
         5: 3.0,    # 5% Risk
     }
 
