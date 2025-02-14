@@ -27,20 +27,25 @@ def app():
     expected_misstatement = st.number_input("Expected Misstatement (TE)", min_value=0.0, value=10000.0)
     risk_of_incorrect_acceptance = st.selectbox(
         "Risiko Audit (%)",
-        options=[10, 5],
+        options=[50, 30, 10, 5],
         index=1  # Default: 5%
     )
 
     # Faktor Keandalan (Reliability Factor) berdasarkan Risk of Incorrect Acceptance
     reliability_factors = {
+        50: 0.70 #50% Risk
+        30: 1.21 #30% Risk
         10: 2.4,   # 10% Risk
         5: 3.0    # 5% Risk
     }
 
     # Expansion Factor berdasarkan Risk of Incorrect Acceptance
     expansion_factors = {
+        50:1.1, #50% risk
+        30: 1.2, # 30% Risk
         10: 1.5,  # 10% Risk
         5: 1.6,    # 5% Risk
+        
     }
 
     # Mengambil Reliability Factor dan Expansion Factor berdasarkan Risk of Incorrect Acceptance
