@@ -35,7 +35,7 @@ def app():
     reliability_factors = {
         50: 0.70, #50% Risk
         30: 1.21, #30% Risk
-        10: 2.4,   # 10% Risk
+        10: 2.31,   # 10% Risk
         5: 3.0    # 5% Risk
     }
 
