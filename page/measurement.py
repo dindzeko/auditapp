@@ -2,6 +2,7 @@ import streamlit as st
 import cv2
 import numpy as np
 from PIL import Image
+from streamlit_image_coordinates import st_click_detector  # Untuk menangkap klik pada gambar
 
 def app():
     st.title("Pengukuran Panjang dan Luas dari Gambar")
@@ -42,7 +43,7 @@ def app():
             st.session_state["resized_image"] = cv2.resize(st.session_state["image"], (new_width, new_height))
 
     if st.session_state["resized_image"] is not None:
-        st.subheader("Klik pada gambar untuk memilih titik referensi")
+        st.subheader("Klik dua titik pada gambar untuk memilih garis referensi")
 
         # Gambar titik referensi pada gambar
         img_copy = st.session_state["resized_image"].copy()
@@ -52,17 +53,17 @@ def app():
         # Konversi gambar ke RGB untuk Streamlit
         image_rgb = cv2.cvtColor(img_copy, cv2.COLOR_BGR2RGB)
         pil_image = Image.fromarray(image_rgb)
-        st.image(pil_image, use_container_width=True)
 
-        # Ambil koordinat dengan slider atau input
-        x = st.slider("Pilih X", 0, new_width, step=1)
-        y = st.slider("Pilih Y", 0, new_height, step=1)
+        # Deteksi klik pada gambar
+        clicked_point = st_click_detector(pil_image)
 
-        if st.button("Tambahkan Titik Referensi"):
+        if clicked_point:
             if len(st.session_state["ref_points"]) < 2:
-                st.session_state["ref_points"].append((x, y))
+                st.session_state["ref_points"].append((clicked_point["x"], clicked_point["y"]))
             else:
                 st.warning("Sudah ada dua titik referensi. Reset untuk memilih ulang.")
+
+        st.image(pil_image, use_container_width=True)
 
         if st.button("Reset Titik"):
             st.session_state["ref_points"] = []
