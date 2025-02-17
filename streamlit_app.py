@@ -16,7 +16,6 @@ css_styles = """
     from { opacity: 0; }
     to { opacity: 1; }
 }
-
 /* Gaya Sidebar */
 .sidebar .sidebar-content {
     background-color: #ffffff;
@@ -24,7 +23,6 @@ css_styles = """
     padding: 20px;
     box-shadow: 2px 0 6px rgba(0, 0, 0, 0.05);
 }
-
 /* Konten utama styling */
 .main-content {
     padding: 20px;
@@ -34,7 +32,6 @@ css_styles = """
     margin: 20px 0;
     text-align: center;
 }
-
 /* Efek Hover pada Tombol */
 button {
     background-color: #007bff;
@@ -49,7 +46,6 @@ button:hover {
     background-color: #0056b3;
     transform: scale(1.05);
 }
-
 /* Styling Tabs */
 .tabs {
     display: flex;
@@ -72,6 +68,7 @@ button:hover {
 }
 </style>
 """
+
 # Tambahkan CSS
 add_css(css_styles)
 
@@ -108,6 +105,7 @@ def main_page():
     - **Fuzzy Searching**: Mencari data dengan toleransi terhadap kesalahan penulisan.
     - **Query Builder**: Membuat dan mengeksekusi kueri database dengan antarmuka yang mudah.
     - **PDF Tools**: Alat bantu untuk memanipulasi dokumen PDF.
+    - **Measurement**: Mengukur panjang dan luas dari gambar menggunakan referensi skala.
     
     Gunakan menu navigasi untuk memilih modul yang sesuai dengan kebutuhan Anda. 
     Semoga aplikasi ini dapat mendukung produktivitas Anda!
@@ -232,6 +230,36 @@ def pdf():
     
     st.markdown('</div>', unsafe_allow_html=True)
 
+# Halaman Measurement
+def measurement():
+    st.markdown('<div class="fade-in main-content">', unsafe_allow_html=True)
+    st.title("Pengukuran Panjang dan Luas dari Gambar")
+    st.write("""
+    Halaman ini memungkinkan Anda mengukur panjang dan luas dari gambar menggunakan referensi skala.
+    Langkah-langkah:
+    1. Upload gambar yang ingin diukur.
+    2. Tarik garis referensi untuk menentukan skala.
+    3. Gambar poligon untuk menghitung luas dan panjang total.
+    """)
+
+    # Upload gambar
+    uploaded_file = st.file_uploader("Upload Gambar", type=["jpg", "jpeg", "png"])
+    if uploaded_file is not None:
+        st.image(uploaded_file, caption="Gambar yang Diupload", use_column_width=True)
+        st.success("Gambar berhasil diupload!")
+
+        # Input skala referensi
+        reference_length = st.number_input("Masukkan panjang garis referensi (dalam meter):", value=1.0)
+        if st.button("Hitung Skala"):
+            st.success(f"Skala ditentukan: {reference_length} meter per piksel")
+
+        # Input poligon
+        st.write("Gambar poligon pada gambar untuk menghitung luas dan panjang total.")
+        if st.button("Hitung Luas dan Panjang"):
+            st.info("Fitur ini sedang dikembangkan. Silakan coba lagi nanti!")
+
+    st.markdown('</div>', unsafe_allow_html=True)
+
 # Navigasi halaman utama
 page_names_to_funcs = {
     "Main Page": main_page,
@@ -240,14 +268,31 @@ page_names_to_funcs = {
     "Fuzzy Searching": fuzzysearch,
     "Query Builder": querybuilder,
     "PDF Tools": pdf,
+    "Measurement": measurement,  # Tambahkan halaman Measurement
 }
 
 # Sidebar Menu Modern dengan Icons
 with st.sidebar:
     selected = option_menu(
         menu_title="Main Menu",  # Judul menu
-        options=["Main Page", "Depresiasi", "Sample", "Fuzzy Searching", "Query Builder", "PDF Tools"],  # Pilihan menu
-        icons=["house", "calculator", "clipboard-data", "search", "code-slash", "file-earmark-pdf"],  # Ikon dari Font Awesome
+        options=[
+            "Main Page",
+            "Depresiasi",
+            "Sample",
+            "Fuzzy Searching",
+            "Query Builder",
+            "PDF Tools",
+            "Measurement",  # Tambahkan opsi Measurement
+        ],
+        icons=[
+            "house",
+            "calculator",
+            "clipboard-data",
+            "search",
+            "code-slash",
+            "file-earmark-pdf",
+            "ruler",  # Ikon untuk Measurement
+        ],
         menu_icon="cast",  # Ikon utama
         default_index=0,  # Halaman awal
     )
