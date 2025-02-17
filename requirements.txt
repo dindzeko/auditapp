@@ -11,6 +11,6 @@ seaborn
 fuzzywuzzy
 pypdf
 streamlit-option-menu
-io
-cv2
-PIL
+opencv-python==4.10.0.84
+numpy==1.26.4
+Pillow==10.2.0
