@@ -13,3 +13,4 @@ pypdf
 streamlit-option-menu
 opencv-python
 Pillow
+Streamlit-Drawable-Canvas
