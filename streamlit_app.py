@@ -1,12 +1,12 @@
 import streamlit as st
-from streamlit_option_menu import option_menu
+from streamlit_option_menu import option_menu 
 
-# Fungsi untuk menambahkan CSS ke aplikasi Streamlit
+# Fungsi untuk menambahkan CSS ke aplikasi Streamlit 
 def add_css(css):
-    st.markdown(f'<style>{css}</style>', unsafe_allow_html=True)
+    st.markdown(f'<style>{css}</style>', unsafe_allow_html=True) 
 
-# CSS tambahan untuk gaya animasi dan sidebar
-css_styles = """
+# CSS tambahan untuk gaya animasi dan sidebar 
+css_styles = """ 
 <style>
 /* Animasi fade-in */
 .fade-in {
@@ -67,12 +67,12 @@ button:hover {
     color: white;
 }
 </style>
-"""
+""" 
 
-# Tambahkan CSS
-add_css(css_styles)
+# Tambahkan CSS 
+add_css(css_styles) 
 
-# Impor semua modul di awal file
+# Impor semua modul di awal file 
 try:
     from page.susuttahunan import app as susuttahunan_app
     from page.susutsemester import app as susutsemester_app
@@ -83,41 +83,41 @@ try:
     from page.querybuilder import app as querybuilder_app
     from page.mergepdf import app as mergepdf_app
     from page.extractpdf import app as extractpdf_app
+    from page.inventory import app as inventory_app  # Impor modul Persediaan
+    from page.measurement import app as measurement_app  # Impor modul Measurement
 except ImportError as e:
     st.error(f"Error importing modules: {str(e)}")
-    st.stop()
+    st.stop() 
 
-# Inisialisasi session state
+# Inisialisasi session state 
 if "subpage" not in st.session_state:
-    st.session_state["subpage"] = None
+    st.session_state["subpage"] = None 
 
-# Halaman Main Page
+# Halaman Main Page 
 def main_page():
     st.markdown('<div class="fade-in main-content">', unsafe_allow_html=True)
     st.title("Selamat Datang!")
     st.write("""
     Aplikasi ini dirancang untuk membantu mempermudah pekerjaan Audit. 
-    Di halaman utama ini, Anda akan menemukan informasi dasar dan panduan untuk memulai.
-    
-    Modul-modul yang tersedia dalam aplikasi ini mencakup:
-    - **Depresiasi**: Untuk menghitung nilai penyusutan aset secara cepat dan akurat.
-    - **Sample**: Membantu Anda melakukan pengambilan sampel data untuk audit.
-    - **Fuzzy Searching**: Mencari data dengan toleransi terhadap kesalahan penulisan.
-    - **Query Builder**: Membuat dan mengeksekusi kueri database dengan antarmuka yang mudah.
-    - **PDF Tools**: Alat bantu untuk memanipulasi dokumen PDF.
-    - **Measurement**: Mengukur panjang dan luas dari gambar menggunakan referensi skala.
-    
-    Gunakan menu navigasi untuk memilih modul yang sesuai dengan kebutuhan Anda. 
-    Semoga aplikasi ini dapat mendukung produktivitas Anda!
-    """)
+    Di halaman utama ini, Anda akan menemukan informasi dasar dan panduan untuk memulai. 
+Modul-modul yang tersedia dalam aplikasi ini mencakup:
+- **Depresiasi**: Untuk menghitung nilai penyusutan aset secara cepat dan akurat.
+- **Sample**: Membantu Anda melakukan pengambilan sampel data untuk audit.
+- **Fuzzy Searching**: Mencari data dengan toleransi terhadap kesalahan penulisan.
+- **Query Builder**: Membuat dan mengeksekusi kueri database dengan antarmuka yang mudah.
+- **PDF Tools**: Alat bantu untuk memanipulasi dokumen PDF.
+- **Measurement**: Mengukur panjang dan luas dari gambar menggunakan referensi skala.
+- **Persediaan**: Mengelola dan melacak inventaris barang.
+Gunakan menu navigasi untuk memilih modul yang sesuai dengan kebutuhan Anda. 
+Semoga aplikasi ini dapat mendukung produktivitas Anda!
+""")
     st.markdown('</div>', unsafe_allow_html=True)
 
-# Halaman Depresiasi
+# Halaman Depresiasi 
 def depresiasi():
     st.markdown('<div class="fade-in main-content">', unsafe_allow_html=True)
     st.title("Depresiasi")
-    st.write("Modul Depresiasi digunakan untuk menghitung nilai depresiasi berdasarkan metode yang Anda pilih. Silakan pilih jenis perhitungan:")
-    
+    st.write("Modul Depresiasi digunakan untuk menghitung nilai depresiasi berdasarkan metode yang Anda pilih. Silakan pilih jenis perhitungan:") 
     col1, col2 = st.columns(2)
     with col1:
         if st.button("Depresiasi Tahunan"):
@@ -125,7 +125,6 @@ def depresiasi():
     with col2:
         if st.button("Depresiasi Semesteran"):
             st.session_state["subpage"] = "Semesteran"
-    
     if st.session_state["subpage"] == "Tahunan":
         st.write("### Depresiasi Tahunan")
         try:
@@ -138,15 +137,13 @@ def depresiasi():
             susutsemester_app()
         except Exception as e:
             st.error(f"Error loading Depresiasi Semesteran: {str(e)}")
-    
     st.markdown('</div>', unsafe_allow_html=True)
 
-# Halaman Sample
+# Halaman Sample 
 def sample():
     st.markdown('<div class="fade-in main-content">', unsafe_allow_html=True)
     st.title("Sample")
-    st.write("Modul Sample digunakan untuk pengambilan sampel data berdasarkan berbagai metode. Pilih metode yang ingin digunakan:")
-    
+    st.write("Modul Sample digunakan untuk pengambilan sampel data berdasarkan berbagai metode. Pilih metode yang ingin digunakan:") 
     col1, col2, col3 = st.columns(3)
     with col1:
         if st.button("AHP"):
@@ -157,7 +154,6 @@ def sample():
     with col3:
         if st.button("Benford Law"):
             st.session_state["subpage"] = "Benford Law"
-    
     if st.session_state["subpage"] == "AHP":
         st.write("### Analytic Hierarchy Process (AHP)")
         try:
@@ -176,10 +172,9 @@ def sample():
             benfords_app()
         except Exception as e:
             st.error(f"Error loading Benford Law: {str(e)}")
-    
     st.markdown('</div>', unsafe_allow_html=True)
 
-# Halaman Fuzzy Searching
+# Halaman Fuzzy Searching 
 def fuzzysearch():
     st.markdown('<div class="fade-in main-content">', unsafe_allow_html=True)
     st.title("Fuzzy Searching")
@@ -188,9 +183,9 @@ def fuzzysearch():
         fuzzysearch_app()
     except Exception as e:
         st.error(f"Error loading Fuzzy Search: {str(e)}")
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True) 
 
-# Halaman Query Builder
+# Halaman Query Builder 
 def querybuilder():
     st.markdown('<div class="fade-in main-content">', unsafe_allow_html=True)
     st.title("Query Builder")
@@ -199,14 +194,13 @@ def querybuilder():
         querybuilder_app()
     except Exception as e:
         st.error(f"Error loading Query Builder: {str(e)}")
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True) 
 
-# Halaman PDF Tools
+# Halaman PDF Tools 
 def pdf():
     st.markdown('<div class="fade-in main-content">', unsafe_allow_html=True)
     st.title("PDF Tools")
-    st.write("Modul PDF Tools memungkinkan Anda untuk mengelola file PDF, seperti menggabungkan atau mengekstrak halaman. Pilih operasi yang ingin dilakukan:")
-    
+    st.write("Modul PDF Tools memungkinkan Anda untuk mengelola file PDF, seperti menggabungkan atau mengekstrak halaman. Pilih operasi yang ingin dilakukan:") 
     col1, col2 = st.columns(2)
     with col1:
         if st.button("Merge PDF"):
@@ -214,7 +208,6 @@ def pdf():
     with col2:
         if st.button("Extract PDF"):
             st.session_state["subpage"] = "Extract"
-    
     if st.session_state["subpage"] == "Merge":
         st.write("### Merge PDF Files")
         try:
@@ -227,34 +220,31 @@ def pdf():
             extractpdf_app()
         except Exception as e:
             st.error(f"Error loading Extract PDF: {str(e)}")
-    
     st.markdown('</div>', unsafe_allow_html=True)
 
-# Halaman Measurement
+# Halaman Measurement 
 def measurement():
     st.markdown('<div class="fade-in main-content">', unsafe_allow_html=True)
     st.title("Measurement")
-    st.write("Halaman untuk menghitung luas area berdasarkan gambar atau image.")
-    
-    # Upload gambar
-    uploaded_file = st.file_uploader("Upload Gambar", type=["jpg", "jpeg", "png"])
-    if uploaded_file is not None:
-        st.image(uploaded_file, caption="Gambar yang Diupload", use_column_width=True)
-        st.success("Gambar berhasil diupload!")
-
-        # Input skala referensi
-        reference_length = st.number_input("Masukkan panjang garis referensi (dalam meter):", value=1.0)
-        if st.button("Hitung Skala"):
-            st.success(f"Skala ditentukan: {reference_length} meter per piksel")
-
-        # Input poligon
-        st.write("Gambar poligon pada gambar untuk menghitung luas dan panjang total.")
-        if st.button("Hitung Luas dan Panjang"):
-            st.info("Fitur ini sedang dikembangkan. Silakan coba lagi nanti!")
-
+    st.write("Halaman untuk menghitung luas area berdasarkan gambar atau image.") 
+    try:
+        measurement_app()
+    except Exception as e:
+        st.error(f"Error loading Measurement: {str(e)}")
     st.markdown('</div>', unsafe_allow_html=True)
 
-# Navigasi halaman utama
+# Halaman Persediaan 
+def persediaan():
+    st.markdown('<div class="fade-in main-content">', unsafe_allow_html=True)
+    st.title("Persediaan")
+    st.write("Modul Persediaan digunakan untuk mengelola dan melacak inventaris barang.")
+    try:
+        inventory_app()
+    except Exception as e:
+        st.error(f"Error loading Persediaan: {str(e)}")
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# Navigasi halaman utama 
 page_names_to_funcs = {
     "Main Page": main_page,
     "Depresiasi": depresiasi,
@@ -262,10 +252,11 @@ page_names_to_funcs = {
     "Fuzzy Searching": fuzzysearch,
     "Query Builder": querybuilder,
     "PDF Tools": pdf,
-    "Measurement": measurement,  # Tambahkan halaman Measurement
-}
+    "Measurement": measurement,
+    "Persediaan": persediaan,  # Tambahkan halaman Persediaan
+} 
 
-# Sidebar Menu Modern dengan Icons
+# Sidebar Menu Modern dengan Icons 
 with st.sidebar:
     selected = option_menu(
         menu_title="Main Menu",  # Judul menu
@@ -276,7 +267,8 @@ with st.sidebar:
             "Fuzzy Searching",
             "Query Builder",
             "PDF Tools",
-            "Measurement",  # Tambahkan opsi Measurement
+            "Measurement",
+            "Persediaan",  # Tambahkan opsi Persediaan
         ],
         icons=[
             "house",
@@ -285,13 +277,14 @@ with st.sidebar:
             "search",
             "code-slash",
             "file-earmark-pdf",
-            "ruler",  # Ikon untuk Measurement
+            "ruler",
+            "box",  # Ikon untuk Persediaan
         ],
         menu_icon="cast",  # Ikon utama
         default_index=0,  # Halaman awal
-    )
+    ) 
 
-# Panggil fungsi halaman yang dipilih
+# Panggil fungsi halaman yang dipilih 
 try:
     page_names_to_funcs[selected]()
 except KeyError:
