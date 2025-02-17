@@ -14,3 +14,4 @@ streamlit-option-menu
 opencv-python
 Pillow
 Streamlit-Drawable-Canvas
+streamlit_image_coordinates
