@@ -231,33 +231,14 @@ def pdf():
     st.markdown('</div>', unsafe_allow_html=True)
 
 # Halaman Measurement
-def measurement():
+def Measurement():
     st.markdown('<div class="fade-in main-content">', unsafe_allow_html=True)
-    st.title("Pengukuran Panjang dan Luas dari Gambar")
-    st.write("""
-    Halaman ini memungkinkan Anda mengukur panjang dan luas dari gambar menggunakan referensi skala.
-    Langkah-langkah:
-    1. Upload gambar yang ingin diukur.
-    2. Tarik garis referensi untuk menentukan skala.
-    3. Gambar poligon untuk menghitung luas dan panjang total.
-    """)
-
-    # Upload gambar
-    uploaded_file = st.file_uploader("Upload Gambar", type=["jpg", "jpeg", "png"])
-    if uploaded_file is not None:
-        st.image(uploaded_file, caption="Gambar yang Diupload", use_column_width=True)
-        st.success("Gambar berhasil diupload!")
-
-        # Input skala referensi
-        reference_length = st.number_input("Masukkan panjang garis referensi (dalam meter):", value=1.0)
-        if st.button("Hitung Skala"):
-            st.success(f"Skala ditentukan: {reference_length} meter per piksel")
-
-        # Input poligon
-        st.write("Gambar poligon pada gambar untuk menghitung luas dan panjang total.")
-        if st.button("Hitung Luas dan Panjang"):
-            st.info("Fitur ini sedang dikembangkan. Silakan coba lagi nanti!")
-
+    st.title("Measurement")
+    st.write("Halaman untuk menghitung luas area berdasarkan gambar atau image")
+    try:
+        Measurement_app()
+    except Exception as e:
+        st.error(f"Error loadingMeasurement: {str(e)}")
     st.markdown('</div>', unsafe_allow_html=True)
 
 # Navigasi halaman utama
