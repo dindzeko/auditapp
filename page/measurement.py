@@ -2,7 +2,7 @@ import streamlit as st
 import cv2
 import numpy as np
 from PIL import Image
-import io
+from streamlit_drawable_canvas import st_canvas
 
 def app():
     st.title("Pengukuran Panjang dan Luas dari Gambar")
@@ -36,7 +36,6 @@ def app():
         # Baca gambar menggunakan OpenCV
         file_bytes = np.asarray(bytearray(uploaded_file.read()), dtype=np.uint8)
         st.session_state["image"] = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
-
         if st.session_state["image"] is None:
             st.error("Gagal membaca gambar. Pastikan file valid.")
         else:
@@ -54,13 +53,32 @@ def app():
             # Tampilkan gambar di Streamlit
             image_rgb = cv2.cvtColor(st.session_state["resized_image"], cv2.COLOR_BGR2RGB)
             pil_image = Image.fromarray(image_rgb)
-            st.image(pil_image, caption="Gambar yang Diupload", use_column_width=True)
+            st.image(pil_image, caption="Gambar yang Diupload", use_container_width=True)
 
     # Mode Referensi
     st.subheader("Langkah 1: Tarik Garis Referensi")
     if st.button("Mulai Mode Referensi"):
         st.write("Klik dua titik pada gambar untuk menarik garis referensi.")
         st.session_state["ref_points"] = []
+
+    # Canvas untuk mode referensi
+    if st.session_state["image"] is not None:
+        canvas_result = st_canvas(
+            fill_color="rgba(255, 165, 0, 0.3)",  # Warna transparan
+            stroke_width=2,
+            stroke_color="#FF0000",
+            background_image=Image.fromarray(cv2.cvtColor(st.session_state["resized_image"], cv2.COLOR_BGR2RGB)),
+            update_streamlit=True,
+            height=600,
+            drawing_mode="line",
+            key="canvas_ref",
+        )
+
+        if canvas_result.json_data and len(canvas_result.json_data["objects"]) > 0:
+            ref_points = [
+                (int(obj["left"]), int(obj["top"])) for obj in canvas_result.json_data["objects"]
+            ]
+            st.session_state["ref_points"] = ref_points
 
     if st.button("Selesai Referensi"):
         ref_points = st.session_state["ref_points"]
@@ -78,6 +96,25 @@ def app():
         st.write("Klik untuk menambahkan titik-titik poligon. Tekan tombol 'Selesai' untuk menyelesaikan.")
         st.session_state["polygon_points"] = []
 
+    # Canvas untuk mode poligon
+    if st.session_state["image"] is not None:
+        canvas_result = st_canvas(
+            fill_color="rgba(0, 255, 0, 0.3)",  # Warna transparan
+            stroke_width=2,
+            stroke_color="#00FF00",
+            background_image=Image.fromarray(cv2.cvtColor(st.session_state["resized_image"], cv2.COLOR_BGR2RGB)),
+            update_streamlit=True,
+            height=600,
+            drawing_mode="polygon",
+            key="canvas_polygon",
+        )
+
+        if canvas_result.json_data and len(canvas_result.json_data["objects"]) > 0:
+            polygon_points = [
+                (int(point["x"]), int(point["y"])) for point in canvas_result.json_data["objects"][0]["path"][:-1]
+            ]
+            st.session_state["polygon_points"] = polygon_points
+
     if st.button("Selesai Poligon"):
         polygon_points = st.session_state["polygon_points"]
         if len(polygon_points) >= 3:
@@ -92,3 +129,6 @@ def app():
             st.write(f"Panjang Total: {total_length_meters:.2f} m")
         else:
             st.warning("Poligon tidak valid. Minimal 3 titik diperlukan.")
+
+if __name__ == "__main__":
+    app()
