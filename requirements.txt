@@ -11,3 +11,6 @@ seaborn
 fuzzywuzzy
 pypdf
 streamlit-option-menu
+io
+cv2
+PIL
