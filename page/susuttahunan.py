@@ -85,7 +85,7 @@ def format_number_indonesia(number):
 
 # Fungsi utama aplikasi
 def app():
-    st.title("📉 Shz_Calc_Depre_Tahunan")
+    st.title("📉 Depresiasi GL Tahunan")
 
     # Informasi Penggunaan dengan Toggle (Expander)
     with st.expander("📝 Panduan Penggunaan ▼", expanded=False):
