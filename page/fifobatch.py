@@ -62,6 +62,8 @@ def app():
         st.session_state.inventory = []
     if "transactions" not in st.session_state:
         st.session_state.transactions = []
+    if "worksheet" not in st.session_state:
+        st.session_state.worksheet = []  # Untuk menyimpan kertas kerja
     
     # Input Saldo Awal
     st.subheader("Saldo Awal")
@@ -130,6 +132,8 @@ def app():
             inventory, total_unit, total_nilai, worksheet = calculate_batch_with_worksheet(
                 st.session_state.inventory, st.session_state.transactions
             )
+            st.session_state.worksheet = worksheet  # Simpan kertas kerja ke session state
+            
             st.subheader("Hasil Perhitungan FIFO")
             st.write(f"Total Unit: {total_unit}")
             st.write(f"Total Nilai: {total_nilai:.2f}")
@@ -153,9 +157,11 @@ def app():
     
     # Reset Aplikasi
     if st.button("Reset"):
+        # Hapus semua data di session state
         st.session_state.inventory.clear()
         st.session_state.transactions.clear()
-        st.success("Aplikasi telah direset!")
+        st.session_state.worksheet.clear()
+        st.success("Aplikasi telah direset! Semua data telah dihapus.")
 
 
 # Jalankan halaman FIFO Batch jika file dijalankan langsung
