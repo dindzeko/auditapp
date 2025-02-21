@@ -110,7 +110,7 @@ def app():
             with col2:
                 if st.button(f"Hapus {idx}", key=f"hapus_{idx}"):
                     st.session_state.transactions.pop(idx)
-                    st.experimental_rerun()  # Muat ulang halaman untuk memperbarui daftar transaksi
+                    st.rerun()  # Gunakan st.rerun() untuk memuat ulang halaman
     else:
         st.info("Belum ada transaksi.")
     
@@ -134,7 +134,7 @@ def app():
         st.session_state.transactions.clear()
         
         # Force reload halaman untuk memastikan reset penuh
-        st.experimental_rerun()
+        st.rerun()
 
 # Jalankan halaman FIFO
 if __name__ == "__main__":
