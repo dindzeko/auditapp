@@ -155,6 +155,32 @@ def app():
         else:
             st.error("Saldo awal belum diset!")
     
+    # Export ke Excel
+    if st.session_state.worksheet:
+        st.subheader("Export Kertas Kerja ke Excel")
+        export_data = []
+        for step in st.session_state.worksheet:
+            persediaan_str = ", ".join([f"{item['unit']} unit @ {item['nilai']:.2f}" for item in step["persediaan_akhir"]])
+            export_data.append({
+                "Uraian": step["uraian"],
+                "Tanggal Transaksi": step["tanggal"],
+                "Tambah/Kurang": step["tambah_kurang"],
+                "Persediaan Akhir": persediaan_str
+            })
+        
+        # Buat DataFrame
+        df_export = pd.DataFrame(export_data)
+        
+        # Konversi ke file Excel
+        @st.cache_data
+        def convert_df_to_excel(df):
+            return df.to_excel("kertas_kerja_fifo.xlsx", index=False)
+        
+        # Tombol Download
+        if st.button("Download Kertas Kerja (Excel)"):
+            convert_df_to_excel(df_export)
+            st.success("File Excel berhasil dibuat! Silakan cek folder Anda.")
+    
     # Reset Aplikasi
     if st.button("Reset"):
         # Hapus semua data di session state
