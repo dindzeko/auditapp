@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
-from dateutil import parser  # Untuk mendeteksi format tanggal otomatis
+from dateutil import parser
 
 # Fungsi utama untuk menghitung FIFO Batch dengan kertas kerja
 def calculate_batch_with_worksheet(inventory, transactions):
@@ -13,19 +13,23 @@ def calculate_batch_with_worksheet(inventory, transactions):
     
     # Kertas kerja
     worksheet = []
+    
+    # Saldo Awal
     worksheet.append({
-        "langkah": "Saldo Awal",
-        "inventory": inventory.copy(),
-        "keterangan": "Persediaan awal sebelum transaksi."
+        "uraian": "Saldo Awal",
+        "tanggal": None,
+        "tambah_kurang": "",
+        "persediaan_akhir": [{"unit": item["unit"], "nilai": item["nilai"]} for item in inventory]
     })
     
     for transaksi in transactions:
         if transaksi["jenis"] == "Tambah":
             inventory.append({"unit": transaksi["unit"], "nilai": transaksi["nilai"]})
             worksheet.append({
-                "langkah": f"Tambah {transaksi['unit']} unit @ {transaksi['nilai']:.2f}",
-                "inventory": inventory.copy(),
-                "keterangan": f"Menambahkan {transaksi['unit']} unit ke persediaan."
+                "uraian": f"Tambah {transaksi['unit']} unit @ {transaksi['nilai']:.2f}",
+                "tanggal": transaksi["tanggal"],
+                "tambah_kurang": f"+{transaksi['unit']} unit @ {transaksi['nilai']:.2f}",
+                "persediaan_akhir": [{"unit": item["unit"], "nilai": item["nilai"]} for item in inventory]
             })
         elif transaksi["jenis"] == "Kurang":
             unit_to_remove = transaksi["unit"]
@@ -34,19 +38,15 @@ def calculate_batch_with_worksheet(inventory, transactions):
                 if oldest["unit"] <= unit_to_remove:
                     unit_to_remove -= oldest["unit"]
                     inventory.pop(0)
-                    worksheet.append({
-                        "langkah": f"Kurang {oldest['unit']} unit @ {oldest['nilai']:.2f}",
-                        "inventory": inventory.copy(),
-                        "keterangan": f"Menghapus {oldest['unit']} unit dari persediaan."
-                    })
                 else:
                     oldest["unit"] -= unit_to_remove
                     unit_to_remove = 0
-                    worksheet.append({
-                        "langkah": f"Kurang {transaksi['unit']} unit (sebagian dari batch)",
-                        "inventory": inventory.copy(),
-                        "keterangan": f"Mengurangi {transaksi['unit']} unit dari batch pertama."
-                    })
+            worksheet.append({
+                "uraian": f"Kurang {transaksi['unit']} unit",
+                "tanggal": transaksi["tanggal"],
+                "tambah_kurang": f"-{transaksi['unit']} unit",
+                "persediaan_akhir": [{"unit": item["unit"], "nilai": item["nilai"]} for item in inventory]
+            })
     
     total_unit = sum(item["unit"] for item in inventory)
     total_nilai = sum(item["unit"] * item["nilai"] for item in inventory)
@@ -80,19 +80,15 @@ def app():
     uploaded_file = st.file_uploader("Upload file Excel (.xlsx)", type=["xlsx"])
     if uploaded_file is not None:
         try:
-            # Baca file Excel
             df = pd.read_excel(uploaded_file)
-            # Validasi kolom
             required_columns = {"Tanggal", "Jenis", "Unit", "Nilai"}
             if not required_columns.issubset(df.columns):
                 st.error("File Excel harus memiliki kolom berikut: Tanggal, Jenis, Unit, Nilai")
                 return
             
-            # Konversi data ke list transaksi
             transactions = []
             for _, row in df.iterrows():
                 try:
-                    # Mengonversi tanggal ke format Python datetime
                     tanggal = parser.parse(str(row["Tanggal"])).date()
                 except ValueError:
                     st.error(f"Tanggal tidak valid: {row['Tanggal']}")
@@ -123,22 +119,10 @@ def app():
                     "jenis": jenis
                 })
             
-            # Simpan transaksi ke session state
             st.session_state.transactions = transactions
             st.success(f"{len(transactions)} transaksi berhasil diupload!")
         except Exception as e:
             st.error(f"Terjadi kesalahan saat membaca file Excel: {e}")
-    
-    # Daftar Transaksi
-    st.subheader("Daftar Transaksi")
-    if st.session_state.transactions:
-        for idx, transaksi in enumerate(st.session_state.transactions, start=1):
-            if transaksi["jenis"] == "Tambah":
-                st.write(f"{idx}. {transaksi['tanggal']} - Tambah {transaksi['unit']} unit @ {transaksi['nilai']:.2f}")
-            else:
-                st.write(f"{idx}. {transaksi['tanggal']} - Kurang {transaksi['unit']} unit")
-    else:
-        st.info("Belum ada transaksi.")
     
     # Hitung Persediaan Akhir
     if st.button("Hitung Persediaan Akhir"):
@@ -149,19 +133,21 @@ def app():
             st.subheader("Hasil Perhitungan FIFO")
             st.write(f"Total Unit: {total_unit}")
             st.write(f"Total Nilai: {total_nilai:.2f}")
-            st.write("Rincian Persediaan Akhir:")
-            for item in inventory:
-                st.write(f"- {item['unit']} unit @ {item['nilai']:.2f}")
             
-            # Tampilkan kertas kerja
-            st.subheader("Kertas Kerja Perhitungan FIFO")
+            # Format kertas kerja menjadi tabel
+            table_data = []
             for step in worksheet:
-                st.write(f"**Langkah:** {step['langkah']}")
-                st.write(f"**Keterangan:** {step['keterangan']}")
-                st.write("**Persediaan Saat Ini:**")
-                for item in step["inventory"]:
-                    st.write(f"- {item['unit']} unit @ {item['nilai']:.2f}")
-                st.write("---")
+                persediaan_str = ", ".join([f"{item['unit']} unit @ {item['nilai']:.2f}" for item in step["persediaan_akhir"]])
+                table_data.append({
+                    "Uraian": step["uraian"],
+                    "Tanggal Transaksi": step["tanggal"],
+                    "Tambah/Kurang": step["tambah_kurang"],
+                    "Persediaan Akhir": persediaan_str
+                })
+            
+            # Tampilkan tabel
+            st.subheader("Kertas Kerja Perhitungan FIFO")
+            st.table(table_data)
         else:
             st.error("Saldo awal belum diset!")
     
