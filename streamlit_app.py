@@ -225,13 +225,13 @@ def fifo():
             st.session_state["subpage"] = "Batch"
     
     if st.session_state["subpage"] == "Individu":
-        st.write("### Perhitungan FIFO Individu")
+        st.write("### Menggunakan Input Manual")
         try:
             fifoindividu_app()
         except Exception as e:
             st.error(f"Error loading FIFO Individu: {str(e)}")
     elif st.session_state["subpage"] == "Batch":
-        st.write("### Perhitungan FIFO Batch")
+        st.write("### Menggunakan Form Excel")
         try:
             fifobatch_app()
         except Exception as e:
