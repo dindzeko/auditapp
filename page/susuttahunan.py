@@ -166,7 +166,7 @@ def app():
             })
 
     # Correction Management
-    st.header("✏️ Input Koreksi Kurang")
+    st.header("✏️ Input Koreksi")
     if "corrections" not in st.session_state:
         st.session_state.corrections = []
     col_corr1, col_corr2 = st.columns(2)
