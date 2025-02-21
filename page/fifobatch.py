@@ -49,8 +49,19 @@ def calculate_batch_with_worksheet(inventory, transactions):
                 "persediaan_akhir": [{"unit": item["unit"], "nilai": item["nilai"]} for item in inventory]
             })
     
+    # Hitung Saldo Akhir
     total_unit = sum(item["unit"] for item in inventory)
     total_nilai = sum(item["unit"] * item["nilai"] for item in inventory)
+    
+    # Tambahkan baris Saldo Akhir ke kertas kerja
+    worksheet.append({
+        "uraian": "Saldo Akhir",
+        "tanggal": None,
+        "tambah_kurang": "",
+        "persediaan_akhir": [{"unit": item["unit"], "nilai": item["nilai"]} for item in inventory],
+        "total_nilai": total_nilai
+    })
+    
     return inventory, total_unit, total_nilai, worksheet
 
 
@@ -142,7 +153,8 @@ def app():
             # Format kertas kerja menjadi tabel
             table_data = []
             for step in worksheet:
-                persediaan_str = ", ".join([f"{item['unit']} unit @ {item['nilai']:.2f}" for item in step["persediaan_akhir"]])
+                persediaan_str = ", ".join([f"{item['unit']} unit @ {item['nilai']:.2f} ({item['unit'] * item['nilai']:.2f})" 
+                                           for item in step["persediaan_akhir"]])
                 table_data.append({
                     "Uraian": step["uraian"],
                     "Tanggal Transaksi": step["tanggal"],
@@ -161,7 +173,8 @@ def app():
         st.subheader("Export Kertas Kerja ke Excel")
         export_data = []
         for step in st.session_state.worksheet:
-            persediaan_str = ", ".join([f"{item['unit']} unit @ {item['nilai']:.2f}" for item in step["persediaan_akhir"]])
+            persediaan_str = ", ".join([f"{item['unit']} unit @ {item['nilai']:.2f} ({item['unit'] * item['nilai']:.2f})" 
+                                       for item in step["persediaan_akhir"]])
             export_data.append({
                 "Uraian": step["uraian"],
                 "Tanggal Transaksi": step["tanggal"],
