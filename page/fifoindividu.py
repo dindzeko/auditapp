@@ -23,7 +23,7 @@ def calculate_individu(inventory, transactions):
     return inventory, total_unit, total_nilai
 
 # Halaman Streamlit
-def app():  # Ubah nama fungsi menjadi 'app'
+def app():
     st.title("FIFO Inventory Calculator")
     
     # Inisialisasi session state
@@ -88,7 +88,20 @@ def app():  # Ubah nama fungsi menjadi 'app'
     else:
         st.info("Belum ada transaksi.")
     
-    # Hitung Persediaan Akhir
+    # Hitung Persediaan Akhir Secara Real-Time
+    if st.session_state.inventory or st.session_state.transactions:
+        inventory, total_unit, total_nilai = calculate_individu(st.session_state.inventory, st.session_state.transactions)
+        st.subheader("Posisi Persediaan Saat Ini")
+        st.write(f"Total Unit: {total_unit}")
+        st.write(f"Total Nilai: {total_nilai:.2f}")
+        if inventory:
+            st.write("Rincian Persediaan:")
+            for item in inventory:
+                st.write(f"- {item['unit']} unit @ {item['nilai']:.2f}")
+        else:
+            st.warning("Persediaan kosong!")
+    
+    # Hitung Persediaan Akhir (Manual)
     if st.button("Hitung Persediaan Akhir"):
         if st.session_state.inventory:
             inventory, total_unit, total_nilai = calculate_individu(st.session_state.inventory, st.session_state.transactions)
@@ -109,4 +122,4 @@ def app():  # Ubah nama fungsi menjadi 'app'
 
 # Jalankan halaman FIFO
 if __name__ == "__main__":
-    app()  # Panggil fungsi 'app' jika file dijalankan langsung
+    app()
