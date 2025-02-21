@@ -6,9 +6,9 @@ def calculate_individu(inventory, transactions):
     inventory = inventory.copy()
     transactions = sorted(transactions, key=lambda x: x["tanggal"])
     for transaksi in transactions:
-        if transaksi["jenis"] == "Tambah":
+        if transaksi["Mutasi"] == "Tambah":
             inventory.append({"unit": transaksi["unit"], "nilai": transaksi["nilai"]})
-        elif transaksi["jenis"] == "Kurang":
+        elif transaksi["Mutasi"] == "Kurang":
             unit_to_remove = transaksi["unit"]
             total_unit_inventory = sum(item["unit"] for item in inventory)
             
@@ -31,7 +31,6 @@ def calculate_individu(inventory, transactions):
 
 # Halaman Streamlit
 def app():
-    
     # Inisialisasi session state
     if "inventory" not in st.session_state:
         st.session_state.inventory = []
@@ -59,25 +58,25 @@ def app():
         min_value=datetime(2024, 1, 1),  # Minimal 1 Januari 2024
         max_value=datetime(2025, 4, 1)   # Maksimal 1 April 2025
     )
-    jenis_transaksi = st.selectbox("Jenis Transaksi", ["Tambah", "Kurang"])
+    mutasi_transaksi = st.selectbox("Mutasi Transaksi", ["Tambah", "Kurang"])
     unit = st.number_input("Jumlah Unit", min_value=0, step=1)
     
-    if jenis_transaksi == "Tambah":
+    if mutasi_transaksi == "Tambah":
         nilai_per_unit = st.number_input("Nilai Per Unit", min_value=0.0, step=0.01)
     else:
         nilai_per_unit = None
     
     if st.button("Tambahkan Transaksi"):
         if unit > 0:
-            if jenis_transaksi == "Tambah" and nilai_per_unit > 0:
+            if mutasi_transaksi == "Tambah" and nilai_per_unit > 0:
                 st.session_state.transactions.append({
                     "tanggal": tanggal,
                     "unit": unit,
                     "nilai": nilai_per_unit,
-                    "jenis": jenis_transaksi
+                    "Mutasi": mutasi_transaksi  # Ganti 'jenis' menjadi 'Mutasi'
                 })
                 st.success("Transaksi penambahan berhasil ditambahkan!")
-            elif jenis_transaksi == "Kurang":
+            elif mutasi_transaksi == "Kurang":
                 # Hitung total unit saat ini sebelum menambahkan transaksi
                 current_inventory, _, _ = calculate_individu(st.session_state.inventory, st.session_state.transactions)
                 total_unit_inventory = sum(item["unit"] for item in current_inventory)
@@ -88,7 +87,7 @@ def app():
                     st.session_state.transactions.append({
                         "tanggal": tanggal,
                         "unit": unit,
-                        "jenis": jenis_transaksi
+                        "Mutasi": mutasi_transaksi  # Ganti 'jenis' menjadi 'Mutasi'
                     })
                     st.success("Transaksi pengurangan berhasil ditambahkan!")
             else:
@@ -102,7 +101,7 @@ def app():
         for idx, transaksi in enumerate(st.session_state.transactions):
             col1, col2 = st.columns([4, 1])  # Kolom untuk detail transaksi dan tombol hapus
             with col1:
-                if transaksi["jenis"] == "Tambah":
+                if transaksi["Mutasi"] == "Tambah":  # Ganti 'jenis' menjadi 'Mutasi'
                     st.write(f"{idx + 1}. {transaksi['tanggal']} - Tambah {transaksi['unit']} unit @ {transaksi['nilai']:.2f}")
                 else:
                     st.write(f"{idx + 1}. {transaksi['tanggal']} - Kurang {transaksi['unit']} unit")
