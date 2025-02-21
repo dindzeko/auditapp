@@ -31,7 +31,7 @@ def calculate_individu(inventory, transactions):
 
 # Halaman Streamlit
 def app():
-    st.title("FIFO Inventory Calculator")
+    st.title("Rekalkulasi Perhitungan FIFO")
     
     # Inisialisasi session state
     if "inventory" not in st.session_state:
