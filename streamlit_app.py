@@ -83,6 +83,8 @@ try:
     from page.fifobatch import app as fifobatch_app
     from page.mergepdf import app as mergepdf_app
     from page.extractpdf import app as extractpdf_app
+    from page.fuzzysearch import app as fuzzysearch_app
+    from page.querybuilder import app as querybuilder_app
 except ImportError as e:
     st.error(f"Error importing modules: {str(e)}")
     st.stop()
@@ -102,8 +104,10 @@ def main_page():
     Modul-modul yang tersedia dalam aplikasi ini mencakup:
     - **Depresiasi**: Untuk menghitung nilai penyusutan aset secara cepat dan akurat.
     - **Sample**: Membantu Anda melakukan pengambilan sampel data untuk audit.
-    - **FIFO**: Menghitung persediaan akhir menggunakan metode FIFO (First In, First Out).
+    - **Fuzzy Searching**: Mencari data dengan toleransi terhadap kesalahan penulisan.
+    - **Query Builder**: Membuat dan mengeksekusi kueri database dengan antarmuka yang mudah.
     - **PDF Tools**: Alat bantu untuk memanipulasi dokumen PDF.
+    - **FIFO**: Menghitung persediaan akhir menggunakan metode FIFO (First In, First Out).
     
     Gunakan menu navigasi untuk memilih modul yang sesuai dengan kebutuhan Anda. 
     Semoga aplikasi ini dapat mendukung produktivitas Anda!
@@ -235,11 +239,33 @@ def fifo():
     
     st.markdown('</div>', unsafe_allow_html=True)
 
+# Halaman Fuzzy Searching (Tanpa Subhalaman)
+def fuzzy_searching():
+    st.markdown('<div class="fade-in main-content">', unsafe_allow_html=True)
+    st.title("Fuzzy Searching")
+    try:
+        fuzzysearch_app()
+    except Exception as e:
+        st.error(f"Error loading Fuzzy Search: {str(e)}")
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# Halaman Query Builder (Tanpa Subhalaman)
+def query_builder():
+    st.markdown('<div class="fade-in main-content">', unsafe_allow_html=True)
+    st.title("Query Builder")
+    try:
+        querybuilder_app()
+    except Exception as e:
+        st.error(f"Error loading Query Builder: {str(e)}")
+    st.markdown('</div>', unsafe_allow_html=True)
+
 # Navigasi halaman utama
 page_names_to_funcs = {
     "Main Page": main_page,
     "Depresiasi": depresiasi,
     "Sample": sample,
+    "Fuzzy Searching": fuzzy_searching,
+    "Query Builder": query_builder,
     "PDF Tools": pdf_tools,
     "FIFO": fifo,
 }
@@ -252,6 +278,8 @@ with st.sidebar:
             "Main Page",
             "Depresiasi",
             "Sample",
+            "Fuzzy Searching",
+            "Query Builder",
             "PDF Tools",
             "FIFO",
         ],
@@ -259,6 +287,8 @@ with st.sidebar:
             "house",
             "calculator",
             "clipboard-data",
+            "search",
+            "code-slash",
             "file-earmark-pdf",
             "box",
         ],
