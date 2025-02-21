@@ -88,7 +88,14 @@ def app():
             st.success("Saldo awal berhasil diset!")
         else:
             st.error("Masukkan jumlah unit dan nilai per unit yang valid!")
-    
+
+    # Download Form Mutasi Persediaan dari Google Sheets
+    st.subheader("Download Form Mutasi Persediaan")
+    form_url = "https://docs.google.com/spreadsheets/d/1C0Yz-fndr6fQyrU3s8mMEW0JF_jBS70L/export?format=xlsx"
+    st.markdown(
+        f'<a href="{form_url}" download>Unduh Form Mutasi Persediaan</a>',
+        unsafe_allow_html=True
+    )
     # Upload File Excel untuk Transaksi
     st.subheader("Upload Transaksi dari Excel")
     uploaded_file = st.file_uploader("Upload file Excel (.xlsx)", type=["xlsx"])
@@ -214,14 +221,6 @@ def app():
             file_name="kertas_kerja_fifo.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
-    
-    # Download Form Mutasi Persediaan dari Google Sheets
-    st.subheader("Download Form Mutasi Persediaan")
-    form_url = "https://docs.google.com/spreadsheets/d/1C0Yz-fndr6fQyrU3s8mMEW0JF_jBS70L/export?format=xlsx"
-    st.markdown(
-        f'<a href="{form_url}" download>Unduh Form Mutasi Persediaan</a>',
-        unsafe_allow_html=True
-    )
     
     # Reset Aplikasi
     if st.button("Reset"):
