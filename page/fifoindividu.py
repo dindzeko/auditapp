@@ -10,6 +10,13 @@ def calculate_individu(inventory, transactions):
             inventory.append({"unit": transaksi["unit"], "nilai": transaksi["nilai"]})
         elif transaksi["jenis"] == "Kurang":
             unit_to_remove = transaksi["unit"]
+            total_unit_inventory = sum(item["unit"] for item in inventory)
+            
+            # Validasi: Jika unit yang ingin dikurangi melebihi total unit yang tersedia
+            if unit_to_remove > total_unit_inventory:
+                st.error(f"Transaksi gagal! Pengurangan {unit_to_remove} unit melebihi total persediaan ({total_unit_inventory} unit).")
+                return inventory, sum(item["unit"] for item in inventory), sum(item["unit"] * item["nilai"] for item in inventory)
+            
             while unit_to_remove > 0 and inventory:
                 oldest = inventory[0]
                 if oldest["unit"] <= unit_to_remove:
@@ -66,12 +73,19 @@ def app():
                 })
                 st.success("Transaksi penambahan berhasil ditambahkan!")
             elif jenis_transaksi == "Kurang":
-                st.session_state.transactions.append({
-                    "tanggal": tanggal,
-                    "unit": unit,
-                    "jenis": jenis_transaksi
-                })
-                st.success("Transaksi pengurangan berhasil ditambahkan!")
+                # Hitung total unit saat ini sebelum menambahkan transaksi
+                current_inventory, _, _ = calculate_individu(st.session_state.inventory, st.session_state.transactions)
+                total_unit_inventory = sum(item["unit"] for item in current_inventory)
+                
+                if unit > total_unit_inventory:
+                    st.error(f"Pengurangan {unit} unit melebihi total persediaan ({total_unit_inventory} unit). Transaksi dibatalkan.")
+                else:
+                    st.session_state.transactions.append({
+                        "tanggal": tanggal,
+                        "unit": unit,
+                        "jenis": jenis_transaksi
+                    })
+                    st.success("Transaksi pengurangan berhasil ditambahkan!")
             else:
                 st.error("Masukkan data transaksi yang valid!")
         else:
@@ -100,19 +114,6 @@ def app():
                 st.write(f"- {item['unit']} unit @ {item['nilai']:.2f}")
         else:
             st.warning("Persediaan kosong!")
-    
-    # Hitung Persediaan Akhir (Manual)
-    if st.button("Hitung Persediaan Akhir"):
-        if st.session_state.inventory:
-            inventory, total_unit, total_nilai = calculate_individu(st.session_state.inventory, st.session_state.transactions)
-            st.subheader("Hasil Perhitungan FIFO")
-            st.write(f"Total Unit: {total_unit}")
-            st.write(f"Total Nilai: {total_nilai:.2f}")
-            st.write("Rincian Persediaan Akhir:")
-            for item in inventory:
-                st.write(f"- {item['unit']} unit @ {item['nilai']:.2f}")
-        else:
-            st.error("Saldo awal belum diset!")
     
     # Reset Aplikasi
     if st.button("Reset"):
