@@ -1,8 +1,8 @@
 import streamlit as st
 from datetime import datetime
 
-# Fungsi utama untuk menghitung FIFO
-def calculate_fifo(inventory, transactions):
+# Fungsi utama untuk menghitung FIFO secara Individu
+def calculate_individu(inventory, transactions):
     inventory = inventory.copy()
     transactions = sorted(transactions, key=lambda x: x["tanggal"])
     for transaksi in transactions:
@@ -91,7 +91,7 @@ def fifo_page():
     # Hitung Persediaan Akhir
     if st.button("Hitung Persediaan Akhir"):
         if st.session_state.inventory:
-            inventory, total_unit, total_nilai = calculate_fifo(st.session_state.inventory, st.session_state.transactions)
+            inventory, total_unit, total_nilai = calculate_individu(st.session_state.inventory, st.session_state.transactions)
             st.subheader("Hasil Perhitungan FIFO")
             st.write(f"Total Unit: {total_unit}")
             st.write(f"Total Nilai: {total_nilai:.2f}")
