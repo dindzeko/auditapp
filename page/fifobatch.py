@@ -5,7 +5,7 @@ from datetime import datetime
 from dateutil import parser  # Untuk mendeteksi format tanggal otomatis
 
 # Fungsi utama untuk menghitung FIFO
-def calculate_fifo(inventory, transactions):
+def calculate_batch(inventory, transactions):
     """
     Menghitung persediaan akhir menggunakan metode FIFO.
     """
@@ -124,7 +124,7 @@ def fifo_page():
     # Hitung Persediaan Akhir
     if st.button("Hitung Persediaan Akhir"):
         if st.session_state.inventory:
-            inventory, total_unit, total_nilai = calculate_fifo(st.session_state.inventory, st.session_state.transactions)
+            inventory, total_unit, total_nilai = calculate_batch(st.session_state.inventory, st.session_state.transactions)
             st.subheader("Hasil Perhitungan FIFO")
             st.write(f"Total Unit: {total_unit}")
             st.write(f"Total Nilai: {total_nilai:.2f}")
