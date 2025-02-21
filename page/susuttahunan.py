@@ -101,8 +101,8 @@ def app():
            - Masukkan tahun, jumlah kapitalisasi, dan tambahan masa manfaat (jika ada).
            - Klik tombol **Tambah Kapitalisasi** untuk menyimpan data.
         
-        3. **Tambahkan Koreksi**:
-           - Masukkan tahun dan jumlah koreksi.
+        3. **Tambahkan Koreksi Kurang**:
+           - Masukkan tahun dan jumlah koreksi kurang aset tetap.
            - Klik tombol **Tambah Koreksi** untuk menyimpan data.
         
         4. **Hitung Penyusutan**:
@@ -166,7 +166,7 @@ def app():
             })
 
     # Correction Management
-    st.header("✏️ Input Koreksi")
+    st.header("✏️ Input Koreksi Kurang")
     if "corrections" not in st.session_state:
         st.session_state.corrections = []
     col_corr1, col_corr2 = st.columns(2)
