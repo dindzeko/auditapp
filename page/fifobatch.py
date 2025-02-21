@@ -96,7 +96,7 @@ def app():
         unsafe_allow_html=True
     )
     # Upload File Excel untuk Transaksi
-    st.subheader("Upload Transaksi dari Excel")
+    st.subheader("Upload isian Form Excel Mutasi Persediaan")
     uploaded_file = st.file_uploader("Upload file Excel (.xlsx)", type=["xlsx"])
     if uploaded_file is not None:
         try:
