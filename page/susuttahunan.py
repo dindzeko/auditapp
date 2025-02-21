@@ -15,7 +15,7 @@ def delete_correction(index):
 def edit_correction(index):
     st.session_state.editing_corr_index = index
 
-def calculate_depreciation(initial_cost, acquisition_year, useful_life, reporting_year, capitalizations=None, corrections=None): 
+def calculate_depreciation(initial_cost, acquisition_year, useful_life, reporting_year, capitalizations=None, corrections=None):
     if capitalizations is None:
         capitalizations = []
     if corrections is None:
@@ -39,7 +39,7 @@ def calculate_depreciation(initial_cost, acquisition_year, useful_life, reportin
     schedule = []
     # Calculate yearly depreciation
     while remaining_life > 0 and current_year <= reporting_year:
-        # Process capitalizations
+        # Process capitalizations first
         if current_year in cap_dict:
             for cap in cap_dict[current_year]:
                 if cap['year'] > reporting_year:
@@ -278,14 +278,31 @@ def app():
         error_messages = []
         # Basic validations
         if initial_cost <= 0:
-            error_messages.append("Harga perolehan awal harus lebih besar dari 0")
+            error_messages.append("Harga perolehan harus lebih dari 0")
         if acquisition_year > reporting_year:
             error_messages.append("Tahun perolehan tidak boleh lebih besar dari tahun pelaporan")
+        # Year format validations
+        if not 1900 <= acquisition_year <= 2100:
+            error_messages.append("Perhatikan Input Tahun Anda")
+        if not 1900 <= reporting_year <= 2100:
+            error_messages.append("Perhatikan Input Tahun Anda")
+        # Capitalization validations
+        for cap in st.session_state.capitalizations:
+            if not 1900 <= cap['year'] <= 2100:
+                error_messages.append(f"Tahun Kapitalisasi {cap['year']} Perhatikan Input Tahun Anda")
+            if cap['year'] < acquisition_year:
+                error_messages.append(f"Tahun Kapitalisasi {cap['year']} tidak boleh lebih awal dari Tahun Perolehan")
+        # Correction validations
+        for corr in st.session_state.corrections:
+            if not 1900 <= corr['year'] <= 2100:
+                error_messages.append(f"Tahun Koreksi {corr['year']} Perhatikan Input Tahun Anda")
+            if corr['year'] < acquisition_year:
+                error_messages.append(f"Tahun Koreksi {corr['year']} tidak boleh lebih awal dari Tahun Perolehan")
         if error_messages:
-            for msg in error_messages:
-                st.error(msg)
+            for error in error_messages:
+                st.error(error)
         else:
-            try:
+            with st.spinner("Menghitung penyusutan..."):
                 schedule = calculate_depreciation(
                     initial_cost=initial_cost,
                     acquisition_year=acquisition_year,
@@ -295,14 +312,26 @@ def app():
                     corrections=st.session_state.corrections
                 )
                 df = pd.DataFrame(schedule)
-                df["depreciation"] = df["depreciation"].apply(format_number_indonesia)
-                df["accumulated"] = df["accumulated"].apply(format_number_indonesia)
-                df["book_value"] = df["book_value"].apply(format_number_indonesia)
-                st.subheader("📊 Jadwal Penyusutan")
-                st.dataframe(df, hide_index=True)
-            except Exception as e:
-                st.error(f"❌ Terjadi kesalahan: {str(e)}")
+                display_df = df.copy()
+                # Format numeric columns
+                numeric_cols = ['depreciation', 'accumulated', 'book_value']
+                for col in numeric_cols:
+                    display_df[col] = display_df[col].apply(format_number_indonesia)
+                # Format other columns
+                display_df['year'] = display_df['year'].astype(str)
+                display_df['sisa_mm'] = display_df['sisa_mm'].astype(int)
+                # Show results
+                st.header("📈 Hasil Perhitungan")
+                st.dataframe(display_df, use_container_width=True)
+                # Export to Excel
+                excel_file = convert_df_to_excel(df)
+                st.download_button(
+                    label="💾 Download Excel",
+                    data=excel_file,
+                    file_name="depresiasi.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    use_container_width=True
+                )
 
-# Penambahan blok untuk menjalankan aplikasi
 if __name__ == "__main__":
     app()
