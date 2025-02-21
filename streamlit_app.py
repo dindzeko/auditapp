@@ -214,7 +214,7 @@ def pdf_tools():
 def fifo():
     st.markdown('<div class="fade-in main-content">', unsafe_allow_html=True)
     st.title("FIFO Inventory Calculator")
-    st.write("Modul FIFO digunakan untuk menghitung persediaan akhir menggunakan metode FIFO (First In, First Out). Silahkan pilih metode yang anda ingin gunakan:")
+    st.write("Modul FIFO digunakan untuk menghitung persediaan akhir menggunakan metode FIFO (First In, First Out). Silahkan pilih metode yang anda ingin anda gunakan:")
     
     col1, col2 = st.columns(2)
     with col1:
