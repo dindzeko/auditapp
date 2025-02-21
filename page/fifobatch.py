@@ -24,7 +24,7 @@ def calculate_batch_with_worksheet(inventory, transactions):
     })
     
     for transaksi in transactions:
-        if transaksi["jenis"] == "Tambah":
+        if transaksi["mutasi"] == "Tambah":
             inventory.append({"unit": transaksi["unit"], "nilai": transaksi["nilai"]})
             worksheet.append({
                 "uraian": f"Tambah {transaksi['unit']} unit @ {transaksi['nilai']:.2f}",
@@ -32,7 +32,7 @@ def calculate_batch_with_worksheet(inventory, transactions):
                 "tambah_kurang": f"+{transaksi['unit']} unit @ {transaksi['nilai']:.2f}",
                 "persediaan_akhir": [{"unit": item["unit"], "nilai": item["nilai"]} for item in inventory]
             })
-        elif transaksi["jenis"] == "Kurang":
+        elif transaksi["mutasi"] == "Kurang":
             unit_to_remove = transaksi["unit"]
             while unit_to_remove > 0 and inventory:
                 oldest = inventory[0]
@@ -95,9 +95,9 @@ def app():
     if uploaded_file is not None:
         try:
             df = pd.read_excel(uploaded_file)
-            required_columns = {"Tanggal", "Jenis", "Unit", "Nilai"}
+            required_columns = {"Tanggal", "Mutasi", "Unit", "Nilai"}
             if not required_columns.issubset(df.columns):
-                st.error("File Excel harus memiliki kolom berikut: Tanggal, Jenis, Unit, Nilai")
+                st.error("File Excel harus memiliki kolom berikut: Tanggal, Mutasi, Unit, Nilai")
                 return
             
             transactions = []
@@ -108,9 +108,9 @@ def app():
                     st.error(f"Tanggal tidak valid: {row['Tanggal']}")
                     return
                 
-                jenis = str(row["Jenis"]).strip().capitalize()
-                if jenis not in ["Tambah", "Kurang"]:
-                    st.error(f"Jenis transaksi tidak valid: {row['Jenis']}")
+                mutasi = str(row["Mutasi"]).strip().capitalize()
+                if mutasi not in ["Tambah", "Kurang"]:
+                    st.error(f"Jenis transaksi tidak valid: {row['Mutasi']}")
                     return
                 
                 try:
@@ -121,8 +121,8 @@ def app():
                     st.error(f"Jumlah unit tidak valid: {row['Unit']}")
                     return
                 
-                nilai = float(row["Nilai"]) if jenis == "Tambah" else None
-                if jenis == "Tambah" and nilai <= 0:
+                nilai = float(row["Nilai"]) if mutasi == "Tambah" else None
+                if mutasi == "Tambah" and nilai <= 0:
                     st.error(f"Nilai per unit tidak valid: {row['Nilai']}")
                     return
                 
@@ -130,7 +130,7 @@ def app():
                     "tanggal": tanggal,
                     "unit": unit,
                     "nilai": nilai,
-                    "jenis": jenis
+                    "mutasi": mutasi
                 })
             
             st.session_state.transactions = transactions
@@ -154,7 +154,7 @@ def app():
             table_data = []
             for step in worksheet:
                 if step["uraian"] == "Saldo Akhir":
-                    # Format khusus untuk Saldo Akhir
+                    # Format khusus untuk Saldo Akhir: hanya angka
                     persediaan_str = f"{step['total_nilai']:.2f}"
                 else:
                     # Format umum untuk baris lainnya
@@ -182,7 +182,7 @@ def app():
         export_data = []
         for step in st.session_state.worksheet:
             if step["uraian"] == "Saldo Akhir":
-                # Format khusus untuk Saldo Akhir
+                # Format khusus untuk Saldo Akhir: hanya angka
                 persediaan_str = f"{step['total_nilai']:.2f}"
             else:
                 # Format umum untuk baris lainnya
@@ -214,6 +214,14 @@ def app():
             file_name="kertas_kerja_fifo.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
+    
+    # Download Form Mutasi Persediaan dari Google Sheets
+    st.subheader("Download Form Mutasi Persediaan")
+    form_url = "https://docs.google.com/spreadsheets/d/1C0Yz-fndr6fQyrU3s8mMEW0JF_jBS70L/export?format=xlsx"
+    st.markdown(
+        f'<a href="{form_url}" download>Unduh Form Mutasi Persediaan</a>',
+        unsafe_allow_html=True
+    )
     
     # Reset Aplikasi
     if st.button("Reset"):
