@@ -117,7 +117,7 @@ def main_page():
 # Halaman Depresiasi
 def depresiasi():
     st.markdown('<div class="fade-in main-content">', unsafe_allow_html=True)
-    st.title("Depresiasi Aset")
+    st.title("Rekalkulasi Penyusutan Aset Tetap")
     st.write("Silahkan pilih metode yang anda inginkan:")
     
     col1, col2 = st.columns(2)
