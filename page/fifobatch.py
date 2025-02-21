@@ -4,7 +4,7 @@ from datetime import datetime
 from dateutil import parser
 from io import BytesIO  # Untuk membuat file Excel dalam memori
 
-# Fungsi utama untuk menghitung FIFO Batch dengan kertas kerja
+# Fungsi utama untuk menghitung FIFO secara Batch dilengkapi dengan kertas kerja
 def calculate_batch_with_worksheet(inventory, transactions):
     """
     Menghitung persediaan akhir menggunakan metode FIFO (Batch) dan mencatat kertas kerja.
