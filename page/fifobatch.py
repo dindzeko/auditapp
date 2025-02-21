@@ -155,10 +155,7 @@ def app():
             for step in worksheet:
                 if step["uraian"] == "Saldo Akhir":
                     # Format khusus untuk Saldo Akhir
-                    persediaan_detail = ", ".join(
-                        [f"{item['unit']} unit @ {item['nilai']:.2f}" for item in step["persediaan_akhir"]]
-                    )
-                    persediaan_str = f"{step['total_nilai']:.2f} ({persediaan_detail})"
+                    persediaan_str = f"{step['total_nilai']:.2f}"
                 else:
                     # Format umum untuk baris lainnya
                     persediaan_str = ", ".join(
@@ -186,10 +183,7 @@ def app():
         for step in st.session_state.worksheet:
             if step["uraian"] == "Saldo Akhir":
                 # Format khusus untuk Saldo Akhir
-                persediaan_detail = ", ".join(
-                    [f"{item['unit']} unit @ {item['nilai']:.2f}" for item in step["persediaan_akhir"]]
-                )
-                persediaan_str = f"{step['total_nilai']:.2f} ({persediaan_detail})"
+                persediaan_str = f"{step['total_nilai']:.2f}"
             else:
                 # Format umum untuk baris lainnya
                 persediaan_str = ", ".join(
