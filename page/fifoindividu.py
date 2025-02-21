@@ -100,11 +100,17 @@ def app():
     # Daftar Transaksi
     st.subheader("Daftar Transaksi")
     if st.session_state.transactions:
-        for idx, transaksi in enumerate(st.session_state.transactions, start=1):
-            if transaksi["jenis"] == "Tambah":
-                st.write(f"{idx}. {transaksi['tanggal']} - Tambah {transaksi['unit']} unit @ {transaksi['nilai']:.2f}")
-            else:
-                st.write(f"{idx}. {transaksi['tanggal']} - Kurang {transaksi['unit']} unit")
+        for idx, transaksi in enumerate(st.session_state.transactions):
+            col1, col2 = st.columns([4, 1])  # Kolom untuk detail transaksi dan tombol hapus
+            with col1:
+                if transaksi["jenis"] == "Tambah":
+                    st.write(f"{idx + 1}. {transaksi['tanggal']} - Tambah {transaksi['unit']} unit @ {transaksi['nilai']:.2f}")
+                else:
+                    st.write(f"{idx + 1}. {transaksi['tanggal']} - Kurang {transaksi['unit']} unit")
+            with col2:
+                if st.button(f"Hapus {idx}", key=f"hapus_{idx}"):
+                    st.session_state.transactions.pop(idx)
+                    st.experimental_rerun()  # Muat ulang halaman untuk memperbarui daftar transaksi
     else:
         st.info("Belum ada transaksi.")
     
