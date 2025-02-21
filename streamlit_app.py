@@ -218,10 +218,10 @@ def fifo():
     
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("Perhitungan Individu"):
+        if st.button("via input"):
             st.session_state["subpage"] = "Individu"
     with col2:
-        if st.button("Perhitungan Batch"):
+        if st.button("via form excel"):
             st.session_state["subpage"] = "Batch"
     
     if st.session_state["subpage"] == "Individu":
