@@ -123,9 +123,12 @@ def app():
     
     # Reset Aplikasi
     if st.button("Reset"):
+        # Bersihkan semua data di session state
         st.session_state.inventory.clear()
         st.session_state.transactions.clear()
-        st.success("Aplikasi telah direset!")
+        
+        # Force reload halaman untuk memastikan reset penuh
+        st.experimental_rerun()
 
 # Jalankan halaman FIFO
 if __name__ == "__main__":
