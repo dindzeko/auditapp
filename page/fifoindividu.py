@@ -23,7 +23,7 @@ def calculate_individu(inventory, transactions):
     return inventory, total_unit, total_nilai
 
 # Halaman Streamlit
-def fifo_page():
+def app():  # Ubah nama fungsi menjadi 'app'
     st.title("FIFO Inventory Calculator")
     
     # Inisialisasi session state
@@ -109,4 +109,4 @@ def fifo_page():
 
 # Jalankan halaman FIFO
 if __name__ == "__main__":
-    fifo_page()
+    app()  # Panggil fungsi 'app' jika file dijalankan langsung
