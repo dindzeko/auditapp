@@ -53,7 +53,13 @@ def app():
     
     # Input Transaksi
     st.subheader("Tambah/Kurang Persediaan")
-    tanggal = st.date_input("Pilih Tanggal Transaksi", value=datetime.today())  # Date picker
+    # Set default tanggal ke 2024-01-01 dengan batasan minimal dan maksimal
+    tanggal = st.date_input(
+        "Pilih Tanggal Transaksi",
+        value=datetime(2024, 1, 1),  # Default ke 1 Januari 2024
+        min_value=datetime(2024, 1, 1),  # Minimal 1 Januari 2024
+        max_value=datetime(2025, 4, 1)   # Maksimal 1 April 2025
+    )
     jenis_transaksi = st.selectbox("Jenis Transaksi", ["Tambah", "Kurang"])
     unit = st.number_input("Jumlah Unit", min_value=0, step=1)
     
