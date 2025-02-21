@@ -83,8 +83,8 @@ try:
     from page.querybuilder import app as querybuilder_app
     from page.mergepdf import app as mergepdf_app
     from page.extractpdf import app as extractpdf_app
-    from page.fifoindividu import app as fifoindividu_app  # Import halaman FIFO Individu
-    from page.fifobatch import app as fifobatch_app        # Import halaman FIFO Batch
+    from page.fifoindividu import app as fifoindividu_app
+    from page.fifobatch import app as fifobatch_app
 except ImportError as e:
     st.error(f"Error importing modules: {str(e)}")
     st.stop()
@@ -112,6 +112,73 @@ def main_page():
     Gunakan menu navigasi untuk memilih modul yang sesuai dengan kebutuhan Anda. 
     Semoga aplikasi ini dapat mendukung produktivitas Anda!
     """)
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# Halaman Depresiasi
+def depresiasi():
+    st.markdown('<div class="fade-in main-content">', unsafe_allow_html=True)
+    st.title("Depresiasi Aset")
+    try:
+        susuttahunan_app()
+    except Exception as e:
+        st.error(f"Error loading Susut Tahunan: {str(e)}")
+    try:
+        susutsemester_app()
+    except Exception as e:
+        st.error(f"Error loading Susut Semester: {str(e)}")
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# Halaman Sample
+def sample():
+    st.markdown('<div class="fade-in main-content">', unsafe_allow_html=True)
+    st.title("Pengambilan Sampel")
+    try:
+        ahp_app()
+    except Exception as e:
+        st.error(f"Error loading AHP: {str(e)}")
+    try:
+        mus_app()
+    except Exception as e:
+        st.error(f"Error loading MUS: {str(e)}")
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# Halaman Fuzzy Searching
+def fuzzysearch():
+    st.markdown('<div class="fade-in main-content">', unsafe_allow_html=True)
+    st.title("Fuzzy Searching")
+    try:
+        fuzzysearch_app()
+    except Exception as e:
+        st.error(f"Error loading Fuzzy Search: {str(e)}")
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# Halaman Query Builder
+def querybuilder():
+    st.markdown('<div class="fade-in main-content">', unsafe_allow_html=True)
+    st.title("Query Builder")
+    try:
+        querybuilder_app()
+    except Exception as e:
+        st.error(f"Error loading Query Builder: {str(e)}")
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# Halaman PDF Tools
+def pdf():
+    st.markdown('<div class="fade-in main-content">', unsafe_allow_html=True)
+    st.title("PDF Tools")
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Merge PDF"):
+            try:
+                mergepdf_app()
+            except Exception as e:
+                st.error(f"Error loading Merge PDF: {str(e)}")
+    with col2:
+        if st.button("Extract PDF"):
+            try:
+                extractpdf_app()
+            except Exception as e:
+                st.error(f"Error loading Extract PDF: {str(e)}")
     st.markdown('</div>', unsafe_allow_html=True)
 
 # Halaman FIFO
@@ -151,7 +218,7 @@ page_names_to_funcs = {
     "Fuzzy Searching": fuzzysearch,
     "Query Builder": querybuilder,
     "PDF Tools": pdf,
-    "FIFO": fifo,  # Tambahkan halaman FIFO
+    "FIFO": fifo,
 }
 
 # Sidebar Menu Modern dengan Icons
@@ -165,7 +232,7 @@ with st.sidebar:
             "Fuzzy Searching",
             "Query Builder",
             "PDF Tools",
-            "FIFO",  # Tambahkan opsi FIFO
+            "FIFO",
         ],
         icons=[
             "house",
@@ -174,7 +241,7 @@ with st.sidebar:
             "search",
             "code-slash",
             "file-earmark-pdf",
-            "box",  # Ikon untuk FIFO
+            "box",
         ],
         menu_icon="cast",  # Ikon utama
         default_index=0,  # Halaman awal
