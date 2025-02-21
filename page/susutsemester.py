@@ -92,7 +92,7 @@ def calculate_depreciation(initial_cost, acquisition_date, useful_life, reportin
 
 # Fungsi utama aplikasi
 def app():
-    st.title("📊 SHZ_Penyusutan Semesteran")
+    st.title("📊 Depresiasi GL Semesteran")
     # Informasi Penggunaan dengan Toggle (Expander)
     with st.expander("📝 Panduan Penggunaan ▼", expanded=False):
         st.markdown("""
