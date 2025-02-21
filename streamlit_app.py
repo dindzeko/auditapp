@@ -79,12 +79,10 @@ try:
     from page.ahp import app as ahp_app
     from page.mus import app as mus_app
     from page.benfords import app as benfords_app
-    from page.fuzzysearch import app as fuzzysearch_app
-    from page.querybuilder import app as querybuilder_app
-    from page.mergepdf import app as mergepdf_app
-    from page.extractpdf import app as extractpdf_app
     from page.fifoindividu import app as fifoindividu_app
     from page.fifobatch import app as fifobatch_app
+    from page.mergepdf import app as mergepdf_app
+    from page.extractpdf import app as extractpdf_app
 except ImportError as e:
     st.error(f"Error importing modules: {str(e)}")
     st.stop()
@@ -104,10 +102,8 @@ def main_page():
     Modul-modul yang tersedia dalam aplikasi ini mencakup:
     - **Depresiasi**: Untuk menghitung nilai penyusutan aset secara cepat dan akurat.
     - **Sample**: Membantu Anda melakukan pengambilan sampel data untuk audit.
-    - **Fuzzy Searching**: Mencari data dengan toleransi terhadap kesalahan penulisan.
-    - **Query Builder**: Membuat dan mengeksekusi kueri database dengan antarmuka yang mudah.
-    - **PDF Tools**: Alat bantu untuk memanipulasi dokumen PDF.
     - **FIFO**: Menghitung persediaan akhir menggunakan metode FIFO (First In, First Out).
+    - **PDF Tools**: Alat bantu untuk memanipulasi dokumen PDF.
     
     Gunakan menu navigasi untuk memilih modul yang sesuai dengan kebutuhan Anda. 
     Semoga aplikasi ini dapat mendukung produktivitas Anda!
@@ -118,67 +114,96 @@ def main_page():
 def depresiasi():
     st.markdown('<div class="fade-in main-content">', unsafe_allow_html=True)
     st.title("Depresiasi Aset")
-    try:
-        susuttahunan_app()
-    except Exception as e:
-        st.error(f"Error loading Susut Tahunan: {str(e)}")
-    try:
-        susutsemester_app()
-    except Exception as e:
-        st.error(f"Error loading Susut Semester: {str(e)}")
+    st.write("Silakan pilih jenis perhitungan penyusutan:")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Susut Tahunan"):
+            st.session_state["subpage"] = "Susut Tahunan"
+    with col2:
+        if st.button("Susut Semester"):
+            st.session_state["subpage"] = "Susut Semester"
+    
+    if st.session_state["subpage"] == "Susut Tahunan":
+        st.write("### Susut Tahunan")
+        try:
+            susuttahunan_app()
+        except Exception as e:
+            st.error(f"Error loading Susut Tahunan: {str(e)}")
+    elif st.session_state["subpage"] == "Susut Semester":
+        st.write("### Susut Semester")
+        try:
+            susutsemester_app()
+        except Exception as e:
+            st.error(f"Error loading Susut Semester: {str(e)}")
+    
     st.markdown('</div>', unsafe_allow_html=True)
 
 # Halaman Sample
 def sample():
     st.markdown('<div class="fade-in main-content">', unsafe_allow_html=True)
     st.title("Pengambilan Sampel")
-    try:
-        ahp_app()
-    except Exception as e:
-        st.error(f"Error loading AHP: {str(e)}")
-    try:
-        mus_app()
-    except Exception as e:
-        st.error(f"Error loading MUS: {str(e)}")
-    st.markdown('</div>', unsafe_allow_html=True)
-
-# Halaman Fuzzy Searching
-def fuzzysearch():
-    st.markdown('<div class="fade-in main-content">', unsafe_allow_html=True)
-    st.title("Fuzzy Searching")
-    try:
-        fuzzysearch_app()
-    except Exception as e:
-        st.error(f"Error loading Fuzzy Search: {str(e)}")
-    st.markdown('</div>', unsafe_allow_html=True)
-
-# Halaman Query Builder
-def querybuilder():
-    st.markdown('<div class="fade-in main-content">', unsafe_allow_html=True)
-    st.title("Query Builder")
-    try:
-        querybuilder_app()
-    except Exception as e:
-        st.error(f"Error loading Query Builder: {str(e)}")
+    st.write("Silakan pilih metode pengambilan sampel:")
+    
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        if st.button("AHP"):
+            st.session_state["subpage"] = "AHP"
+    with col2:
+        if st.button("MUS"):
+            st.session_state["subpage"] = "MUS"
+    with col3:
+        if st.button("Benford's Law"):
+            st.session_state["subpage"] = "Benford's Law"
+    
+    if st.session_state["subpage"] == "AHP":
+        st.write("### Analytic Hierarchy Process (AHP)")
+        try:
+            ahp_app()
+        except Exception as e:
+            st.error(f"Error loading AHP: {str(e)}")
+    elif st.session_state["subpage"] == "MUS":
+        st.write("### Monetary Unit Sampling (MUS)")
+        try:
+            mus_app()
+        except Exception as e:
+            st.error(f"Error loading MUS: {str(e)}")
+    elif st.session_state["subpage"] == "Benford's Law":
+        st.write("### Benford's Law Analysis")
+        try:
+            benfords_app()
+        except Exception as e:
+            st.error(f"Error loading Benford's Law: {str(e)}")
+    
     st.markdown('</div>', unsafe_allow_html=True)
 
 # Halaman PDF Tools
-def pdf():
+def pdf_tools():
     st.markdown('<div class="fade-in main-content">', unsafe_allow_html=True)
     st.title("PDF Tools")
+    st.write("Silakan pilih alat untuk memanipulasi dokumen PDF:")
+    
     col1, col2 = st.columns(2)
     with col1:
         if st.button("Merge PDF"):
-            try:
-                mergepdf_app()
-            except Exception as e:
-                st.error(f"Error loading Merge PDF: {str(e)}")
+            st.session_state["subpage"] = "Merge PDF"
     with col2:
         if st.button("Extract PDF"):
-            try:
-                extractpdf_app()
-            except Exception as e:
-                st.error(f"Error loading Extract PDF: {str(e)}")
+            st.session_state["subpage"] = "Extract PDF"
+    
+    if st.session_state["subpage"] == "Merge PDF":
+        st.write("### Merge PDF")
+        try:
+            mergepdf_app()
+        except Exception as e:
+            st.error(f"Error loading Merge PDF: {str(e)}")
+    elif st.session_state["subpage"] == "Extract PDF":
+        st.write("### Extract PDF")
+        try:
+            extractpdf_app()
+        except Exception as e:
+            st.error(f"Error loading Extract PDF: {str(e)}")
+    
     st.markdown('</div>', unsafe_allow_html=True)
 
 # Halaman FIFO
@@ -215,9 +240,7 @@ page_names_to_funcs = {
     "Main Page": main_page,
     "Depresiasi": depresiasi,
     "Sample": sample,
-    "Fuzzy Searching": fuzzysearch,
-    "Query Builder": querybuilder,
-    "PDF Tools": pdf,
+    "PDF Tools": pdf_tools,
     "FIFO": fifo,
 }
 
@@ -229,8 +252,6 @@ with st.sidebar:
             "Main Page",
             "Depresiasi",
             "Sample",
-            "Fuzzy Searching",
-            "Query Builder",
             "PDF Tools",
             "FIFO",
         ],
@@ -238,8 +259,6 @@ with st.sidebar:
             "house",
             "calculator",
             "clipboard-data",
-            "search",
-            "code-slash",
             "file-earmark-pdf",
             "box",
         ],
