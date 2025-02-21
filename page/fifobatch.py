@@ -1,18 +1,27 @@
-import streamlit as st
-import pandas as pd
-from datetime import datetime
-from dateutil import parser  # Untuk mendeteksi format tanggal otomatis
-
-# Fungsi utama untuk menghitung FIFO Batch
-def calculate_batch(inventory, transactions):
+# Fungsi utama untuk menghitung FIFO Batch dengan kertas kerja
+def calculate_batch_with_worksheet(inventory, transactions):
     """
-    Menghitung persediaan akhir menggunakan metode FIFO (Batch).
+    Menghitung persediaan akhir menggunakan metode FIFO (Batch) dan mencatat kertas kerja.
     """
     inventory = inventory.copy()
     transactions = sorted(transactions, key=lambda x: x["tanggal"])  # Urutkan berdasarkan tanggal
+    
+    # Kertas kerja
+    worksheet = []
+    worksheet.append({
+        "langkah": "Saldo Awal",
+        "inventory": inventory.copy(),
+        "keterangan": "Persediaan awal sebelum transaksi."
+    })
+    
     for transaksi in transactions:
         if transaksi["jenis"] == "Tambah":
             inventory.append({"unit": transaksi["unit"], "nilai": transaksi["nilai"]})
+            worksheet.append({
+                "langkah": f"Tambah {transaksi['unit']} unit @ {transaksi['nilai']:.2f}",
+                "inventory": inventory.copy(),
+                "keterangan": f"Menambahkan {transaksi['unit']} unit ke persediaan."
+            })
         elif transaksi["jenis"] == "Kurang":
             unit_to_remove = transaksi["unit"]
             while unit_to_remove > 0 and inventory:
@@ -20,15 +29,27 @@ def calculate_batch(inventory, transactions):
                 if oldest["unit"] <= unit_to_remove:
                     unit_to_remove -= oldest["unit"]
                     inventory.pop(0)
+                    worksheet.append({
+                        "langkah": f"Kurang {oldest['unit']} unit @ {oldest['nilai']:.2f}",
+                        "inventory": inventory.copy(),
+                        "keterangan": f"Menghapus {oldest['unit']} unit dari persediaan."
+                    })
                 else:
                     oldest["unit"] -= unit_to_remove
                     unit_to_remove = 0
+                    worksheet.append({
+                        "langkah": f"Kurang {transaksi['unit']} unit (sebagian dari batch)",
+                        "inventory": inventory.copy(),
+                        "keterangan": f"Mengurangi {transaksi['unit']} unit dari batch pertama."
+                    })
+    
     total_unit = sum(item["unit"] for item in inventory)
     total_nilai = sum(item["unit"] * item["nilai"] for item in inventory)
-    return inventory, total_unit, total_nilai
+    return inventory, total_unit, total_nilai, worksheet
+
 
 # Halaman Streamlit
-def app():  # Ubah nama fungsi menjadi 'app'
+def app():
     st.title("FIFO Inventory Calculator (Batch)")
     
     # Inisialisasi session state
@@ -117,13 +138,25 @@ def app():  # Ubah nama fungsi menjadi 'app'
     # Hitung Persediaan Akhir
     if st.button("Hitung Persediaan Akhir"):
         if st.session_state.inventory:
-            inventory, total_unit, total_nilai = calculate_batch(st.session_state.inventory, st.session_state.transactions)
+            inventory, total_unit, total_nilai, worksheet = calculate_batch_with_worksheet(
+                st.session_state.inventory, st.session_state.transactions
+            )
             st.subheader("Hasil Perhitungan FIFO")
             st.write(f"Total Unit: {total_unit}")
             st.write(f"Total Nilai: {total_nilai:.2f}")
             st.write("Rincian Persediaan Akhir:")
             for item in inventory:
                 st.write(f"- {item['unit']} unit @ {item['nilai']:.2f}")
+            
+            # Tampilkan kertas kerja
+            st.subheader("Kertas Kerja Perhitungan FIFO")
+            for step in worksheet:
+                st.write(f"**Langkah:** {step['langkah']}")
+                st.write(f"**Keterangan:** {step['keterangan']}")
+                st.write("**Persediaan Saat Ini:**")
+                for item in step["inventory"]:
+                    st.write(f"- {item['unit']} unit @ {item['nilai']:.2f}")
+                st.write("---")
         else:
             st.error("Saldo awal belum diset!")
     
@@ -133,6 +166,7 @@ def app():  # Ubah nama fungsi menjadi 'app'
         st.session_state.transactions.clear()
         st.success("Aplikasi telah direset!")
 
+
 # Jalankan halaman FIFO Batch jika file dijalankan langsung
 if __name__ == "__main__":
-    app()  # Panggil fungsi 'app' jika file dijalankan langsung
+    app()
