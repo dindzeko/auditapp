@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 from dateutil import parser
+from io import BytesIO  # Untuk membuat file Excel dalam memori
 
 # Fungsi utama untuk menghitung FIFO Batch dengan kertas kerja
 def calculate_batch_with_worksheet(inventory, transactions):
@@ -171,15 +172,19 @@ def app():
         # Buat DataFrame
         df_export = pd.DataFrame(export_data)
         
-        # Konversi ke file Excel
-        @st.cache_data
-        def convert_df_to_excel(df):
-            return df.to_excel("kertas_kerja_fifo.xlsx", index=False)
+        # Konversi ke file Excel dalam memori
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+            df_export.to_excel(writer, index=False, sheet_name="Kertas_Kerja_FIFO")
+        output.seek(0)  # Pindahkan pointer ke awal file
         
         # Tombol Download
-        if st.button("Download Kertas Kerja (Excel)"):
-            convert_df_to_excel(df_export)
-            st.success("File Excel berhasil dibuat! Silakan cek folder Anda.")
+        st.download_button(
+            label="Download Kertas Kerja (Excel)",
+            data=output,
+            file_name="kertas_kerja_fifo.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
     
     # Reset Aplikasi
     if st.button("Reset"):
