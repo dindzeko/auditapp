@@ -83,6 +83,8 @@ try:
     from page.querybuilder import app as querybuilder_app
     from page.mergepdf import app as mergepdf_app
     from page.extractpdf import app as extractpdf_app
+    from page.fifoindividu import app as fifoindividu_app  # Import halaman FIFO Individu
+    from page.fifobatch import app as fifobatch_app        # Import halaman FIFO Batch
 except ImportError as e:
     st.error(f"Error importing modules: {str(e)}")
     st.stop()
@@ -105,153 +107,40 @@ def main_page():
     - **Fuzzy Searching**: Mencari data dengan toleransi terhadap kesalahan penulisan.
     - **Query Builder**: Membuat dan mengeksekusi kueri database dengan antarmuka yang mudah.
     - **PDF Tools**: Alat bantu untuk memanipulasi dokumen PDF.
-    - **Measurement**: Mengukur panjang dan luas dari gambar menggunakan referensi skala.
+    - **FIFO**: Menghitung persediaan akhir menggunakan metode FIFO (First In, First Out).
     
     Gunakan menu navigasi untuk memilih modul yang sesuai dengan kebutuhan Anda. 
     Semoga aplikasi ini dapat mendukung produktivitas Anda!
     """)
     st.markdown('</div>', unsafe_allow_html=True)
 
-# Halaman Depresiasi
-def depresiasi():
+# Halaman FIFO
+def fifo():
     st.markdown('<div class="fade-in main-content">', unsafe_allow_html=True)
-    st.title("Depresiasi")
-    st.write("Modul Depresiasi digunakan untuk menghitung nilai depresiasi berdasarkan metode yang Anda pilih. Silakan pilih jenis perhitungan:")
+    st.title("FIFO Inventory Calculator")
+    st.write("Modul FIFO digunakan untuk menghitung persediaan akhir menggunakan metode FIFO (First In, First Out). Silakan pilih jenis perhitungan:")
     
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("Depresiasi Tahunan"):
-            st.session_state["subpage"] = "Tahunan"
+        if st.button("Perhitungan Individu"):
+            st.session_state["subpage"] = "Individu"
     with col2:
-        if st.button("Depresiasi Semesteran"):
-            st.session_state["subpage"] = "Semesteran"
+        if st.button("Perhitungan Batch"):
+            st.session_state["subpage"] = "Batch"
     
-    if st.session_state["subpage"] == "Tahunan":
-        st.write("### Depresiasi Tahunan")
+    if st.session_state["subpage"] == "Individu":
+        st.write("### Perhitungan FIFO Individu")
         try:
-            susuttahunan_app()
+            fifoindividu_app()
         except Exception as e:
-            st.error(f"Error loading Depresiasi Tahunan: {str(e)}")
-    elif st.session_state["subpage"] == "Semesteran":
-        st.write("### Depresiasi Semesteran")
+            st.error(f"Error loading FIFO Individu: {str(e)}")
+    elif st.session_state["subpage"] == "Batch":
+        st.write("### Perhitungan FIFO Batch")
         try:
-            susutsemester_app()
+            fifobatch_app()
         except Exception as e:
-            st.error(f"Error loading Depresiasi Semesteran: {str(e)}")
+            st.error(f"Error loading FIFO Batch: {str(e)}")
     
-    st.markdown('</div>', unsafe_allow_html=True)
-
-# Halaman Sample
-def sample():
-    st.markdown('<div class="fade-in main-content">', unsafe_allow_html=True)
-    st.title("Sample")
-    st.write("Modul Sample digunakan untuk pengambilan sampel data berdasarkan berbagai metode. Pilih metode yang ingin digunakan:")
-    
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        if st.button("AHP"):
-            st.session_state["subpage"] = "AHP"
-    with col2:
-        if st.button("MUS"):
-            st.session_state["subpage"] = "MUS"
-    with col3:
-        if st.button("Benford Law"):
-            st.session_state["subpage"] = "Benford Law"
-    
-    if st.session_state["subpage"] == "AHP":
-        st.write("### Analytic Hierarchy Process (AHP)")
-        try:
-            ahp_app()
-        except Exception as e:
-            st.error(f"Error loading AHP: {str(e)}")
-    elif st.session_state["subpage"] == "MUS":
-        st.write("### Monetary Unit Sampling (MUS)")
-        try:
-            mus_app()
-        except Exception as e:
-            st.error(f"Error loading MUS: {str(e)}")
-    elif st.session_state["subpage"] == "Benford Law":
-        st.write("### Benford Law Analysis")
-        try:
-            benfords_app()
-        except Exception as e:
-            st.error(f"Error loading Benford Law: {str(e)}")
-    
-    st.markdown('</div>', unsafe_allow_html=True)
-
-# Halaman Fuzzy Searching
-def fuzzysearch():
-    st.markdown('<div class="fade-in main-content">', unsafe_allow_html=True)
-    st.title("Fuzzy Searching")
-    st.write("Halaman untuk pencarian data string menggunakan metode fuzzy search.")
-    try:
-        fuzzysearch_app()
-    except Exception as e:
-        st.error(f"Error loading Fuzzy Search: {str(e)}")
-    st.markdown('</div>', unsafe_allow_html=True)
-
-# Halaman Query Builder
-def querybuilder():
-    st.markdown('<div class="fade-in main-content">', unsafe_allow_html=True)
-    st.title("Query Builder")
-    st.write("Halaman untuk membangun query secara dinamis.")
-    try:
-        querybuilder_app()
-    except Exception as e:
-        st.error(f"Error loading Query Builder: {str(e)}")
-    st.markdown('</div>', unsafe_allow_html=True)
-
-# Halaman PDF Tools
-def pdf():
-    st.markdown('<div class="fade-in main-content">', unsafe_allow_html=True)
-    st.title("PDF Tools")
-    st.write("Modul PDF Tools memungkinkan Anda untuk mengelola file PDF, seperti menggabungkan atau mengekstrak halaman. Pilih operasi yang ingin dilakukan:")
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("Merge PDF"):
-            st.session_state["subpage"] = "Merge"
-    with col2:
-        if st.button("Extract PDF"):
-            st.session_state["subpage"] = "Extract"
-    
-    if st.session_state["subpage"] == "Merge":
-        st.write("### Merge PDF Files")
-        try:
-            mergepdf_app()
-        except Exception as e:
-            st.error(f"Error loading Merge PDF: {str(e)}")
-    elif st.session_state["subpage"] == "Extract":
-        st.write("### Extract PDF Pages")
-        try:
-            extractpdf_app()
-        except Exception as e:
-            st.error(f"Error loading Extract PDF: {str(e)}")
-    
-    st.markdown('</div>', unsafe_allow_html=True)
-
-# Halaman Measurement
-def measurement():
-    st.markdown('<div class="fade-in main-content">', unsafe_allow_html=True)
-    st.title("Measurement")
-    st.write("Halaman untuk menghitung luas area berdasarkan gambar atau image.")
-    
-    # Upload gambar
-    uploaded_file = st.file_uploader("Upload Gambar", type=["jpg", "jpeg", "png"])
-    if uploaded_file is not None:
-        st.image(uploaded_file, caption="Gambar yang Diupload", use_column_width=True)
-        st.success("Gambar berhasil diupload!")
-
-        # Input skala referensi
-        reference_length = st.number_input("Masukkan panjang garis referensi (dalam meter):", value=1.0)
-        if st.button("Hitung Skala"):
-            st.success(f"Skala ditentukan: {reference_length} meter per piksel")
-
-        # Input poligon
-        st.write("Gambar poligon pada gambar untuk menghitung luas dan panjang total.")
-        if st.button("Hitung Luas dan Panjang"):
-            st.info("Fitur ini sedang dikembangkan. Silakan coba lagi nanti!")
-
     st.markdown('</div>', unsafe_allow_html=True)
 
 # Navigasi halaman utama
@@ -262,7 +151,7 @@ page_names_to_funcs = {
     "Fuzzy Searching": fuzzysearch,
     "Query Builder": querybuilder,
     "PDF Tools": pdf,
-    "Measurement": measurement,  # Tambahkan halaman Measurement
+    "FIFO": fifo,  # Tambahkan halaman FIFO
 }
 
 # Sidebar Menu Modern dengan Icons
@@ -276,7 +165,7 @@ with st.sidebar:
             "Fuzzy Searching",
             "Query Builder",
             "PDF Tools",
-            "Measurement",  # Tambahkan opsi Measurement
+            "FIFO",  # Tambahkan opsi FIFO
         ],
         icons=[
             "house",
@@ -285,7 +174,7 @@ with st.sidebar:
             "search",
             "code-slash",
             "file-earmark-pdf",
-            "ruler",  # Ikon untuk Measurement
+            "box",  # Ikon untuk FIFO
         ],
         menu_icon="cast",  # Ikon utama
         default_index=0,  # Halaman awal
