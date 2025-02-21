@@ -67,7 +67,6 @@ def calculate_batch_with_worksheet(inventory, transactions):
 
 # Halaman Streamlit
 def app():
-    st.title("FIFO Inventory Calculator (Batch)")
     
     # Inisialisasi session state
     if "inventory" not in st.session_state:
