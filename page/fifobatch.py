@@ -153,8 +153,19 @@ def app():
             # Format kertas kerja menjadi tabel
             table_data = []
             for step in worksheet:
-                persediaan_str = ", ".join([f"{item['unit']} unit @ {item['nilai']:.2f} ({item['unit'] * item['nilai']:.2f})" 
-                                           for item in step["persediaan_akhir"]])
+                if step["uraian"] == "Saldo Akhir":
+                    # Format khusus untuk Saldo Akhir
+                    persediaan_detail = ", ".join(
+                        [f"{item['unit']} unit @ {item['nilai']:.2f}" for item in step["persediaan_akhir"]]
+                    )
+                    persediaan_str = f"{step['total_nilai']:.2f} ({persediaan_detail})"
+                else:
+                    # Format umum untuk baris lainnya
+                    persediaan_str = ", ".join(
+                        [f"{item['unit']} unit @ {item['nilai']:.2f} ({item['unit'] * item['nilai']:.2f})" 
+                         for item in step["persediaan_akhir"]]
+                    )
+                
                 table_data.append({
                     "Uraian": step["uraian"],
                     "Tanggal Transaksi": step["tanggal"],
@@ -173,8 +184,19 @@ def app():
         st.subheader("Export Kertas Kerja ke Excel")
         export_data = []
         for step in st.session_state.worksheet:
-            persediaan_str = ", ".join([f"{item['unit']} unit @ {item['nilai']:.2f} ({item['unit'] * item['nilai']:.2f})" 
-                                       for item in step["persediaan_akhir"]])
+            if step["uraian"] == "Saldo Akhir":
+                # Format khusus untuk Saldo Akhir
+                persediaan_detail = ", ".join(
+                    [f"{item['unit']} unit @ {item['nilai']:.2f}" for item in step["persediaan_akhir"]]
+                )
+                persediaan_str = f"{step['total_nilai']:.2f} ({persediaan_detail})"
+            else:
+                # Format umum untuk baris lainnya
+                persediaan_str = ", ".join(
+                    [f"{item['unit']} unit @ {item['nilai']:.2f} ({item['unit'] * item['nilai']:.2f})" 
+                     for item in step["persediaan_akhir"]]
+                )
+            
             export_data.append({
                 "Uraian": step["uraian"],
                 "Tanggal Transaksi": step["tanggal"],
