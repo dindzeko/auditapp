@@ -14,8 +14,7 @@ def calculate_individu(inventory, transactions):
             
             # Validasi: Jika unit yang ingin dikurangi melebihi total unit yang tersedia
             if unit_to_remove > total_unit_inventory:
-                st.error(f"Transaksi gagal! Pengurangan {unit_to_remove} unit melebihi total persediaan ({total_unit_inventory} unit).")
-                return inventory, sum(item["unit"] for item in inventory), sum(item["unit"] * item["nilai"] for item in inventory)
+                return None  # Mengembalikan None jika transaksi gagal
             
             while unit_to_remove > 0 and inventory:
                 oldest = inventory[0]
@@ -51,12 +50,11 @@ def app():
     
     # Input Transaksi
     st.subheader("Tambah/Kurang Persediaan")
-    # Set default tanggal ke 2024-01-01 dengan batasan minimal dan maksimal
     tanggal = st.date_input(
         "Pilih Tanggal Transaksi",
-        value=datetime(2024, 1, 1),  # Default ke 1 Januari 2024
-        min_value=datetime(2024, 1, 1),  # Minimal 1 Januari 2024
-        max_value=datetime(2025, 4, 1)   # Maksimal 1 April 2025
+        value=datetime(2024, 1, 1),
+        min_value=datetime(2024, 1, 1),
+        max_value=datetime(2025, 4, 1)
     )
     mutasi_transaksi = st.selectbox("Mutasi Transaksi", ["Tambah", "Kurang"])
     unit = st.number_input("Jumlah Unit", min_value=0, step=1)
@@ -73,12 +71,16 @@ def app():
                     "tanggal": tanggal,
                     "unit": unit,
                     "nilai": nilai_per_unit,
-                    "Mutasi": mutasi_transaksi  # Ganti 'jenis' menjadi 'Mutasi'
+                    "Mutasi": mutasi_transaksi
                 })
                 st.success("Transaksi penambahan berhasil ditambahkan!")
             elif mutasi_transaksi == "Kurang":
                 # Hitung total unit saat ini sebelum menambahkan transaksi
                 current_inventory, _, _ = calculate_individu(st.session_state.inventory, st.session_state.transactions)
+                if current_inventory is None:
+                    st.error("Terjadi kesalahan dalam perhitungan persediaan. Silakan coba lagi.")
+                    return
+                
                 total_unit_inventory = sum(item["unit"] for item in current_inventory)
                 
                 if unit > total_unit_inventory:
@@ -87,7 +89,7 @@ def app():
                     st.session_state.transactions.append({
                         "tanggal": tanggal,
                         "unit": unit,
-                        "Mutasi": mutasi_transaksi  # Ganti 'jenis' menjadi 'Mutasi'
+                        "Mutasi": mutasi_transaksi
                     })
                     st.success("Transaksi pengurangan berhasil ditambahkan!")
             else:
@@ -99,39 +101,39 @@ def app():
     st.subheader("Daftar Transaksi")
     if st.session_state.transactions:
         for idx, transaksi in enumerate(st.session_state.transactions):
-            col1, col2 = st.columns([4, 1])  # Kolom untuk detail transaksi dan tombol hapus
+            col1, col2 = st.columns([4, 1])
             with col1:
-                if transaksi["Mutasi"] == "Tambah":  # Ganti 'jenis' menjadi 'Mutasi'
+                if transaksi["Mutasi"] == "Tambah":
                     st.write(f"{idx + 1}. {transaksi['tanggal']} - Tambah {transaksi['unit']} unit @ {transaksi['nilai']:.2f}")
                 else:
                     st.write(f"{idx + 1}. {transaksi['tanggal']} - Kurang {transaksi['unit']} unit")
             with col2:
                 if st.button(f"Hapus {idx}", key=f"hapus_{idx}"):
                     st.session_state.transactions.pop(idx)
-                    st.rerun()  # Gunakan st.rerun() untuk memuat ulang halaman
+                    st.rerun()
     else:
         st.info("Belum ada transaksi.")
     
     # Hitung Persediaan Akhir Secara Real-Time
     if st.session_state.inventory or st.session_state.transactions:
         inventory, total_unit, total_nilai = calculate_individu(st.session_state.inventory, st.session_state.transactions)
-        st.subheader("Posisi Persediaan Saat Ini")
-        st.write(f"Total Unit: {total_unit}")
-        st.write(f"Total Nilai: {total_nilai:.2f}")
-        if inventory:
-            st.write("Rincian Persediaan:")
-            for item in inventory:
-                st.write(f"- {item['unit']} unit @ {item['nilai']:.2f}")
+        if inventory is None:
+            st.error("Terjadi kesalahan dalam perhitungan persediaan. Silakan periksa transaksi Anda.")
         else:
-            st.warning("Persediaan kosong!")
+            st.subheader("Posisi Persediaan Saat Ini")
+            st.write(f"Total Unit: {total_unit}")
+            st.write(f"Total Nilai: {total_nilai:.2f}")
+            if inventory:
+                st.write("Rincian Persediaan:")
+                for item in inventory:
+                    st.write(f"- {item['unit']} unit @ {item['nilai']:.2f}")
+            else:
+                st.warning("Persediaan kosong!")
     
     # Reset Aplikasi
     if st.button("Reset"):
-        # Bersihkan semua data di session state
         st.session_state.inventory.clear()
         st.session_state.transactions.clear()
-        
-        # Force reload halaman untuk memastikan reset penuh
         st.rerun()
 
 # Jalankan halaman FIFO
