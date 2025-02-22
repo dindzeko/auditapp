@@ -86,7 +86,25 @@ def app():
                 st.success("Transaksi pengurangan berhasil ditambahkan!")
     
     st.subheader("Daftar Transaksi")
-    # ... (kode tampilan transaksi tetap sama)
+    if st.session_state.inventory:
+        st.write("#### Saldo Awal:")
+        saldo_awal = st.session_state.inventory[0]
+        st.write(f"- {saldo_awal['unit']} unit @ {saldo_awal['nilai']:.2f}")
+    
+    if st.session_state.transactions:
+        st.write("#### Mutasi Transaksi:")
+        for idx, trans in enumerate(st.session_state.transactions):
+            if trans["Mutasi"] == "Tambah":
+                st.write(f"{idx + 1}. Tambah - {trans['unit']} unit @ {trans.get('nilai', 0):.2f} pada {trans['tanggal']}")
+            elif trans["Mutasi"] == "Kurang":
+                st.write(f"{idx + 1}. Kurang - {trans['unit']} unit pada {trans['tanggal']}")
+            
+            # Tombol hapus untuk setiap transaksi
+            if st.button(f"Hapus Transaksi {idx + 1}", key=f"delete_{idx}"):
+                st.session_state.transactions.pop(idx)
+                st.rerun()
+    else:
+        st.write("Belum ada transaksi.")
     
     st.subheader("Proses Hitung FIFO")
     if st.button("Proses Hitung"):
