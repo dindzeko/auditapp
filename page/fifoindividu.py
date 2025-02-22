@@ -115,14 +115,15 @@ def app():
     else:
         st.info("Belum ada transaksi.")
     
-    # Hitung Persediaan Akhir Secara Real-Time
-    if st.session_state.inventory or st.session_state.transactions:
+    # Tombol Proses Hitung
+    st.subheader("Proses Hitung FIFO")
+    if st.button("Proses Hitung"):
         result = calculate_individu(st.session_state.inventory, st.session_state.transactions)
         if result is None:
             st.error("Terjadi kesalahan dalam perhitungan persediaan. Silakan periksa transaksi Anda.")
         else:
             inventory, total_unit, total_nilai = result
-            st.subheader("Posisi Persediaan Saat Ini")
+            st.subheader("Hasil Perhitungan FIFO")
             st.write(f"Total Unit: {total_unit}")
             st.write(f"Total Nilai: {total_nilai:.2f}")
             if inventory:
