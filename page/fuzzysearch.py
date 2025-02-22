@@ -21,7 +21,6 @@ def lookup_with_typo(target, data_list, threshold=80):
     return results
 
 def app():
-    st.title("Fuzzy Searching")
     st.write("Fuzzy Searching merupakan teknik pencocokan data berupa text atau string yang memungkinkan adanya toleransi terhadap ketidaksesuaian kecil dalam teks. Ini berbeda dengan pencarian teks biasa yang hanya mencocokkan string secara eksak. Cara Kerjanya mirip Aplikasi Vlookup Excel namun targetnya adalah kata atau bentuk data string.")
     
     # Variabel session state untuk menyimpan data list dan target
