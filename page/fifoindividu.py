@@ -116,10 +116,11 @@ def app():
     
     # Hitung Persediaan Akhir Secara Real-Time
     if st.session_state.inventory or st.session_state.transactions:
-        inventory, total_unit, total_nilai = calculate_individu(st.session_state.inventory, st.session_state.transactions)
-        if inventory is None:
+        result = calculate_individu(st.session_state.inventory, st.session_state.transactions)
+        if result is None:
             st.error("Terjadi kesalahan dalam perhitungan persediaan. Silakan periksa transaksi Anda.")
         else:
+            inventory, total_unit, total_nilai = result
             st.subheader("Posisi Persediaan Saat Ini")
             st.write(f"Total Unit: {total_unit}")
             st.write(f"Total Nilai: {total_nilai:.2f}")
