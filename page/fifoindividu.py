@@ -76,11 +76,12 @@ def app():
                 st.success("Transaksi penambahan berhasil ditambahkan!")
             elif mutasi_transaksi == "Kurang":
                 # Hitung total unit saat ini sebelum menambahkan transaksi
-                current_inventory, _, _ = calculate_individu(st.session_state.inventory, st.session_state.transactions)
-                if current_inventory is None:
+                result = calculate_individu(st.session_state.inventory, st.session_state.transactions)
+                if result is None:
                     st.error("Terjadi kesalahan dalam perhitungan persediaan. Silakan coba lagi.")
                     return
                 
+                current_inventory, _, _ = result
                 total_unit_inventory = sum(item["unit"] for item in current_inventory)
                 
                 if unit > total_unit_inventory:
