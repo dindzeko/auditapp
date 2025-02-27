@@ -40,15 +40,24 @@ def app():
             digits = list(range(1, 10))
             observed_freq = [observed_distribution.get(d, 0) * 100 for d in digits]
             theoretical_freq = [theoretical_distribution[d] * 100 for d in digits]
+            deviation = [abs(obs - th) for obs, th in zip(observed_freq, theoretical_freq)]
             
             result_df = pd.DataFrame({
                 "Angka Pertama": digits,
                 "Frekuensi Observasi (%)": observed_freq,
-                "Frekuensi Teoretis (%)": theoretical_freq
+                "Frekuensi Teoretis (%)": theoretical_freq,
+                "Deviasi (%)": deviation
             })
+            
+            # Analisis penyimpangan tertinggi
+            max_deviation = max(deviation)
+            max_deviation_index = deviation.index(max_deviation)
+            digit_max = digits[max_deviation_index]
+            
             st.write("Hasil Analisis Benford's Law:")
             st.write(result_df)
             
+            # Visualisasi
             fig, ax = plt.subplots(figsize=(10, 6))
             ax.bar(digits, observed_freq, color="blue", alpha=0.6, label="Observasi")
             ax.plot(digits, theoretical_freq, color="red", marker="o", label="Teoretis (Benford)")
@@ -58,15 +67,19 @@ def app():
             ax.legend()
             st.pyplot(fig)
             
-            st.write(f"Total data yang dianalisis: {total_count}")
-            st.write("Jika distribusi observasi mendekati distribusi teoretis, data Anda mungkin mengikuti Benford's Law.")
+            # Kesimpulan
+            st.subheader("Kesimpulan Analisis")
+            st.write(f"""
+            - Total data yang dianalisis: **{total_count}**
+            - Angka dengan penyimpangan tertinggi: **{digit_max}** (Deviasi: **{max_deviation:.2f}%**)
+            - Penyimpangan yang signifikan dari Benford's Law mungkin mengindikasikan anomali atau manipulasi data, 
+              namun perlu analisis lebih lanjut untuk konfirmasi.
+            """)
             
+            # Ekspor ke Excel
             if st.button("Ekspor ke Excel"):
                 output_filename = "benford_analysis_result.xlsx"
                 result_df.to_excel(output_filename, index=False)
-                
-                # Debugging: Pastikan file dibuat
-                st.write("File berhasil dibuat:", output_filename)
                 
                 with open(output_filename, "rb") as f:
                     st.download_button(
@@ -76,3 +89,6 @@ def app():
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                     )
                 st.success(f"File '{output_filename}' siap diunduh!")
+
+if __name__ == "__main__":
+    app()
