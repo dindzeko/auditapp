@@ -6,7 +6,6 @@ import re
 import io
 
 def app():
-    st.title("📝 Aplikasi Rekalkulasi Dokumen Word")
     st.write("Upload dokumen Word (.docx) untuk merekalkulasi tabel.")
 
     uploaded_file = st.file_uploader("Upload File Word (.docx)", type=["docx"])
@@ -37,6 +36,9 @@ def app():
             st.error("Pastikan file yang diupload adalah dokumen Word (.docx) valid")
 
 def recalculate_tables(doc):
+    # Daftar kata kunci untuk mendeteksi baris total/jumlah
+    TOTAL_KEYWORDS = ["JUMLAH", "TOTAL", "SUM"]
+
     for table in doc.tables:
         if len(table.columns) < 3:
             continue  # Lewati tabel dengan kolom < 3
@@ -47,7 +49,7 @@ def recalculate_tables(doc):
         for row in table.rows:
             # Deteksi baris total
             is_total_row = (
-                (len(row.cells) > 0 and "JUMLAH" in row.cells[0].text.upper()) or
+                (len(row.cells) > 0 and any(keyword in row.cells[0].text.upper() for keyword in TOTAL_KEYWORDS)) or
                 (len(row.cells) > 2 and all(c.text.strip() == "" for c in row.cells[:2]))
             )
 
@@ -102,4 +104,4 @@ def set_cell_style(cell):
             run.bold = True
 
 if __name__ == "__main__":
-    main()
+    app()
