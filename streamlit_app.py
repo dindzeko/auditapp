@@ -65,6 +65,7 @@ try:
     from page.fuzzysearch import app as fuzzysearch_app
     from page.querybuilder import app as querybuilder_app
     from page.gps import app as gps_app  # Halaman GPS
+    form page.ceklhp import app as ceklhp  # cek Angka Tabel LHP
 except ImportError as e:
     st.error(f"Error importing modules: {str(e)}")
     st.stop()
@@ -89,6 +90,7 @@ def main_page():
     - **PDF Tools**: Alat bantu untuk memanipulasi dokumen PDF.
     - **FIFO**: Menghitung persediaan akhir menggunakan metode FIFO (First In, First Out).
     - **GPS**: Integrasi GPS dengan Google Earth.
+    - **RecalTab**: Pengecekan penjumlahan tabel di laporan yang berbentuk Word.
     
     Gunakan menu navigasi untuk memilih modul yang sesuai dengan kebutuhan Anda. 
     Semoga aplikasi ini dapat mendukung produktivitas Anda!
@@ -249,6 +251,15 @@ def gps():
     """)
     st.markdown('</div>', unsafe_allow_html=True)
 
+# Halaman RecalTab (Tanpa Subhalaman)
+def recaltab():
+    st.markdown('<div class="fade-in main-content">', unsafe_allow_html=True)
+    st.title("RecalTab")
+    st.write("""
+    Halaman ini dirancang untuk melakukan perhitungan Tabel di Laporan Word .
+    """)
+    st.markdown('</div>', unsafe_allow_html=True)
+
 # Navigasi halaman utama
 page_names_to_funcs = {
     "Main Page": main_page,
@@ -259,6 +270,7 @@ page_names_to_funcs = {
     "PDF Tools": pdf_tools,
     "FIFO": fifo,
     "GPS": gps_app,  # Tambahkan halaman GPS
+    "RecalTab": recaltab,  # Tambahkan fungsi rekalkulasi tabel 
 }
 
 # Sidebar Menu Modern dengan Icons
@@ -274,6 +286,7 @@ with st.sidebar:
             "PDF Tools",
             "FIFO",
             "GPS",  # Tambahkan GPS ke menu
+            "Recaltab",
         ],
         icons=[
             "house",
