@@ -264,9 +264,7 @@ def gps():
     st.markdown('<div class="fade-in main-content">', unsafe_allow_html=True)
     st.title("🌍 GPS Tools")
     st.write("""
-    Halaman ini dirancang untuk integrasi GPS dengan Google Earth.
-    
-    Fungsionalitas ini akan segera dikembangkan. Silakan kembali lagi nanti!
+    Halaman ini dirancang untuk melakukan generate KML Google Earth dengan Image yang mempunyai data GPS.
     """)
     st.markdown('</div>', unsafe_allow_html=True)
 
