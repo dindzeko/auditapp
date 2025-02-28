@@ -15,3 +15,9 @@ opencv-python
 Pillow
 Streamlit-Drawable-Canvas
 streamlit_image_coordinates
+exif
+Pillow
+pillow-heif
+folium
+streamlit-folium
+simplekml
