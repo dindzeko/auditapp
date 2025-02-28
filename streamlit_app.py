@@ -258,7 +258,7 @@ page_names_to_funcs = {
     "Query Builder": query_builder,
     "PDF Tools": pdf_tools,
     "FIFO": fifo,
-    "GPS": gps,  # Tambahkan halaman GPS
+    "GPS": gps_app,  # Tambahkan halaman GPS
 }
 
 # Sidebar Menu Modern dengan Icons
