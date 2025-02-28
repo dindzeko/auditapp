@@ -46,26 +46,6 @@ button:hover {
     background-color: #0056b3;
     transform: scale(1.05);
 }
-/* Styling Tabs */
-.tabs {
-    display: flex;
-    justify-content: center;
-    gap: 20px;
-    margin-bottom: 20px;
-}
-.tabs button {
-    background-color: #eaeaea;
-    color: #333;
-    border: none;
-    border-radius: 8px;
-    padding: 10px 20px;
-    cursor: pointer;
-    transition: all 0.3s ease-in-out;
-}
-.tabs button.active {
-    background-color: #007bff;
-    color: white;
-}
 </style>
 """
 # Tambahkan CSS
@@ -84,6 +64,7 @@ try:
     from page.extractpdf import app as extractpdf_app
     from page.fuzzysearch import app as fuzzysearch_app
     from page.querybuilder import app as querybuilder_app
+    from page.gps import app as gps_app  # Halaman GPS
 except ImportError as e:
     st.error(f"Error importing modules: {str(e)}")
     st.stop()
