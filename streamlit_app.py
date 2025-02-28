@@ -1,71 +1,29 @@
 import streamlit as st
 from streamlit_option_menu import option_menu
 
-# Fungsi untuk menambahkan CSS ke aplikasi Streamlit
+# Fungsi untuk menambahkan CSS
 def add_css(css):
     st.markdown(f'<style>{css}</style>', unsafe_allow_html=True)
 
-# CSS tambahan untuk gaya animasi dan sidebar
-css_styles = """
-<style>
-/* Animasi fade-in */
-.fade-in {
-    animation: fadeIn 0.5s ease-in-out;
-}
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
-/* Gaya Sidebar */
-.sidebar .sidebar-content {
-    background-color: #ffffff;
-    border-right: 1px solid #eaeaea;
-    padding: 20px;
-    box-shadow: 2px 0 6px rgba(0, 0, 0, 0.05);
-}
-/* Konten utama styling */
-.main-content {
-    padding: 20px;
-    background-color: #f9f9f9;
-    border-radius: 12px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    margin: 20px 0;
-    text-align: center;
-}
-/* Efek Hover pada Tombol */
-button {
-    background-color: #007bff;
-    color: white;
-    border: none;
-    border-radius: 8px;
-    padding: 10px 20px;
-    cursor: pointer;
-    transition: all 0.3s ease-in-out;
-}
-button:hover {
-    background-color: #0056b3;
-    transform: scale(1.05);
-}
-</style>
-"""
-# Tambahkan CSS
+# CSS styling (kosongkan dulu untuk fokus perbaikan fungsional)
+css_styles = ""
 add_css(css_styles)
 
-# Impor semua modul di awal file
+# Impor modul dengan koreksi typo
 try:
     from page.susuttahunan import app as susuttahunan_app
     from page.susutsemester import app as susutsemester_app
     from page.ahp import app as ahp_app
     from page.mus import app as mus_app
     from page.benfords import app as benfords_app
-    from page.fifoindividu import app as fifoindividu_app
+    from page.fifoindividu import app as fifoindividu_app  # Perbaiki typo 'impor t'
     from page.fifobatch import app as fifobatch_app
     from page.mergepdf import app as mergepdf_app
-    from page.extractpdf import app as extractpdf_app
+    from page.extractpdf import app as extractpdf_app  # Perbaiki typo 'extractpdf_ap p'
     from page.fuzzysearch import app as fuzzysearch_app
     from page.querybuilder import app as querybuilder_app
-    from page.gps import app as gps_app  # Halaman GPS
-    form page.ceklhp import app as ceklhp  # cek Angka Tabel LHP
+    from page.gps import app as gps_app
+    from page.ceklhp import app as ceklhp_app  # Perbaiki 'form' -> 'from'
 except ImportError as e:
     st.error(f"Error importing modules: {str(e)}")
     st.stop()
@@ -74,194 +32,131 @@ except ImportError as e:
 if "subpage" not in st.session_state:
     st.session_state["subpage"] = None
 
-# Halaman Main Page
+# ----------- HALAMAN UTAMA -----------
 def main_page():
-    st.markdown('<div class="fade-in main-content">', unsafe_allow_html=True)
     st.title("Selamat Datang!")
     st.write("""
     Aplikasi ini dirancang untuk membantu mempermudah pekerjaan Audit. 
     Di halaman utama ini, Anda akan menemukan informasi dasar dan panduan untuk memulai.
     
-    Modul-modul yang tersedia dalam aplikasi ini mencakup:
-    - **Depresiasi**: Untuk menghitung nilai penyusutan aset secara cepat dan akurat.
-    - **Sample**: Membantu Anda melakukan pengambilan sampel data untuk audit.
-    - **Fuzzy Searching**: Mencari data dengan toleransi terhadap kesalahan penulisan.
-    - **Query Builder**: Membuat dan mengeksekusi kueri database dengan antarmuka yang mudah.
-    - **PDF Tools**: Alat bantu untuk memanipulasi dokumen PDF.
-    - **FIFO**: Menghitung persediaan akhir menggunakan metode FIFO (First In, First Out).
-    - **GPS**: Integrasi GPS dengan Google Earth.
-    - **RecalTab**: Pengecekan penjumlahan tabel di laporan yang berbentuk Word.
-    
-    Gunakan menu navigasi untuk memilih modul yang sesuai dengan kebutuhan Anda. 
-    Semoga aplikasi ini dapat mendukung produktivitas Anda!
+    Modul yang tersedia:
+    - **Depresiasi**: Hitung penyusutan aset
+    - **Sample**: Pengambilan sampel data audit
+    - **Fuzzy Searching**: Pencarian data dengan toleransi typo
+    - **Query Builder**: Membuat kueri database visual
+    - **PDF Tools**: Manipulasi dokumen PDF
+    - **FIFO**: Perhitungan persediaan metode FIFO
+    - **GPS**: Integrasi data geospasial
+    - **RecalTab**: Pengecekan tabel di laporan Word
     """)
-    st.markdown('</div>', unsafe_allow_html=True)
 
-# Halaman Depresiasi
+# ----------- HALAMAN DEPRESIASI -----------
 def depresiasi():
-    st.markdown('<div class="fade-in main-content">', unsafe_allow_html=True)
     st.title("Rekalkulasi Penyusutan Aset Tetap")
-    st.write("Silahkan pilih metode yang anda inginkan:")
-    
     col1, col2 = st.columns(2)
+    
     with col1:
-        if st.button("Susut Tahunan"):
+        if st.button("Susut Tahunan", use_container_width=True):
             st.session_state["subpage"] = "Susut Tahunan"
     with col2:
-        if st.button("Susut Semester"):
+        if st.button("Susut Semester", use_container_width=True):
             st.session_state["subpage"] = "Susut Semester"
     
     if st.session_state["subpage"] == "Susut Tahunan":
-        st.write("### Susut Tahunan")
+        st.subheader("Metode Tahunan")
         try:
             susuttahunan_app()
         except Exception as e:
-            st.error(f"Error loading Susut Tahunan: {str(e)}")
+            st.error(f"Error: {str(e)}")
     elif st.session_state["subpage"] == "Susut Semester":
-        st.write("### Susut Semester")
+        st.subheader("Metode Semester")
         try:
             susutsemester_app()
         except Exception as e:
-            st.error(f"Error loading Susut Semester: {str(e)}")
-    
-    st.markdown('</div>', unsafe_allow_html=True)
+            st.error(f"Error: {str(e)}")
 
-# Halaman Sample
+# ----------- HALAMAN SAMPLE -----------
 def sample():
-    st.markdown('<div class="fade-in main-content">', unsafe_allow_html=True)
     st.title("Pengambilan Sampel")
-    st.write("Silakan pilih metode pengambilan sampel:")
-    
     col1, col2, col3 = st.columns(3)
+    
     with col1:
-        if st.button("AHP"):
+        if st.button("AHP", use_container_width=True):
             st.session_state["subpage"] = "AHP"
     with col2:
-        if st.button("MUS"):
+        if st.button("MUS", use_container_width=True):
             st.session_state["subpage"] = "MUS"
     with col3:
-        if st.button("Benford's Law"):
+        if st.button("Benford's Law", use_container_width=True):
             st.session_state["subpage"] = "Benford's Law"
     
     if st.session_state["subpage"] == "AHP":
-        st.write("### Analytic Hierarchy Process (AHP)")
-        try:
-            ahp_app()
-        except Exception as e:
-            st.error(f"Error loading AHP: {str(e)}")
+        st.subheader("Analytic Hierarchy Process")
+        ahp_app()
     elif st.session_state["subpage"] == "MUS":
-        st.write("### Monetary Unit Sampling (MUS)")
-        try:
-            mus_app()
-        except Exception as e:
-            st.error(f"Error loading MUS: {str(e)}")
+        st.subheader("Monetary Unit Sampling")
+        mus_app()
     elif st.session_state["subpage"] == "Benford's Law":
-        st.write("### Benford's Law Analysis")
-        try:
-            benfords_app()
-        except Exception as e:
-            st.error(f"Error loading Benford's Law: {str(e)}")
-    
-    st.markdown('</div>', unsafe_allow_html=True)
+        st.subheader("Benford's Law Analysis")
+        benfords_app()
 
-# Halaman PDF Tools
+# ----------- HALAMAN PDF TOOLS -----------
 def pdf_tools():
-    st.markdown('<div class="fade-in main-content">', unsafe_allow_html=True)
     st.title("PDF Tools")
-    st.write("Silakan pilih alat untuk memanipulasi dokumen PDF:")
-    
     col1, col2 = st.columns(2)
+    
     with col1:
-        if st.button("Merge PDF"):
+        if st.button("Gabungkan PDF", use_container_width=True):
             st.session_state["subpage"] = "Merge PDF"
     with col2:
-        if st.button("Extract PDF"):
+        if st.button("Ekstrak PDF", use_container_width=True):
             st.session_state["subpage"] = "Extract PDF"
     
     if st.session_state["subpage"] == "Merge PDF":
-        st.write("### Merge PDF")
-        try:
-            mergepdf_app()
-        except Exception as e:
-            st.error(f"Error loading Merge PDF: {str(e)}")
+        st.subheader("Gabung File PDF")
+        mergepdf_app()
     elif st.session_state["subpage"] == "Extract PDF":
-        st.write("### Extract PDF")
-        try:
-            extractpdf_app()
-        except Exception as e:
-            st.error(f"Error loading Extract PDF: {str(e)}")
-    
-    st.markdown('</div>', unsafe_allow_html=True)
+        st.subheader("Ekstrak Halaman PDF")
+        extractpdf_app()
 
-# Halaman FIFO
+# ----------- HALAMAN FIFO -----------
 def fifo():
-    st.markdown('<div class="fade-in main-content">', unsafe_allow_html=True)
     st.title("FIFO Inventory Calculator")
-    st.write("Modul FIFO digunakan untuk menghitung persediaan akhir menggunakan metode FIFO (First In, First Out). Silahkan pilih metode yang anda ingin anda gunakan:")
-    
     col1, col2 = st.columns(2)
+    
     with col1:
-        if st.button("via input manual"):
+        if st.button("Input Manual", use_container_width=True):
             st.session_state["subpage"] = "Individu"
     with col2:
-        if st.button("via form excel"):
+        if st.button("Upload Excel", use_container_width=True):
             st.session_state["subpage"] = "Batch"
     
     if st.session_state["subpage"] == "Individu":
-        st.write("### Menggunakan Input Manual")
-        try:
-            fifoindividu_app()
-        except Exception as e:
-            st.error(f"Error loading FIFO Individu: {str(e)}")
+        st.subheader("Metode Manual")
+        fifoindividu_app()
     elif st.session_state["subpage"] == "Batch":
-        st.write("### Menggunakan Form Excel")
-        try:
-            fifobatch_app()
-        except Exception as e:
-            st.error(f"Error loading FIFO Batch: {str(e)}")
-    
-    st.markdown('</div>', unsafe_allow_html=True)
+        st.subheader("Metode Batch")
+        fifobatch_app()
 
-# Halaman Fuzzy Searching (Tanpa Subhalaman)
+# ----------- HALAMAN LAINNYA -----------
 def fuzzy_searching():
-    st.markdown('<div class="fade-in main-content">', unsafe_allow_html=True)
     st.title("Fuzzy Searching")
-    try:
-        fuzzysearch_app()
-    except Exception as e:
-        st.error(f"Error loading Fuzzy Search: {str(e)}")
-    st.markdown('</div>', unsafe_allow_html=True)
+    fuzzysearch_app()
 
-# Halaman Query Builder (Tanpa Subhalaman)
 def query_builder():
-    st.markdown('<div class="fade-in main-content">', unsafe_allow_html=True)
     st.title("Query Builder")
-    try:
-        querybuilder_app()
-    except Exception as e:
-        st.error(f"Error loading Query Builder: {str(e)}")
-    st.markdown('</div>', unsafe_allow_html=True)
+    querybuilder_app()
 
-# Halaman GPS (Tanpa Subhalaman)
 def gps():
-    st.markdown('<div class="fade-in main-content">', unsafe_allow_html=True)
     st.title("🌍 GPS Tools")
-    st.write("""
-    Halaman ini dirancang untuk melakukan generate KML Google Earth dengan Image yang mempunyai data GPS.
-    """)
-    st.markdown('</div>', unsafe_allow_html=True)
+    gps_app()
 
-# Halaman RecalTab (Tanpa Subhalaman)
-def Recaltab():
-    st.markdown('<div class="fade-in main-content">', unsafe_allow_html=True)
-    st.title("RecalTab")
-    st.write("""
-    Halaman ini dirancang untuk melakukan perhitungan Tabel di Laporan Word .
-    """)
-    st.markdown('</div>', unsafe_allow_html=True)
+def recaltab():
+    st.title("📝 RecalTab")
+    Recaltab_app()
 
-# Navigasi halaman utama
-page_names_to_funcs = {
+# ----------- KONFIGURASI NAVIGASI -----------
+page_config = {
     "Main Page": main_page,
     "Depresiasi": depresiasi,
     "Sample": sample,
@@ -269,41 +164,26 @@ page_names_to_funcs = {
     "Query Builder": query_builder,
     "PDF Tools": pdf_tools,
     "FIFO": fifo,
-    "GPS": gps_app,  # Tambahkan halaman GPS
-    "RecalTab": recaltab,  # Tambahkan fungsi rekalkulasi tabel 
+    "GPS": gps,
+    "RecalTab": recaltab,
 }
 
-# Sidebar Menu Modern dengan Icons
+# ----------- SIDEBAR -----------
 with st.sidebar:
     selected = option_menu(
-        menu_title="Main Menu",  # Judul menu
-        options=[
-            "Main Page",
-            "Depresiasi",
-            "Sample",
-            "Fuzzy Searching",
-            "Query Builder",
-            "PDF Tools",
-            "FIFO",
-            "GPS",  # Tambahkan GPS ke menu
-            "Recaltab",
-        ],
+        menu_title="AuditApp",
+        options=list(page_config.keys()),
         icons=[
-            "house",
-            "calculator",
-            "clipboard-data",
-            "search",
-            "code-slash",
-            "file-earmark-pdf",
-            "box",
-            "geo-alt",  # Ikon untuk GPS
+            "house", "calculator", "clipboard-data", "search",
+            "code-slash", "file-earmark-pdf", "box",
+            "geo-alt", "file-earmark-check"
         ],
-        menu_icon="cast",  # Ikon utama
-        default_index=0,  # Halaman awal
+        menu_icon="cast",
+        default_index=0,
     )
 
-# Panggil fungsi halaman yang dipilih
-try:
-    page_names_to_funcs[selected]()
-except KeyError:
-    st.error("Halaman tidak ditemukan.")
+# ----------- RENDER HALAMAN -----------
+if selected in page_config:
+    page_config[selected]()
+else:
+    st.error("Halaman tidak ditemukan")
