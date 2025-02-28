@@ -48,10 +48,11 @@ button:hover {
 }
 </style>
 """
+
 # Tambahkan CSS
 add_css(css_styles)
 
-# Impor semua modul di awal file
+# Impor semua modul
 try:
     from page.susuttahunan import app as susuttahunan_app
     from page.susutsemester import app as susutsemester_app
@@ -64,7 +65,8 @@ try:
     from page.extractpdf import app as extractpdf_app
     from page.fuzzysearch import app as fuzzysearch_app
     from page.querybuilder import app as querybuilder_app
-    from page.gps import app as gps_app  # Halaman GPS
+    from page.gps import app as gps_app
+    from page.ceklhp import app as ceklhp_app  # Halaman baru Cek LHP
 except ImportError as e:
     st.error(f"Error importing modules: {str(e)}")
     st.stop()
@@ -73,7 +75,7 @@ except ImportError as e:
 if "subpage" not in st.session_state:
     st.session_state["subpage"] = None
 
-# Halaman Main Page
+# ----------- DEFINISI HALAMAN -----------
 def main_page():
     st.markdown('<div class="fade-in main-content">', unsafe_allow_html=True)
     st.title("Selamat Datang!")
@@ -82,20 +84,17 @@ def main_page():
     Di halaman utama ini, Anda akan menemukan informasi dasar dan panduan untuk memulai.
     
     Modul-modul yang tersedia dalam aplikasi ini mencakup:
-    - **Depresiasi**: Untuk menghitung nilai penyusutan aset secara cepat dan akurat.
-    - **Sample**: Membantu Anda melakukan pengambilan sampel data untuk audit.
-    - **Fuzzy Searching**: Mencari data dengan toleransi terhadap kesalahan penulisan.
-    - **Query Builder**: Membuat dan mengeksekusi kueri database dengan antarmuka yang mudah.
-    - **PDF Tools**: Alat bantu untuk memanipulasi dokumen PDF.
-    - **FIFO**: Menghitung persediaan akhir menggunakan metode FIFO (First In, First Out).
-    - **GPS**: Integrasi GPS dengan Google Earth.
-    
-    Gunakan menu navigasi untuk memilih modul yang sesuai dengan kebutuhan Anda. 
-    Semoga aplikasi ini dapat mendukung produktivitas Anda!
+    - **Depresiasi**: Menghitung nilai penyusutan aset
+    - **Sample**: Pengambilan sampel data audit
+    - **Fuzzy Searching**: Pencarian data dengan toleransi typo
+    - **Query Builder**: Pembuatan kueri database visual
+    - **PDF Tools**: Manipulasi dokumen PDF
+    - **FIFO**: Perhitungan persediaan metode FIFO
+    - **GPS**: Integrasi data geospasial
+    - **Cek LHP**: Pemeriksaan Laporan Hasil Pemeriksaan
     """)
     st.markdown('</div>', unsafe_allow_html=True)
 
-# Halaman Depresiasi
 def depresiasi():
     st.markdown('<div class="fade-in main-content">', unsafe_allow_html=True)
     st.title("Rekalkulasi Penyusutan Aset Tetap")
@@ -111,20 +110,13 @@ def depresiasi():
     
     if st.session_state["subpage"] == "Susut Tahunan":
         st.write("### Susut Tahunan")
-        try:
-            susuttahunan_app()
-        except Exception as e:
-            st.error(f"Error loading Susut Tahunan: {str(e)}")
+        susuttahunan_app()
     elif st.session_state["subpage"] == "Susut Semester":
         st.write("### Susut Semester")
-        try:
-            susutsemester_app()
-        except Exception as e:
-            st.error(f"Error loading Susut Semester: {str(e)}")
+        susutsemester_app()
     
     st.markdown('</div>', unsafe_allow_html=True)
 
-# Halaman Sample
 def sample():
     st.markdown('<div class="fade-in main-content">', unsafe_allow_html=True)
     st.title("Pengambilan Sampel")
@@ -143,26 +135,16 @@ def sample():
     
     if st.session_state["subpage"] == "AHP":
         st.write("### Analytic Hierarchy Process (AHP)")
-        try:
-            ahp_app()
-        except Exception as e:
-            st.error(f"Error loading AHP: {str(e)}")
+        ahp_app()
     elif st.session_state["subpage"] == "MUS":
         st.write("### Monetary Unit Sampling (MUS)")
-        try:
-            mus_app()
-        except Exception as e:
-            st.error(f"Error loading MUS: {str(e)}")
+        mus_app()
     elif st.session_state["subpage"] == "Benford's Law":
         st.write("### Benford's Law Analysis")
-        try:
-            benfords_app()
-        except Exception as e:
-            st.error(f"Error loading Benford's Law: {str(e)}")
+        benfords_app()
     
     st.markdown('</div>', unsafe_allow_html=True)
 
-# Halaman PDF Tools
 def pdf_tools():
     st.markdown('<div class="fade-in main-content">', unsafe_allow_html=True)
     st.title("PDF Tools")
@@ -178,24 +160,17 @@ def pdf_tools():
     
     if st.session_state["subpage"] == "Merge PDF":
         st.write("### Merge PDF")
-        try:
-            mergepdf_app()
-        except Exception as e:
-            st.error(f"Error loading Merge PDF: {str(e)}")
+        mergepdf_app()
     elif st.session_state["subpage"] == "Extract PDF":
         st.write("### Extract PDF")
-        try:
-            extractpdf_app()
-        except Exception as e:
-            st.error(f"Error loading Extract PDF: {str(e)}")
+        extractpdf_app()
     
     st.markdown('</div>', unsafe_allow_html=True)
 
-# Halaman FIFO
 def fifo():
     st.markdown('<div class="fade-in main-content">', unsafe_allow_html=True)
     st.title("FIFO Inventory Calculator")
-    st.write("Modul FIFO digunakan untuk menghitung persediaan akhir menggunakan metode FIFO (First In, First Out). Silahkan pilih metode yang anda ingin anda gunakan:")
+    st.write("Modul FIFO digunakan untuk menghitung persediaan akhir menggunakan metode FIFO (First In, First Out).")
     
     col1, col2 = st.columns(2)
     with col1:
@@ -207,49 +182,38 @@ def fifo():
     
     if st.session_state["subpage"] == "Individu":
         st.write("### Menggunakan Input Manual")
-        try:
-            fifoindividu_app()
-        except Exception as e:
-            st.error(f"Error loading FIFO Individu: {str(e)}")
+        fifoindividu_app()
     elif st.session_state["subpage"] == "Batch":
         st.write("### Menggunakan Form Excel")
-        try:
-            fifobatch_app()
-        except Exception as e:
-            st.error(f"Error loading FIFO Batch: {str(e)}")
+        fifobatch_app()
     
     st.markdown('</div>', unsafe_allow_html=True)
 
-# Halaman Fuzzy Searching (Tanpa Subhalaman)
 def fuzzy_searching():
     st.markdown('<div class="fade-in main-content">', unsafe_allow_html=True)
     st.title("Fuzzy Searching")
-    try:
-        fuzzysearch_app()
-    except Exception as e:
-        st.error(f"Error loading Fuzzy Search: {str(e)}")
+    fuzzysearch_app()
     st.markdown('</div>', unsafe_allow_html=True)
 
-# Halaman Query Builder (Tanpa Subhalaman)
 def query_builder():
     st.markdown('<div class="fade-in main-content">', unsafe_allow_html=True)
     st.title("Query Builder")
-    try:
-        querybuilder_app()
-    except Exception as e:
-        st.error(f"Error loading Query Builder: {str(e)}")
+    querybuilder_app()
     st.markdown('</div>', unsafe_allow_html=True)
 
-# Halaman GPS (Tanpa Subhalaman)
 def gps():
     st.markdown('<div class="fade-in main-content">', unsafe_allow_html=True)
     st.title("🌍 GPS Tools")
-    st.write("""
-    Halaman ini dirancang untuk melakukan generate KML Google Earth dengan Image yang mempunyai data GPS.
-    """)
+    gps_app()
     st.markdown('</div>', unsafe_allow_html=True)
 
-# Navigasi halaman utama
+def cek_lhp():
+    st.markdown('<div class="fade-in main-content">', unsafe_allow_html=True)
+    st.title("📋 Cek LHP")
+    ceklhp_app()
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# ----------- NAVIGASI UTAMA -----------
 page_names_to_funcs = {
     "Main Page": main_page,
     "Depresiasi": depresiasi,
@@ -258,13 +222,14 @@ page_names_to_funcs = {
     "Query Builder": query_builder,
     "PDF Tools": pdf_tools,
     "FIFO": fifo,
-    "GPS": gps_app,  # Tambahkan halaman GPS
+    "GPS": gps,
+    "Cek LHP": cek_lhp,  # Halaman baru
 }
 
 # Sidebar Menu Modern dengan Icons
 with st.sidebar:
     selected = option_menu(
-        menu_title="Main Menu",  # Judul menu
+        menu_title="Main Menu",
         options=[
             "Main Page",
             "Depresiasi",
@@ -273,7 +238,8 @@ with st.sidebar:
             "Query Builder",
             "PDF Tools",
             "FIFO",
-            "GPS",  # Tambahkan GPS ke menu
+            "GPS",
+            "Cek LHP",  # Menu baru
         ],
         icons=[
             "house",
@@ -283,14 +249,15 @@ with st.sidebar:
             "code-slash",
             "file-earmark-pdf",
             "box",
-            "geo-alt",  # Ikon untuk GPS
+            "geo-alt",
+            "clipboard-check",  # Ikon baru
         ],
-        menu_icon="cast",  # Ikon utama
-        default_index=0,  # Halaman awal
+        menu_icon="cast",
+        default_index=0,
     )
 
-# Panggil fungsi halaman yang dipilih
-try:
+# Eksekusi halaman yang dipilih
+if selected in page_names_to_funcs:
     page_names_to_funcs[selected]()
-except KeyError:
-    st.error("Halaman tidak ditemukan.")
+else:
+    st.error("Halaman tidak ditemukan")
