@@ -1,6 +1,4 @@
-
 import streamlit as st
-import pandas as pd
 from exif import Image as ExifImage
 import io
 from PIL import Image
@@ -83,7 +81,7 @@ def app():
     Fungsi utama untuk halaman GPS Google Earth.
     """
     st.markdown('<div class="fade-in main-content">', unsafe_allow_html=True)
-    st.title("📸 GPS Google Earth")
+    st.title("🌍 GPS Tools")
     st.write("""
     Halaman ini memungkinkan Anda mengunggah foto dengan data GPS, mengekstrak koordinatnya, 
     dan menampilkan lokasi di peta interaktif. Anda juga dapat mengunduh file KML untuk digunakan di Google Earth.
