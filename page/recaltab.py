@@ -6,12 +6,6 @@ import re
 import io
 
 def app():
-    st.set_page_config(
-        page_title="Rekalkulasi Dokumen Word",
-        page_icon="📝",
-        layout="wide"
-    )
-
     st.title("📝 Aplikasi Rekalkulasi Dokumen Word")
     st.write("Upload dokumen Word (.docx) untuk merekalkulasi tabel.")
 
