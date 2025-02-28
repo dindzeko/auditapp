@@ -252,7 +252,7 @@ def gps():
     st.markdown('</div>', unsafe_allow_html=True)
 
 # Halaman RecalTab (Tanpa Subhalaman)
-def recaltab():
+def Recaltab():
     st.markdown('<div class="fade-in main-content">', unsafe_allow_html=True)
     st.title("RecalTab")
     st.write("""
