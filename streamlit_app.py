@@ -1,4 +1,4 @@
-himport streamlit as st
+import streamlit as st
 from streamlit_option_menu import option_menu
 
 # Fungsi untuk menambahkan CSS
@@ -23,7 +23,7 @@ try:
     from page.fuzzysearch import app as fuzzysearch_app
     from page.querybuilder import app as querybuilder_app
     from page.gps import app as gps_app
-    from page.ceklhp import app as ceklhp_app  # Perbaiki 'form' -> 'from'
+    from page.recaltab import app as recaltab_app  # Ganti dari 'ceklhp' ke 'recaltab'
 except ImportError as e:
     st.error(f"Error importing modules: {str(e)}")
     st.stop()
@@ -151,9 +151,9 @@ def gps():
     st.title("🌍 GPS Tools")
     gps_app()
 
-def ceklhp():
+def recaltab():  # Ganti dari 'ceklhp' ke 'recaltab'
     st.title("📝 RecalTab")
-    ceklhp_app()
+    recaltab_app()  # Ganti dari 'ceklhp_app' ke 'recaltab_app'
 
 # ----------- KONFIGURASI NAVIGASI -----------
 page_config = {
@@ -165,7 +165,7 @@ page_config = {
     "PDF Tools": pdf_tools,
     "FIFO": fifo,
     "GPS": gps,
-    "RecalTab": ceklhp,
+    "RecalTab": recaltab,  # Ganti dari 'ceklhp' ke 'recaltab'
 }
 
 # ----------- SIDEBAR -----------
