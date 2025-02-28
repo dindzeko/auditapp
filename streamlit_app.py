@@ -1,4 +1,4 @@
-import streamlit as st
+himport streamlit as st
 from streamlit_option_menu import option_menu
 
 # Fungsi untuk menambahkan CSS
@@ -151,9 +151,9 @@ def gps():
     st.title("🌍 GPS Tools")
     gps_app()
 
-def recaltab():
+def ceklhp():
     st.title("📝 RecalTab")
-    Recaltab_app()
+    ceklhp_app()
 
 # ----------- KONFIGURASI NAVIGASI -----------
 page_config = {
