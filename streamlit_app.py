@@ -68,7 +68,6 @@ button:hover {
 }
 </style>
 """
-
 # Tambahkan CSS
 add_css(css_styles)
 
@@ -108,6 +107,7 @@ def main_page():
     - **Query Builder**: Membuat dan mengeksekusi kueri database dengan antarmuka yang mudah.
     - **PDF Tools**: Alat bantu untuk memanipulasi dokumen PDF.
     - **FIFO**: Menghitung persediaan akhir menggunakan metode FIFO (First In, First Out).
+    - **GPS**: Integrasi GPS dengan Google Earth.
     
     Gunakan menu navigasi untuk memilih modul yang sesuai dengan kebutuhan Anda. 
     Semoga aplikasi ini dapat mendukung produktivitas Anda!
@@ -259,6 +259,17 @@ def query_builder():
         st.error(f"Error loading Query Builder: {str(e)}")
     st.markdown('</div>', unsafe_allow_html=True)
 
+# Halaman GPS (Tanpa Subhalaman)
+def gps():
+    st.markdown('<div class="fade-in main-content">', unsafe_allow_html=True)
+    st.title("🌍 GPS Tools")
+    st.write("""
+    Halaman ini dirancang untuk integrasi GPS dengan Google Earth.
+    
+    Fungsionalitas ini akan segera dikembangkan. Silakan kembali lagi nanti!
+    """)
+    st.markdown('</div>', unsafe_allow_html=True)
+
 # Navigasi halaman utama
 page_names_to_funcs = {
     "Main Page": main_page,
@@ -268,6 +279,7 @@ page_names_to_funcs = {
     "Query Builder": query_builder,
     "PDF Tools": pdf_tools,
     "FIFO": fifo,
+    "GPS": gps,  # Tambahkan halaman GPS
 }
 
 # Sidebar Menu Modern dengan Icons
@@ -282,6 +294,7 @@ with st.sidebar:
             "Query Builder",
             "PDF Tools",
             "FIFO",
+            "GPS",  # Tambahkan GPS ke menu
         ],
         icons=[
             "house",
@@ -291,6 +304,7 @@ with st.sidebar:
             "code-slash",
             "file-earmark-pdf",
             "box",
+            "geo-alt",  # Ikon untuk GPS
         ],
         menu_icon="cast",  # Ikon utama
         default_index=0,  # Halaman awal
