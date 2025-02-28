@@ -5,7 +5,7 @@ from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
 import re
 import io
 
-def main():
+def app():
     st.set_page_config(
         page_title="Rekalkulasi Dokumen Word",
         page_icon="📝",
