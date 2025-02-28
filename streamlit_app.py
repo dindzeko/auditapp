@@ -46,8 +46,8 @@ def main_page():
     - **Query Builder**: Membuat kueri database visual
     - **PDF Tools**: Manipulasi dokumen PDF
     - **FIFO**: Perhitungan persediaan metode FIFO
-    - **GPS**: Integrasi data geospasial
-    - **RecalTab**: Pengecekan tabel di laporan Word
+    - **GPS**:menghasilkan KML File dari Foto atau Image
+    - **RecalTab**: Pengecekan tabel di File atau Laporan berbentuk Ms Word
     """)
 
 # ----------- HALAMAN DEPRESIASI -----------
