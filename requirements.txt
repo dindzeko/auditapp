@@ -21,3 +21,4 @@ pillow-heif
 folium
 streamlit-folium
 simplekml
+python-docx
