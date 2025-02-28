@@ -165,7 +165,7 @@ page_config = {
     "PDF Tools": pdf_tools,
     "FIFO": fifo,
     "GPS": gps,
-    "RecalTab": recaltab,
+    "RecalTab": ceklhp,
 }
 
 # ----------- SIDEBAR -----------
