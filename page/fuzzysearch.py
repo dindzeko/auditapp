@@ -2,44 +2,58 @@ import streamlit as st
 import pandas as pd
 from fuzzywuzzy import fuzz
 import re
+from io import BytesIO
 
-# Fungsi untuk membersihkan teks
+# Fungsi pembersihan teks yang diperkuat
 def preprocess_text(text):
-    # 1. Ekspansi singkatan
-    text = re.sub(r'\bSDN\b', 'SD NEGERI', text, flags=re.IGNORECASE)
-    text = re.sub(r'\bSMPN\b', 'SMP NEGERI', text, flags=re.IGNORECASE)
-    text = re.sub(r'\bSMAN\b', 'SMA NEGERI', text, flags=re.IGNORECASE)
+    # 1. Ekspansi singkatan (case-insensitive)
+    text = re.sub(r'\bsdn\b', 'SD NEGERI', text, flags=re.IGNORECASE)
+    text = re.sub(r'\bsmpn\b', 'SMP NEGERI', text, flags=re.IGNORECASE)
+    text = re.sub(r'\bsman\b', 'SMA NEGERI', text, flags=re.IGNORECASE)
     
-    # 2. Hapus karakter non-alfanumerik
-    text = re.sub(r'[^\w\s]', '', text)
+    # 2. Hapus semua karakter non-alfanumerik
+    text = re.sub(r'[^a-zA-Z0-9\s]', ' ', text)
     
-    # 3. Hapus informasi alamat (contoh: "Jl. ...")
-    text = re.sub(r'\bJl\.?\s+[\w\s]+?(?=\bSD\b|\bSMP\b|\bSMA\b|$)', '', text, flags=re.IGNORECASE)
+    # 3. Hapus alamat dan teks sebelum nama sekolah
+    text = re.sub(
+        r'(.*?)(SD NEGERI|SMP NEGERI|SMA NEGERI|\bSD\b|\bSMP\b|\bSMA\b)', 
+        r'\2', 
+        text,
+        flags=re.IGNORECASE
+    )
     
-    # 4. Normalisasi case dan spasi
-    return " ".join(text.upper().split())
+    # 4. Normalisasi case dan hapus spasi berlebih
+    text = " ".join(text.upper().split())
+    
+    # 5. Hapus duplikasi nama sekolah dalam satu teks
+    tokens = text.split()
+    seen = set()
+    deduped = []
+    for token in tokens:
+        if token not in seen:
+            seen.add(token)
+            deduped.append(token)
+    return " ".join(deduped)
 
-# Fungsi utama fuzzy search
+# Fungsi fuzzy search yang diperbaiki
 def enhanced_fuzzy_search(data_list, target_text, threshold=70):
     best_match = None
     best_score = 0
     
-    # Preprocessing target
     target_clean = preprocess_text(target_text)
     
     for item in data_list:
         if not isinstance(item, str):
             continue
             
-        # Preprocessing data
         item_clean = preprocess_text(item)
         
-        # Hitung skor dengan kombinasi metrik
+        # Gunakan kombinasi metrik dengan penyesuaian bobot
         set_ratio = fuzz.token_set_ratio(item_clean, target_clean)
         partial_ratio = fuzz.partial_ratio(item_clean, target_clean)
-        combined_score = (2 * set_ratio + partial_ratio) // 3  # Bobot lebih ke token_set
+        combined_score = (3 * set_ratio + 2 * partial_ratio) // 5  # Bobot 60% token_set
         
-        if combined_score >= threshold and combined_score > best_score:
+        if combined_score > best_score and combined_score >= threshold:
             best_match = item
             best_score = combined_score
             
@@ -91,12 +105,10 @@ def app():
             st.warning("⚠️ Data target belum diupload")
             return
         
-        # Proses tiap baris target
         results = []
         for _, row in st.session_state['target_df'].iterrows():
             target_text = row.get('Target', '')
             
-            # Skip jika bukan string atau kosong
             if not isinstance(target_text, str) or not target_text.strip():
                 results.append((None, None))
                 continue
@@ -108,24 +120,27 @@ def app():
             )
             results.append((match, score))
         
-        # Tambahkan hasil ke DataFrame
+        # Tampilkan hasil
         result_df = st.session_state['target_df'].copy()
         result_df["Hasil Pencarian"] = [r[0] for r in results]
         result_df["Tingkat Kemiripan"] = [r[1] for r in results]
         
-        # Tampilkan hasil
         st.subheader("Hasil Pencarian")
         st.dataframe(result_df.style.applymap(
             lambda x: 'background-color: #d4edda' if isinstance(x, int) and x >= threshold else ''
         ))
         
+        # Persiapan download Excel
+        buffer = BytesIO()
+        with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
+            result_df.to_excel(writer, index=False, sheet_name='Hasil')
+        
         # Download hasil
-        csv = result_df.to_csv(index=False)
         st.download_button(
-            label="📥 Download Hasil (CSV)",
-            data=csv,
-            file_name="hasil_pencarian.csv",
-            mime="text/csv"
+            label="📥 Download Hasil (Excel)",
+            data=buffer.getvalue(),
+            file_name="hasil_pencarian_sekolah.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
 
 if __name__ == "__main__":
