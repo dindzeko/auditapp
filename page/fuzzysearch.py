@@ -1,109 +1,128 @@
 import streamlit as st
 import pandas as pd
 from fuzzywuzzy import fuzz
+import re
 
-def fuzzy_search_in_target(data_list, target_text, threshold=70):
-    """
-    Fungsi untuk mencari string dalam teks target dengan toleransi typo.
-    Menggunakan kombinasi token_set_ratio dan partial_ratio untuk akurasi lebih baik.
-    """
+# Fungsi untuk membersihkan teks
+def preprocess_text(text):
+    # 1. Ekspansi singkatan
+    text = re.sub(r'\bSDN\b', 'SD NEGERI', text, flags=re.IGNORECASE)
+    text = re.sub(r'\bSMPN\b', 'SMP NEGERI', text, flags=re.IGNORECASE)
+    text = re.sub(r'\bSMAN\b', 'SMA NEGERI', text, flags=re.IGNORECASE)
+    
+    # 2. Hapus karakter non-alfanumerik
+    text = re.sub(r'[^\w\s]', '', text)
+    
+    # 3. Hapus informasi alamat (contoh: "Jl. ...")
+    text = re.sub(r'\bJl\.?\s+[\w\s]+?(?=\bSD\b|\bSMP\b|\bSMA\b|$)', '', text, flags=re.IGNORECASE)
+    
+    # 4. Normalisasi case dan spasi
+    return " ".join(text.upper().split())
+
+# Fungsi utama fuzzy search
+def enhanced_fuzzy_search(data_list, target_text, threshold=70):
     best_match = None
     best_score = 0
     
-    # Preprocessing: Ubah ke lowercase dan hapus spasi berlebih
-    target_clean = " ".join(target_text.lower().split())
+    # Preprocessing target
+    target_clean = preprocess_text(target_text)
     
     for item in data_list:
         if not isinstance(item, str):
             continue
             
-        item_clean = " ".join(item.lower().split())
+        # Preprocessing data
+        item_clean = preprocess_text(item)
         
-        # Gunakan kombinasi metrik untuk hasil optimal
+        # Hitung skor dengan kombinasi metrik
         set_ratio = fuzz.token_set_ratio(item_clean, target_clean)
         partial_ratio = fuzz.partial_ratio(item_clean, target_clean)
-        score = (set_ratio + partial_ratio) // 2  # Rata-rata kedua metrik
+        combined_score = (2 * set_ratio + partial_ratio) // 3  # Bobot lebih ke token_set
         
-        if score > best_score and score >= threshold:
+        if combined_score >= threshold and combined_score > best_score:
             best_match = item
-            best_score = score
+            best_score = combined_score
             
-    return (best_match, best_score) if best_match else (None, None)
+    return (best_match, best_score) if best_score > 0 else (None, None)
 
+# Antarmuka Streamlit
 def app():
-    st.write("Fuzzy Searching dengan penanganan singkatan dan urutan kata")
-
+    st.title("Fuzzy Search untuk Data Sekolah")
+    
     # Session state
     if 'data_list' not in st.session_state:
         st.session_state['data_list'] = []
     if 'target_df' not in st.session_state:
         st.session_state['target_df'] = None
 
-    # Upload Data List
-    st.subheader("Upload Data List (Kolom: Data)")
-    uploaded_data = st.file_uploader("Upload file Excel Data", type=["xlsx", "xls"])
-    if uploaded_data:
+    # Upload Data Sekolah
+    st.subheader("1. Upload Data Sekolah (Kolom: Data)")
+    data_file = st.file_uploader("Upload file Excel", type=["xlsx"], key="data_uploader")
+    if data_file:
         try:
-            df = pd.read_excel(uploaded_data)
+            df = pd.read_excel(data_file)
             st.session_state['data_list'] = df['Data'].dropna().str.strip().tolist()
-            st.success(f"{len(st.session_state['data_list'])} data terdeteksi")
+            st.success(f"✅ {len(st.session_state['data_list'])} data sekolah terdeteksi")
         except Exception as e:
-            st.error(f"Gagal membaca data: {e}")
+            st.error(f"❌ Gagal membaca data: {e}")
 
     # Upload Target
-    st.subheader("Upload Target (Kolom: Target)")
-    uploaded_target = st.file_uploader("Upload file Excel Target", type=["xlsx", "xls"])
-    if uploaded_target:
+    st.subheader("2. Upload Data Target (Kolom: Target)")
+    target_file = st.file_uploader("Upload file Excel", type=["xlsx"], key="target_uploader")
+    if target_file:
         try:
-            df = pd.read_excel(uploaded_target)
+            df = pd.read_excel(target_file)
             st.session_state['target_df'] = df
-            st.success(f"{len(df)} target terdeteksi")
+            st.success(f"✅ {len(df)} data target terdeteksi")
         except Exception as e:
-            st.error(f"Gagal membaca target: {e}")
+            st.error(f"❌ Gagal membaca target: {e}")
+
+    # Parameter Pencarian
+    st.subheader("3. Parameter Pencarian")
+    threshold = st.slider("Threshold Kemiripan", 50, 100, 75, 5)
+    st.info(f"Sensitivitas saat ini: {threshold}%")
 
     # Proses Pencarian
-    st.subheader("Eksekusi Pencarian")
-    threshold = st.slider("Threshold Kemiripan", 50, 100, 70)
-    
-    if st.button("Mulai Pencarian"):
+    if st.button("🔍 Mulai Pencarian"):
         if not st.session_state['data_list']:
-            st.warning("Data List belum diupload")
+            st.warning("⚠️ Data sekolah belum diupload")
             return
         if st.session_state['target_df'] is None:
-            st.warning("Target belum diupload")
+            st.warning("⚠️ Data target belum diupload")
             return
         
-        # Proses tiap baris di Target
+        # Proses tiap baris target
         results = []
         for _, row in st.session_state['target_df'].iterrows():
             target_text = row.get('Target', '')
-            if not isinstance(target_text, str):
+            
+            # Skip jika bukan string atau kosong
+            if not isinstance(target_text, str) or not target_text.strip():
                 results.append((None, None))
                 continue
                 
-            match, score = fuzzy_search_in_target(
+            match, score = enhanced_fuzzy_search(
                 st.session_state['data_list'],
                 target_text,
                 threshold
             )
             results.append((match, score))
         
-        # Tambahkan kolom hasil ke DataFrame
-        st.session_state['target_df'] = st.session_state['target_df'].assign(
-            **{
-                "Hasil Pencarian": [r[0] for r in results],
-                "Tingkat Kemiripan": [r[1] for r in results]
-            }
-        )
+        # Tambahkan hasil ke DataFrame
+        result_df = st.session_state['target_df'].copy()
+        result_df["Hasil Pencarian"] = [r[0] for r in results]
+        result_df["Tingkat Kemiripan"] = [r[1] for r in results]
         
         # Tampilkan hasil
-        st.dataframe(st.session_state['target_df'])
+        st.subheader("Hasil Pencarian")
+        st.dataframe(result_df.style.applymap(
+            lambda x: 'background-color: #d4edda' if isinstance(x, int) and x >= threshold else ''
+        ))
         
         # Download hasil
-        df_to_download = st.session_state['target_df']
-        csv = df_to_download.to_csv(index=False)
+        csv = result_df.to_csv(index=False)
         st.download_button(
-            label="Download Hasil",
+            label="📥 Download Hasil (CSV)",
             data=csv,
             file_name="hasil_pencarian.csv",
             mime="text/csv"
