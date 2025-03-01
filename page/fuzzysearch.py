@@ -2,114 +2,112 @@ import streamlit as st
 import pandas as pd
 from fuzzywuzzy import fuzz
 
-def fuzzy_search_in_target(data_list, target_text, threshold=80):
+def fuzzy_search_in_target(data_list, target_text, threshold=70):
     """
     Fungsi untuk mencari string dalam teks target dengan toleransi typo.
-    Parameters:
-        data_list (list): Daftar string (nama) yang ingin dicari.
-        target_text (str): Teks target tempat pencarian dilakukan.
-        threshold (int): Ambang batas kemiripan (0-100). Default: 80.
-    Returns:
-        tuple: (hasil_pencarian, skor_kemiripan) atau (None, None) jika tidak ada hasil.
+    Menggunakan kombinasi token_set_ratio dan partial_ratio untuk akurasi lebih baik.
     """
     best_match = None
     best_score = 0
+    
+    # Preprocessing: Ubah ke lowercase dan hapus spasi berlebih
+    target_clean = " ".join(target_text.lower().split())
+    
     for item in data_list:
-        if isinstance(item, str):  # Pastikan item adalah string
-            score = fuzz.ratio(item.lower(), target_text.lower())  # Hitung kemiripan
-            if score > best_score and score >= threshold:
-                best_match = item
-                best_score = score
+        if not isinstance(item, str):
+            continue
+            
+        item_clean = " ".join(item.lower().split())
+        
+        # Gunakan kombinasi metrik untuk hasil optimal
+        set_ratio = fuzz.token_set_ratio(item_clean, target_clean)
+        partial_ratio = fuzz.partial_ratio(item_clean, target_clean)
+        score = (set_ratio + partial_ratio) // 2  # Rata-rata kedua metrik
+        
+        if score > best_score and score >= threshold:
+            best_match = item
+            best_score = score
+            
     return (best_match, best_score) if best_match else (None, None)
 
 def app():
-    st.write("Fuzzy Searching merupakan teknik pencocokan data berupa text atau string yang memungkinkan adanya toleransi terhadap ketidaksesuaian kecil dalam teks.")
+    st.write("Fuzzy Searching dengan penanganan singkatan dan urutan kata")
 
-    # Variabel session state untuk menyimpan data list dan target
+    # Session state
     if 'data_list' not in st.session_state:
         st.session_state['data_list'] = []
     if 'target_df' not in st.session_state:
         st.session_state['target_df'] = None
 
-    # Bagian Upload Data List
-    st.subheader("Upload Data List")
-    uploaded_data_file = st.file_uploader("Upload Excel dengan Nama Kolom Data", type=["xlsx", "xls"])
-    if uploaded_data_file is not None:
+    # Upload Data List
+    st.subheader("Upload Data List (Kolom: Data)")
+    uploaded_data = st.file_uploader("Upload file Excel Data", type=["xlsx", "xls"])
+    if uploaded_data:
         try:
-            df = pd.read_excel(uploaded_data_file)
-            if 'Data' not in df.columns:
-                st.error("File Excel harus memiliki kolom 'Data'.")
-            else:
-                st.session_state['data_list'] = df['Data'].dropna().tolist()
-                st.success(f"Data List berhasil diupload ({len(st.session_state['data_list'])} item).")
+            df = pd.read_excel(uploaded_data)
+            st.session_state['data_list'] = df['Data'].dropna().str.strip().tolist()
+            st.success(f"{len(st.session_state['data_list'])} data terdeteksi")
         except Exception as e:
-            st.error(f"Terjadi kesalahan saat membaca file: {e}")
+            st.error(f"Gagal membaca data: {e}")
 
-    # Tampilkan Data List jika sudah diupload
-    if st.session_state['data_list']:
-        st.write("Data List yang telah diupload:")
-        st.write(st.session_state['data_list'])
-
-    # Bagian Upload Target
-    st.subheader("Upload Target")
-    uploaded_target_file = st.file_uploader("Upload Excel dengan Nama Kolom Target", type=["xlsx", "xls"])
-    if uploaded_target_file is not None:
+    # Upload Target
+    st.subheader("Upload Target (Kolom: Target)")
+    uploaded_target = st.file_uploader("Upload file Excel Target", type=["xlsx", "xls"])
+    if uploaded_target:
         try:
-            df = pd.read_excel(uploaded_target_file)
-            if 'Target' not in df.columns:
-                st.error("File Excel harus memiliki kolom 'Target'.")
-            else:
-                st.session_state['target_df'] = df
-                st.success(f"Target berhasil diupload ({len(df)} baris).")
+            df = pd.read_excel(uploaded_target)
+            st.session_state['target_df'] = df
+            st.success(f"{len(df)} target terdeteksi")
         except Exception as e:
-            st.error(f"Terjadi kesalahan saat membaca file: {e}")
+            st.error(f"Gagal membaca target: {e}")
 
-    # Tampilkan Target jika sudah diupload
-    if st.session_state['target_df'] is not None:
-        st.write("Target yang telah diupload:")
-        st.dataframe(st.session_state['target_df'])
-
-    # Bagian Pencarian dan Ekspor
-    st.subheader("Cari dan Ekspor Hasil")
+    # Proses Pencarian
+    st.subheader("Eksekusi Pencarian")
+    threshold = st.slider("Threshold Kemiripan", 50, 100, 70)
+    
     if st.button("Mulai Pencarian"):
         if not st.session_state['data_list']:
-            st.warning("Silakan upload Data List terlebih dahulu.")
-        elif st.session_state['target_df'] is None:
-            st.warning("Silakan upload Target terlebih dahulu.")
-        else:
-            data_list = st.session_state['data_list']
-            target_df = st.session_state['target_df']
-
-            # Lakukan pencarian fuzzy untuk setiap baris di kolom Target
-            results = []
-            for _, row in target_df.iterrows():
-                target_text = row['Target']
-                if isinstance(target_text, str):  # Pastikan target adalah string
-                    best_match, best_score = fuzzy_search_in_target(data_list, target_text)
-                    results.append((best_match, best_score))
-                else:
-                    results.append((None, None))
-
-            # Tambahkan hasil pencarian ke DataFrame target
-            target_df["Hasil Pencarian"] = [result[0] for result in results]
-            target_df["Tingkat Kemiripan"] = [result[1] for result in results]
-
-            # Tampilkan hasil dalam tabel
-            st.write("Hasil Pencarian:")
-            st.dataframe(target_df)
-
-            # Simpan hasil ke file Excel
-            output_filename = "hasil_pencarian.xlsx"
-            target_df.to_excel(output_filename, index=False)
-
-            # Unduh hasil
-            with open(output_filename, "rb") as file:
-                st.download_button(
-                    label="Download Hasil Pencarian",
-                    data=file,
-                    file_name=output_filename,
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                )
+            st.warning("Data List belum diupload")
+            return
+        if st.session_state['target_df'] is None:
+            st.warning("Target belum diupload")
+            return
+        
+        # Proses tiap baris di Target
+        results = []
+        for _, row in st.session_state['target_df'].iterrows():
+            target_text = row.get('Target', '')
+            if not isinstance(target_text, str):
+                results.append((None, None))
+                continue
+                
+            match, score = fuzzy_search_in_target(
+                st.session_state['data_list'],
+                target_text,
+                threshold
+            )
+            results.append((match, score))
+        
+        # Tambahkan kolom hasil ke DataFrame
+        st.session_state['target_df'] = st.session_state['target_df'].assign(
+            **{
+                "Hasil Pencarian": [r[0] for r in results],
+                "Tingkat Kemiripan": [r[1] for r in results]
+            }
+        )
+        
+        # Tampilkan hasil
+        st.dataframe(st.session_state['target_df'])
+        
+        # Download hasil
+        df_to_download = st.session_state['target_df']
+        csv = df_to_download.to_csv(index=False)
+        st.download_button(
+            label="Download Hasil",
+            data=csv,
+            file_name="hasil_pencarian.csv",
+            mime="text/csv"
+        )
 
 if __name__ == "__main__":
     app()
