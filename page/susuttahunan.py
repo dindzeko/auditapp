@@ -321,19 +321,30 @@ def app():
             except Exception as e:
                 st.error(f"❌ Terjadi kesalahan: {str(e)}")
 
-    # Export Excel
-    if 'schedule' in st.session_state:
-        df = pd.DataFrame(st.session_state.schedule)
-        df['Penyusutan'] = df['depreciation'].apply(lambda x: f"Rp{x:,.2f}")
-        df['Akumulasi'] = df['accumulated'].apply(lambda x: f"Rp{x:,.2f}")
-        df['Nilai Buku'] = df['book_value'].apply(lambda x: f"Rp{x:,.2f}")
-        excel_buffer = convert_df_to_excel(df)
-        st.download_button(
-            label="📥 Download Excel",
-            data=excel_buffer,
-            file_name="jadwal_penyusutan.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
+   # Export Excel
+if 'schedule' in st.session_state:
+    # Buat DataFrame dari jadwal penyusutan
+    df = pd.DataFrame(st.session_state.schedule)
+
+    # Format kolom dalam bahasa Indonesia
+    df_export = pd.DataFrame({
+        'Tahun': df['year'],
+        'Penyusutan': df['depreciation'].apply(lambda x: f"Rp{x:,.2f}"),
+        'Akumulasi': df['accumulated'].apply(lambda x: f"Rp{x:,.2f}"),
+        'Nilai Buku': df['book_value'].apply(lambda x: f"Rp{x:,.2f}"),
+        'Sisa MM': df['sisa_mm']
+    })
+
+    # Konversi ke Excel
+    excel_buffer = convert_df_to_excel(df_export)
+
+    # Tombol unduh
+    st.download_button(
+        label="📥 Download Excel",
+        data=excel_buffer,
+        file_name="jadwal_penyusutan.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
 
 # Jalankan aplikasi
 if __name__ == "__main__":
