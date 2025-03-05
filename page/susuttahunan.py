@@ -145,14 +145,6 @@ def app():
                 value=datetime.now().year-1
             )
 
-    # Tombol Reset
-    action_col1, action_col2 = st.columns([1, 3])
-    with action_col1:
-        if st.button("🔄 Reset Semua"):
-            st.session_state.capitalizations = []
-            st.session_state.corrections = []
-            st.rerun()
-
     # Capitalization Management
     st.header("➕ Input Kapitalisasi")
     with st.expander("➕ Tambah Kapitalisasi", expanded=True):
@@ -345,6 +337,14 @@ def app():
             file_name="jadwal_penyusutan.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
+
+# Tombol Reset
+    action_col1, action_col2 = st.columns([1, 3])
+    with action_col1:
+        if st.button("🔄 Reset Semua"):
+            st.session_state.capitalizations = []
+            st.session_state.corrections = []
+            st.rerun()
 
 # Jalankan aplikasi
 if __name__ == "__main__":
