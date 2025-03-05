@@ -148,7 +148,7 @@ def query_builder():
     querybuilder_app()
 
 def gps():
-    st.title("🌍 GPS Tools")
+    st.title("🌍 KML Generator")
     gps_app()
 
 def recaltab():  # Ganti dari 'ceklhp' ke 'recaltab'
