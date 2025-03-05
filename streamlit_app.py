@@ -63,13 +63,11 @@ def depresiasi():
             st.session_state["subpage"] = "Susut Semester"
     
     if st.session_state["subpage"] == "Susut Tahunan":
-        st.subheader("Metode Tahunan")
         try:
             susuttahunan_app()
         except Exception as e:
             st.error(f"Error: {str(e)}")
     elif st.session_state["subpage"] == "Susut Semester":
-        st.subheader("Metode Semester")
         try:
             susutsemester_app()
         except Exception as e:
