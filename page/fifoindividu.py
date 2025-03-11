@@ -2,8 +2,10 @@ import streamlit as st
 from datetime import datetime
 
 def calculate_individu(inventory, transactions):
-    inventory = [item.copy() for item in inventory]  # Deep copy untuk menghindari perubahan pada list asli
+    inventory = [item.copy() for item in inventory]
     transactions = sorted(transactions, key=lambda x: x["tanggal"])
+    total_beban = 0  # Variabel untuk menghitung total beban
+    
     for transaksi in transactions:
         if transaksi["Mutasi"] == "Tambah":
             inventory.append({"unit": transaksi["unit"], "nilai": transaksi["nilai"]})
@@ -17,14 +19,19 @@ def calculate_individu(inventory, transactions):
             while unit_to_remove > 0 and inventory:
                 oldest = inventory[0]
                 if oldest["unit"] <= unit_to_remove:
+                    # Hitung beban dari unit tertua
+                    total_beban += oldest["unit"] * oldest["nilai"]
                     unit_to_remove -= oldest["unit"]
                     inventory.pop(0)
                 else:
+                    # Hitung beban dari sebagian unit tertua
+                    total_beban += unit_to_remove * oldest["nilai"]
                     oldest["unit"] -= unit_to_remove
                     unit_to_remove = 0
+    
     total_unit = sum(item["unit"] for item in inventory)
     total_nilai = sum(item["unit"] * item["nilai"] for item in inventory)
-    return inventory, total_unit, total_nilai
+    return inventory, total_unit, total_nilai, total_beban
 
 def app():
     if "inventory" not in st.session_state:
@@ -38,7 +45,7 @@ def app():
     
     if st.button("Set Saldo Awal"):
         if saldo_unit > 0 and saldo_nilai > 0:
-            st.session_state.inventory = [{"unit": saldo_unit, "nilai": saldo_nilai}]  # Mengganti inventaris
+            st.session_state.inventory = [{"unit": saldo_unit, "nilai": saldo_nilai}]
             st.success("Saldo awal berhasil diset!")
         else:
             st.error("Masukkan jumlah unit dan nilai per unit yang valid!")
@@ -75,12 +82,11 @@ def app():
             st.session_state.transactions.append(new_trans)
             st.success("Transaksi penambahan berhasil ditambahkan!")
         else:
-            # Simulasikan dengan transaksi baru termasuk
             temp_trans = st.session_state.transactions.copy()
             temp_trans.append(new_trans)
             result = calculate_individu(st.session_state.inventory, temp_trans)
             if result is None:
-                st.error(f"Pengurangan {unit} unit tidak valid (melebihi persediaan setelah transaksi ini diproses).")
+                st.error(f"Pengurangan {unit} unit tidak valid (melebihi persediaan).")
             else:
                 st.session_state.transactions.append(new_trans)
                 st.success("Transaksi pengurangan berhasil ditambahkan!")
@@ -99,7 +105,6 @@ def app():
             elif trans["Mutasi"] == "Kurang":
                 st.write(f"{idx + 1}. Kurang - {trans['unit']} unit pada {trans['tanggal']}")
             
-            # Tombol hapus untuk setiap transaksi
             if st.button(f"Hapus Transaksi {idx + 1}", key=f"delete_{idx}"):
                 st.session_state.transactions.pop(idx)
                 st.rerun()
@@ -115,10 +120,11 @@ def app():
         if result is None:
             st.error("Transaksi tidak valid: pengurangan melebihi stok yang tersedia.")
         else:
-            inventory, total_unit, total_nilai = result
+            inventory, total_unit, total_nilai, total_beban = result
             st.subheader("Hasil Perhitungan FIFO")
             st.write(f"Total Unit: {total_unit}")
             st.write(f"Total Nilai: {total_nilai:.2f}")
+            st.write(f"Total Beban Persediaan: {total_beban:.2f}")  # Tampilkan total beban
             if inventory:
                 for item in inventory:
                     st.write(f"- {item['unit']} unit @ {item['nilai']:.2f}")
