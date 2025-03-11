@@ -30,6 +30,8 @@ def app():
         st.session_state.inventory = []
     if "transactions" not in st.session_state:
         st.session_state.transactions = []
+    if "total_beban" not in st.session_state:
+        st.session_state.total_beban = None
     
     st.subheader("Saldo Awal")
     saldo_unit = st.number_input("Jumlah Unit (Saldo Awal)", min_value=0, step=1)
@@ -68,28 +70,23 @@ def app():
                 return
             new_trans["nilai"] = nilai
         
-        # Validasi transaksi sebelum ditambahkan
+        # Validasi transaksi dengan urutan tanggal yang benar
         dummy_inventory = [item.copy() for item in st.session_state.inventory]
         temp_trans = st.session_state.transactions.copy()
         temp_trans.append(new_trans)
+        # Urutkan transaksi berdasarkan tanggal untuk validasi
+        temp_trans_sorted = sorted(temp_trans, key=lambda x: x["tanggal"])
         valid = True
+        total_units = sum(item["unit"] for item in dummy_inventory)
         
-        for trans in temp_trans:
-            if trans["Mutasi"] == "Kurang":
-                available = sum(item["unit"] for item in dummy_inventory)
-                if trans["unit"] > available:
+        for trans in temp_trans_sorted:
+            if trans["Mutasi"] == "Tambah":
+                total_units += trans["unit"]
+            elif trans["Mutasi"] == "Kurang":
+                total_units -= trans["unit"]
+                if total_units < 0:
                     valid = False
                     break
-                # Simulasi pengurangan
-                unit_needed = trans["unit"]
-                while unit_needed > 0:
-                    oldest = dummy_inventory[0]
-                    if oldest["unit"] <= unit_needed:
-                        unit_needed -= oldest["unit"]
-                        dummy_inventory.pop(0)
-                    else:
-                        oldest["unit"] -= unit_needed
-                        unit_needed = 0
         
         if valid:
             st.session_state.transactions.append(new_trans)
@@ -103,13 +100,18 @@ def app():
             st.error("Saldo awal belum diatur!")
             return
         
-        total_beban = calculate_fifo(st.session_state.inventory, st.session_state.transactions)
+        st.session_state.total_beban = calculate_fifo(st.session_state.inventory, st.session_state.transactions)
+        st.success("Perhitungan selesai!")
+    
+    # Menampilkan hasil di luar blok tombol
+    if st.session_state.total_beban is not None:
         st.subheader("Hasil Perhitungan")
-        st.write(f"**Total Beban Persediaan: {total_beban:,.2f}**")
+        st.write(f"**Total Beban Persediaan: {st.session_state.total_beban:,.2f}**")
 
     if st.button("Reset"):
         st.session_state.inventory = []
         st.session_state.transactions = []
+        st.session_state.total_beban = None
         st.rerun()
 
 if __name__ == "__main__":
