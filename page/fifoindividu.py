@@ -23,14 +23,8 @@ def calculate_fifo(inventory, transactions):
                     oldest["unit"] -= unit_needed
                     unit_needed = 0
     
-    total_unit = sum(item["unit"] for item in inventory)
-    total_nilai = sum(item["unit"] * item["nilai"] for item in inventory)
-    
     return {
-        "inventory": inventory,
-        "total_unit": total_unit,
-        "total_nilai": total_nilai,
-        "total_beban": total_beban
+        "total_beban": total_beban  # Hanya kembalikan total beban
     }
 
 def app():
@@ -46,7 +40,7 @@ def app():
     if st.button("Set Saldo Awal"):
         if saldo_unit > 0 and saldo_nilai > 0:
             st.session_state.inventory = [{"unit": saldo_unit, "nilai": saldo_nilai}]
-            st.success(f"Saldo awal {saldo_unit} unit @ {saldo_nilai:.2f} berhasil diset!")
+            st.success("Saldo awal berhasil diset!")
         else:
             st.error("Unit dan nilai harus lebih dari 0!")
     
@@ -80,57 +74,23 @@ def app():
         temp_trans.append(new_trans)
         result = calculate_fifo(st.session_state.inventory, temp_trans)
         
-        if result["total_unit"] < 0:
+        if not result:  # Jika stok tidak cukup
             st.error("Transaksi pengurangan melebihi stok!")
         else:
             st.session_state.transactions.append(new_trans)
             st.success(f"Transaksi {mutasi} {unit} unit berhasil ditambahkan!")
     
-    st.subheader("Daftar Transaksi")
-    if st.session_state.inventory:
-        st.write(f"**Saldo Awal:** {st.session_state.inventory[0]['unit']} unit @ {st.session_state.inventory[0]['nilai']:.2f}")
-    
-    if st.session_state.transactions:
-        st.write("**Mutasi:**")
-        for idx, trans in enumerate(st.session_state.transactions):
-            tipe = "Tambah" if trans["Mutasi"] == "Tambah" else "Kurang"
-            detail = f"{trans['unit']} unit"
-            
-            if trans["Mutasi"] == "Tambah":
-                detail += f" @ {trans['nilai']:.2f}"
-            
-            st.write(f"{idx+1}. {tipe} - {detail} ({trans['tanggal']})")
-            
-            if st.button(f"❌ Hapus {idx+1}", key=f"del_{idx}"):
-                st.session_state.transactions.pop(idx)
-                st.rerun()
-    else:
-        st.info("Belum ada transaksi.")
-    
     st.subheader("Proses Perhitungan FIFO")
-    if st.button("Hitung FIFO"):
+    if st.button("Hitung Total Beban"):
         if not st.session_state.inventory:
             st.error("Saldo awal belum diatur!")
             return
         
         result = calculate_fifo(st.session_state.inventory, st.session_state.transactions)
-        
-        if result["total_unit"] < 0:
-            st.error("Transaksi tidak valid: stok tidak mencukupi!")
-        else:
-            st.subheader("Hasil Perhitungan")
-            st.write(f"**Total Unit Tersisa:** {result['total_unit']}")
-            st.write(f"**Total Nilai Persediaan:** {result['total_nilai']:.2f}")
-            st.write(f"**Total Beban Persediaan:** {result['total_beban']:.2f}")  # <<<< TAMPIL DI SINI
-            
-            if result['inventory']:
-                st.write("**Rincian Persediaan:**")
-                for item in result['inventory']:
-                    st.write(f"- {item['unit']} unit @ {item['nilai']:.2f}")
-            else:
-                st.warning("Persediaan kosong!")
+        st.subheader("Hasil Perhitungan")
+        st.write(f"**Total Beban Persediaan: {result['total_beban']:.2f}**")  # Hanya tampilkan total beban
 
-    if st.button("Reset Semua"):
+    if st.button("Reset"):
         st.session_state.inventory = []
         st.session_state.transactions = []
         st.rerun()
