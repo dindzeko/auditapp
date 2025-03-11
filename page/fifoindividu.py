@@ -23,9 +23,7 @@ def calculate_fifo(inventory, transactions):
                     oldest["unit"] -= unit_needed
                     unit_needed = 0
     
-    return {
-        "total_beban": total_beban  # Hanya kembalikan total beban
-    }
+    return total_beban
 
 def app():
     if "inventory" not in st.session_state:
@@ -70,15 +68,34 @@ def app():
                 return
             new_trans["nilai"] = nilai
         
+        # Validasi transaksi sebelum ditambahkan
+        dummy_inventory = [item.copy() for item in st.session_state.inventory]
         temp_trans = st.session_state.transactions.copy()
         temp_trans.append(new_trans)
-        result = calculate_fifo(st.session_state.inventory, temp_trans)
+        valid = True
         
-        if not result:  # Jika stok tidak cukup
-            st.error("Transaksi pengurangan melebihi stok!")
-        else:
+        for trans in temp_trans:
+            if trans["Mutasi"] == "Kurang":
+                available = sum(item["unit"] for item in dummy_inventory)
+                if trans["unit"] > available:
+                    valid = False
+                    break
+                # Simulasi pengurangan
+                unit_needed = trans["unit"]
+                while unit_needed > 0:
+                    oldest = dummy_inventory[0]
+                    if oldest["unit"] <= unit_needed:
+                        unit_needed -= oldest["unit"]
+                        dummy_inventory.pop(0)
+                    else:
+                        oldest["unit"] -= unit_needed
+                        unit_needed = 0
+        
+        if valid:
             st.session_state.transactions.append(new_trans)
             st.success(f"Transaksi {mutasi} {unit} unit berhasil ditambahkan!")
+        else:
+            st.error("Transaksi pengurangan melebihi stok yang tersedia!")
     
     st.subheader("Proses Perhitungan FIFO")
     if st.button("Hitung Total Beban"):
@@ -86,9 +103,9 @@ def app():
             st.error("Saldo awal belum diatur!")
             return
         
-        result = calculate_fifo(st.session_state.inventory, st.session_state.transactions)
+        total_beban = calculate_fifo(st.session_state.inventory, st.session_state.transactions)
         st.subheader("Hasil Perhitungan")
-        st.write(f"**Total Beban Persediaan: {result['total_beban']:.2f}**")  # Hanya tampilkan total beban
+        st.write(f"**Total Beban Persediaan: {total_beban:,.2f}**")
 
     if st.button("Reset"):
         st.session_state.inventory = []
