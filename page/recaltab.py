@@ -42,13 +42,11 @@ def recalculate_tables(doc):
 
         for row in table.rows:
             # Normalisasi teks untuk deteksi baris total (hapus spasi, case-insensitive)
-            is_total_row = any(
-                re.fullmatch(re.escape(keyword), cell.text.replace(" ", "").strip(), re.IGNORECASE)
-                for cell in row.cells
-                for keyword in TOTAL_KEYWORDS
-            )
+            normalized_cells = [cell.text.replace(" ", "").strip().upper() for cell in row.cells]
+            is_total_row = any(keyword in normalized_cells for keyword in TOTAL_KEYWORDS)
 
             if is_total_row:
+                print(f"Baris Total Ditemukan: {row.cells[0].text}")  # Debugging
                 continue  # Lewati baris total
 
             # Proses kolom numerik yang terdeteksi
@@ -97,11 +95,8 @@ def detect_numeric_columns(table, sample_rows=3):
     data_rows = []
     for row in table.rows[1:]:
         # Normalisasi teks untuk deteksi baris total (hapus spasi, case-insensitive)
-        if not any(
-            re.fullmatch(re.escape(keyword), cell.text.replace(" ", "").strip(), re.IGNORECASE)
-            for cell in row.cells
-            for keyword in ["JUMLAH", "TOTAL", "SUM"]
-        ):
+        normalized_cells = [cell.text.replace(" ", "").strip().upper() for cell in row.cells]
+        if not any(keyword in normalized_cells for keyword in ["JUMLAH", "TOTAL", "SUM"]):
             data_rows.append(row)
             if len(data_rows) >= sample_rows:
                 break
