@@ -6,7 +6,7 @@ import re
 import io
 
 def app():
-    st.write("Upload dokumen Word (.docx) untuk merekalkulasi tabel.")
+    st.write("Upload dokumen Word (.docx) untuk merekalkulasi tabel atau Telstruk Laporan dalam bentuk MS WORD.")
 
     uploaded_file = st.file_uploader("Upload File Word (.docx)", type=["docx"])
 
