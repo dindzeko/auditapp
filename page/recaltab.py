@@ -41,9 +41,9 @@ def recalculate_tables(doc):
         vertical_sums = [0.0] * len(table.columns)
 
         for row in table.rows:
-            # Deteksi baris total (case-insensitive, ignore spasi)
+            # Normalisasi teks untuk deteksi baris total (hapus spasi, case-insensitive)
             is_total_row = any(
-                re.fullmatch(r'\s*' + re.escape(keyword) + r'\s*', cell.text.strip(), re.IGNORECASE)
+                re.fullmatch(re.escape(keyword), cell.text.replace(" ", "").strip(), re.IGNORECASE)
                 for cell in row.cells
                 for keyword in TOTAL_KEYWORDS
             )
@@ -96,7 +96,12 @@ def detect_numeric_columns(table, sample_rows=3):
     # Ambil sampel baris data (hindari header dan total)
     data_rows = []
     for row in table.rows[1:]:
-        if not any(keyword in cell.text.upper() for cell in row.cells for keyword in ["JUMLAH", "TOTAL", "SUM"]):
+        # Normalisasi teks untuk deteksi baris total (hapus spasi, case-insensitive)
+        if not any(
+            re.fullmatch(re.escape(keyword), cell.text.replace(" ", "").strip(), re.IGNORECASE)
+            for cell in row.cells
+            for keyword in ["JUMLAH", "TOTAL", "SUM"]
+        ):
             data_rows.append(row)
             if len(data_rows) >= sample_rows:
                 break
