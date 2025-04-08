@@ -96,6 +96,12 @@ def app():
             required_columns_cap = {'Nama Aset', 'Tahun', 'Jumlah', 'Tambahan Usia'}
             required_columns_corr = {'Nama Aset', 'Tahun', 'Jumlah'}
 
+            # Debugging: Print column names
+            st.write("Sheet 1 Columns:", assets_df.columns)
+            st.write("Sheet 2 Columns:", capitalizations_df.columns)
+            st.write("Sheet 3 Columns:", corrections_df.columns)
+
+            # Validate columns
             if not required_columns_assets.issubset(assets_df.columns):
                 st.error("Sheet 1 (Data Aset Tetap) tidak memiliki kolom yang diperlukan.")
                 return
@@ -104,6 +110,17 @@ def app():
                 return
             if not required_columns_corr.issubset(corrections_df.columns):
                 st.error("Sheet 3 (Koreksi) tidak memiliki kolom yang diperlukan.")
+                return
+
+            # Convert 'Tahun' columns to integers
+            try:
+                assets_df['Tahun Perolehan'] = assets_df['Tahun Perolehan'].astype(int)
+                assets_df['Masa Manfaat (tahun)'] = assets_df['Masa Manfaat (tahun)'].astype(int)
+                assets_df['Tahun Pelaporan'] = assets_df['Tahun Pelaporan'].astype(int)
+                capitalizations_df['Tahun'] = capitalizations_df['Tahun'].astype(int)
+                corrections_df['Tahun'] = corrections_df['Tahun'].astype(int)
+            except ValueError:
+                st.error("Kesalahan konversi tipe data pada kolom 'Tahun'. Pastikan semua nilai tahun adalah angka.")
                 return
 
             # Process Data
