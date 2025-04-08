@@ -113,10 +113,10 @@ def app():
     Silakan unduh template Excel berikut untuk mengisi data aset tetap, kapitalisasi, dan koreksi:
     """)
     if st.button("⬇️ Download Template Excel"):
-        # Link ke Google Drive
-        st.markdown("""
-        [![Download](https://img.shields.io/badge/Download-Template%20Excel-blue)](https://docs.google.com/spreadsheets/d/1b4bueqvZ0vDn7DtKgNK-uVQojLGMM8vQ/edit?usp=drive_link&ouid=106044501644618784207&rtpof=true&sd=true)
-        """)
+         # Direct download link dari Google Drive
+    st.markdown("""
+    [![Download](https://img.shields.io/badge/Download-Template%20Excel-blue)](https://drive.google.com/uc?export=download&id=1b4bueqvZ0vDn7DtKgNK-uVQojLGMM8vQ)
+    """)
         
     # Upload Excel File
     uploaded_file = st.file_uploader("📤 Unggah File Excel", type=["xlsx"])
