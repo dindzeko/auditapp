@@ -13,7 +13,7 @@ add_css(css_styles)
 try:
     from page.susuttahunan import app as susuttahunan_app
     from page.susutsemester import app as susutsemester_app
-    from page.batchglyearly import app as batchglyearly_app
+    from page.batchglyearly import app as batchtahunan_app  # Perbaiki typo 'batchglyearly'
     from page.ahp import app as ahp_app
     from page.mus import app as mus_app
     from page.benfords import app as benfords_app
@@ -47,7 +47,7 @@ def main_page():
     - **Query Builder**: Membuat kueri database visual
     - **PDF Tools**: Manipulasi dokumen PDF
     - **FIFO**: Perhitungan persediaan metode FIFO
-    - **GPS**:menghasilkan KML File dari Foto atau Image
+    - **GPS**: Menghasilkan KML File dari Foto atau Image
     - **RecalTab**: Pengecekan tabel di File atau Laporan berbentuk Ms Word
     """)
 
@@ -69,22 +69,23 @@ def depresiasi():
     with col3:
         if st.button("Batch Tahunan", use_container_width=True):
             st.session_state["subpage"] = "Batch Tahunan"
-    
-   if st.session_state["subpage"] == "Susut Tahunan":
-    try:
-        susuttahunan_app()
-    except Exception as e:
-        st.error(f"Error: {str(e)}")
-elif st.session_state["subpage"] == "Susut Semester":
-    try:
-        susutsemester_app()
-    except Exception as e:
-        st.error(f"Error: {str(e)}")
-elif st.session_state["subpage"] == "Batch Tahunan":
-    try:
-        batchtahunan_app()
-    except Exception as e:
-        st.error(f"Error: {str(e)}")
+
+    # Render subpage sesuai session state
+    if st.session_state["subpage"] == "Susut Tahunan":
+        try:
+            susuttahunan_app()
+        except Exception as e:
+            st.error(f"Error: {str(e)}")
+    elif st.session_state["subpage"] == "Susut Semester":
+        try:
+            susutsemester_app()
+        except Exception as e:
+            st.error(f"Error: {str(e)}")
+    elif st.session_state["subpage"] == "Batch Tahunan":
+        try:
+            batchtahunan_app()
+        except Exception as e:
+            st.error(f"Error: {str(e)}")
 
 # ----------- HALAMAN SAMPLE -----------
 def sample():
@@ -101,6 +102,7 @@ def sample():
         if st.button("Benford's Law", use_container_width=True):
             st.session_state["subpage"] = "Benford's Law"
     
+    # Render subpage sesuai session state
     if st.session_state["subpage"] == "AHP":
         st.subheader("Analytic Hierarchy Process")
         ahp_app()
@@ -123,6 +125,7 @@ def pdf_tools():
         if st.button("Ekstrak PDF", use_container_width=True):
             st.session_state["subpage"] = "Extract PDF"
     
+    # Render subpage sesuai session state
     if st.session_state["subpage"] == "Merge PDF":
         st.subheader("Gabung File PDF")
         mergepdf_app()
@@ -142,6 +145,7 @@ def fifo():
         if st.button("Upload Excel", use_container_width=True):
             st.session_state["subpage"] = "Batch"
     
+    # Render subpage sesuai session state
     if st.session_state["subpage"] == "Individu":
         st.subheader("Metode Manual")
         fifoindividu_app()
