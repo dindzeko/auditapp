@@ -13,6 +13,7 @@ add_css(css_styles)
 try:
     from page.susuttahunan import app as susuttahunan_app
     from page.susutsemester import app as susutsemester_app
+    from page.batchglyearly import app as batchglyearly_app
     from page.ahp import app as ahp_app
     from page.mus import app as mus_app
     from page.benfords import app as benfords_app
@@ -53,25 +54,37 @@ def main_page():
 # ----------- HALAMAN DEPRESIASI -----------
 def depresiasi():
     st.title("Rekalkulasi Penyusutan Aset Tetap")
-    col1, col2 = st.columns(2)
+    
+    # Membagi layout menjadi 3 kolom
+    col1, col2, col3 = st.columns(3)
     
     with col1:
         if st.button("Susut Tahunan", use_container_width=True):
             st.session_state["subpage"] = "Susut Tahunan"
+    
     with col2:
         if st.button("Susut Semester", use_container_width=True):
             st.session_state["subpage"] = "Susut Semester"
     
-    if st.session_state["subpage"] == "Susut Tahunan":
-        try:
-            susuttahunan_app()
-        except Exception as e:
-            st.error(f"Error: {str(e)}")
-    elif st.session_state["subpage"] == "Susut Semester":
-        try:
-            susutsemester_app()
-        except Exception as e:
-            st.error(f"Error: {str(e)}")
+    with col3:
+        if st.button("Batch Tahunan", use_container_width=True):
+            st.session_state["subpage"] = "Batch Tahunan"
+    
+   if st.session_state["subpage"] == "Susut Tahunan":
+    try:
+        susuttahunan_app()
+    except Exception as e:
+        st.error(f"Error: {str(e)}")
+elif st.session_state["subpage"] == "Susut Semester":
+    try:
+        susutsemester_app()
+    except Exception as e:
+        st.error(f"Error: {str(e)}")
+elif st.session_state["subpage"] == "Batch Tahunan":
+    try:
+        batchtahunan_app()
+    except Exception as e:
+        st.error(f"Error: {str(e)}")
 
 # ----------- HALAMAN SAMPLE -----------
 def sample():
