@@ -8,16 +8,19 @@ def calculate_depreciation(initial_cost, acquisition_year, useful_life, reportin
         capitalizations = []
     if corrections is None:
         corrections = []
+    
     # Organize capitalizations by year
     cap_dict = {}
     for cap in capitalizations:
-        year = cap['year']
+        year = cap['Tahun']  # Sesuaikan dengan nama kolom di file Excel
         cap_dict.setdefault(year, []).append(cap)
+    
     # Organize corrections by year
     corr_dict = {}
     for corr in corrections:
-        year = corr['year']
+        year = corr['Tahun']  # Sesuaikan dengan nama kolom di file Excel
         corr_dict.setdefault(year, []).append(corr)
+    
     # Initialize variables
     book_value = initial_cost
     remaining_life = useful_life
@@ -25,25 +28,29 @@ def calculate_depreciation(initial_cost, acquisition_year, useful_life, reportin
     original_life = useful_life
     accumulated_dep = 0
     schedule = []
+    
     # Calculate yearly depreciation
     while remaining_life > 0 and current_year <= reporting_year:
         # Process capitalizations
         if current_year in cap_dict:
             for cap in cap_dict[current_year]:
-                if cap['year'] > reporting_year:
+                if cap['Tahun'] > reporting_year:  # Sesuaikan dengan nama kolom di file Excel
                     continue
-                book_value += cap['amount']
-                life_extension = cap.get('life_extension', 0)
+                book_value += cap['Jumlah']  # Sesuaikan dengan nama kolom di file Excel
+                life_extension = cap.get('Tambahan Usia', 0)  # Sesuaikan dengan nama kolom di file Excel
                 remaining_life = min(remaining_life + life_extension, original_life)
+        
         # Process corrections
         if current_year in corr_dict:
             for corr in corr_dict[current_year]:
-                if corr['year'] > reporting_year:
+                if corr['Tahun'] > reporting_year:  # Sesuaikan dengan nama kolom di file Excel
                     continue
-                book_value -= corr['amount']
+                book_value -= corr['Jumlah']  # Sesuaikan dengan nama kolom di file Excel
+        
         # Calculate annual depreciation
         annual_dep = book_value / remaining_life if remaining_life > 0 else 0
         accumulated_dep += annual_dep
+        
         # Add to schedule
         schedule.append({
             'year': current_year,
@@ -52,10 +59,12 @@ def calculate_depreciation(initial_cost, acquisition_year, useful_life, reportin
             'book_value': round(book_value - annual_dep, 2),
             'sisa_mm': remaining_life - 1
         })
+        
         # Update values for next year
         book_value -= annual_dep
         remaining_life -= 1
         current_year += 1
+    
     return schedule
 
 def convert_df_to_excel_with_sheets(results, schedules):
@@ -93,15 +102,9 @@ def app():
 
             # Validate Data
             required_columns_assets = {'Nama Aset', 'Harga Perolehan Awal (Rp)', 'Tahun Perolehan', 'Masa Manfaat (tahun)', 'Tahun Pelaporan'}
-            required_columns_cap = {'Nama Aset', 'Tahun', 'Jumlah', 'Tambahan Usia'}
-            required_columns_corr = {'Nama Aset', 'Tahun', 'Jumlah'}
+            required_columns_cap = {'Nama Aset', 'Tahun', 'Jumlah', 'Tambahan Usia'}  # Sesuaikan dengan nama kolom di file Excel
+            required_columns_corr = {'Nama Aset', 'Tahun', 'Jumlah'}  # Sesuaikan dengan nama kolom di file Excel
 
-            # Debugging: Print column names
-            st.write("Sheet 1 Columns:", assets_df.columns)
-            st.write("Sheet 2 Columns:", capitalizations_df.columns)
-            st.write("Sheet 3 Columns:", corrections_df.columns)
-
-            # Validate columns
             if not required_columns_assets.issubset(assets_df.columns):
                 st.error("Sheet 1 (Data Aset Tetap) tidak memiliki kolom yang diperlukan.")
                 return
@@ -110,17 +113,6 @@ def app():
                 return
             if not required_columns_corr.issubset(corrections_df.columns):
                 st.error("Sheet 3 (Koreksi) tidak memiliki kolom yang diperlukan.")
-                return
-
-            # Convert 'Tahun' columns to integers
-            try:
-                assets_df['Tahun Perolehan'] = assets_df['Tahun Perolehan'].astype(int)
-                assets_df['Masa Manfaat (tahun)'] = assets_df['Masa Manfaat (tahun)'].astype(int)
-                assets_df['Tahun Pelaporan'] = assets_df['Tahun Pelaporan'].astype(int)
-                capitalizations_df['Tahun'] = capitalizations_df['Tahun'].astype(int)
-                corrections_df['Tahun'] = corrections_df['Tahun'].astype(int)
-            except ValueError:
-                st.error("Kesalahan konversi tipe data pada kolom 'Tahun'. Pastikan semua nilai tahun adalah angka.")
                 return
 
             # Process Data
