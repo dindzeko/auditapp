@@ -90,6 +90,34 @@ def format_number_indonesia(number):
 def app():
     st.title("📉 Depresiasi GL Tahunan")
 
+    # Expander untuk Batch Tahunan
+    with st.expander("📖 Informasi Batch Tahunan ▼", expanded=False):
+        st.markdown("""
+        ### Fungsi Batch Tahunan
+        Subpage **Batch Tahunan** ini dirancang untuk memudahkan pengguna dalam menghitung penyusutan beberapa aset sekaligus tanpa perlu memasukkan data satu per satu secara manual. 
+
+        **Keuntungan Menggunakan Batch Tahunan:**
+        - Proses lebih cepat dan efisien.
+        - Pengguna hanya perlu mengisi data sesuai dengan format file Excel yang disediakan.
+        - Dapat menghitung penyusutan untuk banyak aset dalam satu kali proses.
+
+        Untuk menggunakan fitur ini:
+        1. Unduh template Excel yang telah disediakan.
+        2. Isi data aset tetap, kapitalisasi, dan koreksi sesuai format.
+        3. Unggah file Excel yang telah diisi ke aplikasi.
+        """)
+
+    # Tombol Unduh Template Excel
+    st.subheader("📥 Download Template Excel")
+    st.markdown("""
+    Silakan unduh template Excel berikut untuk mengisi data aset tetap, kapitalisasi, dan koreksi:
+    """)
+    if st.button("⬇️ Download Template Excel"):
+        # Link ke Google Drive
+        st.markdown("""
+        [![Download](https://img.shields.io/badge/Download-Template%20Excel-blue)](https://docs.google.com/spreadsheets/d/1b4bueqvZ0vDn7DtKgNK-uVQojLGMM8vQ/edit?usp=drive_link&ouid=106044501644618784207&rtpof=true&sd=true)
+        """)
+
     # Upload Excel File
     uploaded_file = st.file_uploader("📤 Unggah File Excel", type=["xlsx"])
     if uploaded_file is not None:
