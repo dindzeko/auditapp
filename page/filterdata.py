@@ -88,7 +88,7 @@ def app():
     with st.expander("Info Penting"):
         st.write("""
         **Catatan Penting:**  
-        Halaman ini dirancang khusus hanya  mencari rincian **Buku Besar LKPD Kota Tangerang 2025**.  
+        Halaman ini dirancang khusus hanya untuk mencari rincian **Buku Besar LKPD Kota Tangerang 2025**.  
         Gunakan filter berikut untuk memperoleh data rincian transaksi.
         """)
 
