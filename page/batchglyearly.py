@@ -95,16 +95,10 @@ def app():
         st.markdown("""
         ### Fungsi Batch Tahunan
         Subpage **Batch Tahunan** ini dirancang untuk memudahkan pengguna dalam menghitung penyusutan beberapa aset sekaligus tanpa perlu memasukkan data satu per satu secara manual. 
-
-        **Keuntungan Menggunakan Batch Tahunan:**
-        - Proses lebih cepat dan efisien.
-        - Pengguna hanya perlu mengisi data sesuai dengan format file Excel yang disediakan.
-        - Dapat menghitung penyusutan untuk banyak aset dalam satu kali proses.
-
         Untuk menggunakan fitur ini:
         1. Unduh template Excel yang telah disediakan.
-        2. Isi data aset tetap, kapitalisasi, dan koreksi sesuai format.
-        3. Unggah file Excel yang telah diisi ke aplikasi.
+        2. Isi data aset tetap (data aset tetap bisa berupa kode barang atau nama barang dengan ketentuan harus unik/tidak boleh sama, histori kapitalisasi, dan histori koreksi kurang aset tetap jika ada sesuai format excel.
+        3. Unggah form file Excel yang telah Anda diisi ke aplikasi.
         """)
 
     # Tombol Unduh Template Excel
