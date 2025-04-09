@@ -93,7 +93,6 @@ def app():
         """)
 
     # ================== WIDGET FILTER ==================
-    st.subheader("Filter Data")
     st.markdown("---")
 
     # 1. Filter Jenis Transaksi
