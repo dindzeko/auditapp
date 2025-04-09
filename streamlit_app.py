@@ -64,7 +64,7 @@ def main_page():
     - **Depresiasi**: Hitung penyusutan aset tetap.
     - **Sample**: Pengambilan sampel data audit.
     - **Fuzzy Searching**: Pencarian data dengan toleransi typo.
-    - **Buku Besar**: Halaman khusus buku besar LKTangcit.
+    - **Buku Besar**: Halaman khusus mencari rincian buku besar LKTangcit.
     - **PDF Tools**: Manipulasi dokumen PDF.
     - **FIFO**: Perhitungan persediaan metode FIFO.
     - **GPS**: Menghasilkan KML file dari foto atau gambar.
@@ -216,7 +216,7 @@ page_config = {
     "Depresiasi": depresiasi,
     "Sample": sample,
     "Fuzzy Searching": fuzzy_searching,
-    "Buku Besar": filterdata,
+    "Buku Besar LKTangcit24": filterdata,
     "PDF Tools": pdf_tools,
     "FIFO": fifo,
     "GPS": gps,
