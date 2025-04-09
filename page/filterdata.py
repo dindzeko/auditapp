@@ -19,8 +19,6 @@ def app():
         unsafe_allow_html=True,
     )
 
-    st.title("Buku Besar Transaksi")
-
     # ================== DATA LOADING ==================
     if "bukubesar" not in st.session_state:
         try:
