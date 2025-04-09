@@ -5,26 +5,46 @@ from streamlit_option_menu import option_menu
 def add_css(css):
     st.markdown(f'<style>{css}</style>', unsafe_allow_html=True)
 
-# CSS styling (kosongkan dulu untuk fokus perbaikan fungsional)
-css_styles = ""
+# CSS styling (opsional)
+css_styles = """
+<style>
+/* Styling untuk judul utama */
+h1 {
+    font-size: 2.5rem;
+    color: #333;
+}
+
+/* Styling untuk deskripsi */
+p {
+    font-size: 1.2rem;
+    color: #555;
+}
+
+/* Styling untuk sidebar */
+.sidebar .sidebar-content {
+    padding: 20px;
+    background-color: #f9f9f9;
+}
+</style>
+"""
 add_css(css_styles)
 
-# Impor modul dengan koreksi typo
+# Impor modul-modul halaman dari folder `page/`
 try:
     from page.susuttahunan import app as susuttahunan_app
     from page.susutsemester import app as susutsemester_app
-    from page.batchglyearly import app as batchtahunan_app  # Perbaiki typo 'batchglyearly'
+    from page.batchglyearly import app as batchtahunan_app
     from page.ahp import app as ahp_app
     from page.mus import app as mus_app
     from page.benfords import app as benfords_app
-    from page.fifoindividu import app as fifoindividu_app  # Perbaiki typo 'impor t'
+    from page.fifoindividu import app as fifoindividu_app
     from page.fifobatch import app as fifobatch_app
     from page.mergepdf import app as mergepdf_app
-    from page.extractpdf import app as extractpdf_app  # Perbaiki typo 'extractpdf_ap p'
+    from page.extractpdf import app as extractpdf_app
     from page.fuzzysearch import app as fuzzysearch_app
     from page.filterdata import app as filterdata_app
     from page.gps import app as gps_app
-    from page.recaltab import app as recaltab_app  # Ganti dari 'ceklhp' ke 'recaltab'
+    from page.recaltab import app as recaltab_app
 except ImportError as e:
     st.error(f"Error importing modules: {str(e)}")
     st.stop()
@@ -35,20 +55,20 @@ if "subpage" not in st.session_state:
 
 # ----------- HALAMAN UTAMA -----------
 def main_page():
-    st.title("Selamat Datang!")
+    st.title("Selamat Datang di AuditApp!")
     st.write("""
     Aplikasi ini dirancang untuk membantu mempermudah pekerjaan Audit. 
     Di halaman utama ini, Anda akan menemukan informasi dasar dan panduan untuk memulai.
     
     Modul yang tersedia:
-    - **Depresiasi**: Hitung penyusutan aset
-    - **Sample**: Pengambilan sampel data audit
-    - **Fuzzy Searching**: Pencarian data dengan toleransi typo
-    - **Buku Besar**: Halaman Khusus Buku Besar LKTangcit
-    - **PDF Tools**: Manipulasi dokumen PDF
-    - **FIFO**: Perhitungan persediaan metode FIFO
-    - **GPS**: Menghasilkan KML File dari Foto atau Image
-    - **RecalTab**: Pengecekan tabel di File atau Laporan berbentuk Ms Word
+    - **Depresiasi**: Hitung penyusutan aset tetap.
+    - **Sample**: Pengambilan sampel data audit.
+    - **Fuzzy Searching**: Pencarian data dengan toleransi typo.
+    - **Buku Besar**: Halaman khusus buku besar LKTangcit.
+    - **PDF Tools**: Manipulasi dokumen PDF.
+    - **FIFO**: Perhitungan persediaan metode FIFO.
+    - **GPS**: Menghasilkan KML file dari foto atau gambar.
+    - **RecalTab**: Pengecekan tabel di file laporan berbentuk Ms Word.
     """)
 
 # ----------- HALAMAN DEPRESIASI -----------
@@ -69,6 +89,11 @@ def depresiasi():
     with col3:
         if st.button("Batch Tahunan", use_container_width=True):
             st.session_state["subpage"] = "Batch Tahunan"
+
+    # Tombol Kembali ke Halaman Utama
+    if st.button("Kembali ke Halaman Utama"):
+        st.session_state["subpage"] = None
+        st.experimental_rerun()
 
     # Render subpage sesuai session state
     if st.session_state["subpage"] == "Susut Tahunan":
@@ -102,6 +127,11 @@ def sample():
         if st.button("Benford's Law", use_container_width=True):
             st.session_state["subpage"] = "Benford's Law"
     
+    # Tombol Kembali ke Halaman Utama
+    if st.button("Kembali ke Halaman Utama"):
+        st.session_state["subpage"] = None
+        st.experimental_rerun()
+
     # Render subpage sesuai session state
     if st.session_state["subpage"] == "AHP":
         st.subheader("Analytic Hierarchy Process")
@@ -125,6 +155,11 @@ def pdf_tools():
         if st.button("Ekstrak PDF", use_container_width=True):
             st.session_state["subpage"] = "Extract PDF"
     
+    # Tombol Kembali ke Halaman Utama
+    if st.button("Kembali ke Halaman Utama"):
+        st.session_state["subpage"] = None
+        st.experimental_rerun()
+
     # Render subpage sesuai session state
     if st.session_state["subpage"] == "Merge PDF":
         st.subheader("Gabung File PDF")
@@ -145,6 +180,11 @@ def fifo():
         if st.button("Upload Excel", use_container_width=True):
             st.session_state["subpage"] = "Batch"
     
+    # Tombol Kembali ke Halaman Utama
+    if st.button("Kembali ke Halaman Utama"):
+        st.session_state["subpage"] = None
+        st.experimental_rerun()
+
     # Render subpage sesuai session state
     if st.session_state["subpage"] == "Individu":
         st.subheader("Metode Manual")
@@ -166,9 +206,9 @@ def gps():
     st.title("🌍 KML Generator")
     gps_app()
 
-def recaltab():  # Ganti dari 'ceklhp' ke 'recaltab'
+def recaltab():
     st.title("📝 RecalTab")
-    recaltab_app()  # Ganti dari 'ceklhp_app' ke 'recaltab_app'
+    recaltab_app()
 
 # ----------- KONFIGURASI NAVIGASI -----------
 page_config = {
@@ -180,7 +220,7 @@ page_config = {
     "PDF Tools": pdf_tools,
     "FIFO": fifo,
     "GPS": gps,
-    "RecalTab": recaltab,  # Ganti dari 'ceklhp' ke 'recaltab'
+    "RecalTab": recaltab,
 }
 
 # ----------- SIDEBAR -----------
@@ -197,8 +237,12 @@ with st.sidebar:
         default_index=0,
     )
 
+# Reset session state jika kembali ke halaman utama
+if selected == "Main Page":
+    st.session_state["subpage"] = None
+
 # ----------- RENDER HALAMAN -----------
 if selected in page_config:
     page_config[selected]()
 else:
-    st.error("Halaman tidak ditemukan")
+    st.error("Halaman tidak ditemukan. Silakan pilih halaman lain dari menu navigasi.")
