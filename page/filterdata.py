@@ -81,7 +81,6 @@ def app():
     }
 
     # ================== HEADER DAN DESKRIPSI HALAMAN ==================
-    st.title("Buku Besar LK Tangcit")
     st.subheader("Pilih Akun Buku Besar")
 
     # Tambahkan expander untuk penjelasan
