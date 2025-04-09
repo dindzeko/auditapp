@@ -22,7 +22,7 @@ try:
     from page.mergepdf import app as mergepdf_app
     from page.extractpdf import app as extractpdf_app  # Perbaiki typo 'extractpdf_ap p'
     from page.fuzzysearch import app as fuzzysearch_app
-    from page.querybuilder import app as querybuilder_app
+    from page.filterdata import app as filterdata_app
     from page.gps import app as gps_app
     from page.recaltab import app as recaltab_app  # Ganti dari 'ceklhp' ke 'recaltab'
 except ImportError as e:
@@ -44,7 +44,7 @@ def main_page():
     - **Depresiasi**: Hitung penyusutan aset
     - **Sample**: Pengambilan sampel data audit
     - **Fuzzy Searching**: Pencarian data dengan toleransi typo
-    - **Query Builder**: Membuat kueri database visual
+    - **Buku Besar**: Halaman Khusus Buku Besar LKTangcit
     - **PDF Tools**: Manipulasi dokumen PDF
     - **FIFO**: Perhitungan persediaan metode FIFO
     - **GPS**: Menghasilkan KML File dari Foto atau Image
@@ -158,9 +158,9 @@ def fuzzy_searching():
     st.title("Fuzzy Searching")
     fuzzysearch_app()
 
-def query_builder():
-    st.title("Query Builder")
-    querybuilder_app()
+def filterdata():
+    st.title("Buku Besar LK Tangcit")
+    filterdata_app()
 
 def gps():
     st.title("🌍 KML Generator")
@@ -176,7 +176,7 @@ page_config = {
     "Depresiasi": depresiasi,
     "Sample": sample,
     "Fuzzy Searching": fuzzy_searching,
-    "Query Builder": query_builder,
+    "Buku Besar": filterdata,
     "PDF Tools": pdf_tools,
     "FIFO": fifo,
     "GPS": gps,
