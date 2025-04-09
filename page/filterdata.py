@@ -81,7 +81,7 @@ def app():
     }
 
     # ================== WIDGET FILTER ==================
-    st.subheader("Filter Data")
+    st.subheader("Pilih Akun Buku Besar")
     st.markdown("---")
 
     # 1. Filter Jenis Transaksi
