@@ -81,19 +81,12 @@ def depresiasi():
     with col1:
         if st.button("Susut Tahunan", use_container_width=True):
             st.session_state["subpage"] = "Susut Tahunan"
-    
     with col2:
         if st.button("Susut Semester", use_container_width=True):
             st.session_state["subpage"] = "Susut Semester"
-    
     with col3:
         if st.button("Batch Tahunan", use_container_width=True):
             st.session_state["subpage"] = "Batch Tahunan"
-
-    # Tombol Kembali ke Halaman Utama
-    if st.button("Kembali ke Halaman Utama"):
-        st.session_state["subpage"] = None
-        st.experimental_rerun()
 
     # Render subpage sesuai session state
     if st.session_state["subpage"] == "Susut Tahunan":
@@ -127,11 +120,6 @@ def sample():
         if st.button("Benford's Law", use_container_width=True):
             st.session_state["subpage"] = "Benford's Law"
     
-    # Tombol Kembali ke Halaman Utama
-    if st.button("Kembali ke Halaman Utama"):
-        st.session_state["subpage"] = None
-        st.experimental_rerun()
-
     # Render subpage sesuai session state
     if st.session_state["subpage"] == "AHP":
         st.subheader("Analytic Hierarchy Process")
@@ -155,11 +143,6 @@ def pdf_tools():
         if st.button("Ekstrak PDF", use_container_width=True):
             st.session_state["subpage"] = "Extract PDF"
     
-    # Tombol Kembali ke Halaman Utama
-    if st.button("Kembali ke Halaman Utama"):
-        st.session_state["subpage"] = None
-        st.experimental_rerun()
-
     # Render subpage sesuai session state
     if st.session_state["subpage"] == "Merge PDF":
         st.subheader("Gabung File PDF")
@@ -180,11 +163,6 @@ def fifo():
         if st.button("Upload Excel", use_container_width=True):
             st.session_state["subpage"] = "Batch"
     
-    # Tombol Kembali ke Halaman Utama
-    if st.button("Kembali ke Halaman Utama"):
-        st.session_state["subpage"] = None
-        st.experimental_rerun()
-
     # Render subpage sesuai session state
     if st.session_state["subpage"] == "Individu":
         st.subheader("Metode Manual")
