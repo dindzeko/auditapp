@@ -242,7 +242,12 @@ if selected == "Main Page":
     st.session_state["subpage"] = None
 
 # ----------- RENDER HALAMAN -----------
-if selected in page_config:
-    page_config[selected]()
-else:
-    st.error("Halaman tidak ditemukan. Silakan pilih halaman lain dari menu navigasi.")
+try:
+    if selected in page_config:
+        page_config[selected]()
+    else:
+        st.error("Halaman tidak ditemukan. Silakan pilih halaman lain dari menu navigasi.")
+except KeyError as e:
+    st.error(f"Kesalahan: Halaman '{selected}' tidak ditemukan.")
+except Exception as e:
+    st.error(f"Terjadi kesalahan: {str(e)}")
