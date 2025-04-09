@@ -80,8 +80,20 @@ def app():
         '8': 'BEBAN DAERAH'
     }
 
-    # ================== WIDGET FILTER ==================
+    # ================== HEADER DAN DESKRIPSI HALAMAN ==================
+    st.title("Buku Besar LK Tangcit")
     st.subheader("Pilih Akun Buku Besar")
+
+    # Tambahkan expander untuk penjelasan
+    with st.expander("Info Halaman"):
+        st.write("""
+        **Catatan Penting:**  
+        Halaman ini dirancang khusus untuk mencari rincian **Buku Besar LKPD Kota Tangerang 2025**.  
+        Gunakan filter berikut untuk memperoleh data transaksi sesuai kebutuhan Anda.
+        """)
+
+    # ================== WIDGET FILTER ==================
+    st.subheader("Filter Data")
     st.markdown("---")
 
     # 1. Filter Jenis Transaksi
@@ -238,3 +250,6 @@ def app():
             
         except Exception as e:
             st.error(f"Terjadi kesalahan: {str(e)}")
+
+# Jalankan aplikasi
+app()
