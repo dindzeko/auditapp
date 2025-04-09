@@ -85,11 +85,11 @@ def app():
     st.subheader("Pilih Akun Buku Besar")
 
     # Tambahkan expander untuk penjelasan
-    with st.expander("Info Halaman"):
+    with st.expander("Info Penting"):
         st.write("""
         **Catatan Penting:**  
-        Halaman ini dirancang khusus untuk mencari rincian **Buku Besar LKPD Kota Tangerang 2025**.  
-        Gunakan filter berikut untuk memperoleh data transaksi sesuai kebutuhan Anda.
+        Halaman ini dirancang khusus hanya  mencari rincian **Buku Besar LKPD Kota Tangerang 2025**.  
+        Gunakan filter berikut untuk memperoleh data rincian transaksi.
         """)
 
     # ================== WIDGET FILTER ==================
