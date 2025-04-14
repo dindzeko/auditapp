@@ -28,21 +28,32 @@ def calculate_depreciation(initial_cost, acquisition_year, useful_life, reportin
     accumulated_dep = 0
     schedule = []
 
-    while remaining_life > 0 and current_year <= reporting_year:
+    while current_year <= reporting_year:
+        # Cek apakah ada kapitalisasi pada tahun ini
         if current_year in cap_dict:
             for cap in cap_dict[current_year]:
                 if cap.get("Tahun", float("inf")) > reporting_year:
                     continue
-                book_value += cap.get("Jumlah", 0)
-                life_extension = cap.get("Tambahan Usia", 0)
-                remaining_life = min(remaining_life + life_extension, original_life)
+                
+                # Jika masa manfaat sudah habis, anggap sebagai aset baru
+                if remaining_life <= 0:
+                    book_value = cap.get("Jumlah", 0)
+                    remaining_life = cap.get("Tambahan Usia", 0)
+                    original_life = remaining_life
+                    accumulated_dep = 0
+                else:
+                    book_value += cap.get("Jumlah", 0)
+                    life_extension = cap.get("Tambahan Usia", 0)
+                    remaining_life = min(remaining_life + life_extension, original_life)
 
+        # Cek apakah ada koreksi pada tahun ini
         if current_year in corr_dict:
             for corr in corr_dict[current_year]:
                 if corr.get("Tahun", float("inf")) > reporting_year:
                     continue
                 book_value -= corr.get("Jumlah", 0)
 
+        # Hitung depresiasi tahunan
         annual_dep = book_value / remaining_life if remaining_life > 0 else 0
         accumulated_dep += annual_dep
 
