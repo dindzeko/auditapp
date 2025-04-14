@@ -12,13 +12,15 @@ def calculate_depreciation(initial_cost, acquisition_year, useful_life, reportin
     # Organize capitalizations and corrections by year
     cap_dict = {}
     for cap in capitalizations:
-        year = cap['Tahun']
-        cap_dict.setdefault(year, []).append(cap)
+        year = cap.get('Tahun')  # Use .get() to avoid KeyError
+        if year is not None:
+            cap_dict.setdefault(year, []).append(cap)
 
     corr_dict = {}
     for corr in corrections:
-        year = corr['Tahun']
-        corr_dict.setdefault(year, []).append(corr)
+        year = corr.get('Tahun')  # Use .get() to avoid KeyError
+        if year is not None:
+            corr_dict.setdefault(year, []).append(corr)
 
     # Initialize variables
     book_value = initial_cost
@@ -33,18 +35,18 @@ def calculate_depreciation(initial_cost, acquisition_year, useful_life, reportin
         # Process capitalizations
         if current_year in cap_dict:
             for cap in cap_dict[current_year]:
-                if cap['Tahun'] > reporting_year:
+                if cap.get('Tahun', float('inf')) > reporting_year:  # Skip if beyond reporting year
                     continue
-                book_value += cap['Jumlah']
+                book_value += cap.get('Jumlah', 0)  # Default to 0 if 'Jumlah' is missing
                 life_extension = cap.get('Tambahan Usia', 0)
                 remaining_life = min(remaining_life + life_extension, original_life)
 
         # Process corrections
         if current_year in corr_dict:
             for corr in corr_dict[current_year]:
-                if corr['Tahun'] > reporting_year:
+                if corr.get('Tahun', float('inf')) > reporting_year:  # Skip if beyond reporting year
                     continue
-                book_value -= corr['Jumlah']
+                book_value -= corr.get('Jumlah', 0)  # Default to 0 if 'Jumlah' is missing
 
         # Calculate annual depreciation
         annual_dep = book_value / remaining_life if remaining_life > 0 else 0
@@ -65,29 +67,6 @@ def calculate_depreciation(initial_cost, acquisition_year, useful_life, reportin
         current_year += 1
 
     return schedule
-
-
-# Fungsi Helper: Konversi DataFrame ke Excel dengan Beberapa Sheet
-def convert_df_to_excel_with_sheets(results, schedules):
-    import io
-    buffer = io.BytesIO()
-    with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
-        # Add summary sheet
-        results_df = pd.DataFrame(results)
-        results_df.to_excel(writer, index=False, sheet_name='Ringkasan')
-
-        # Add individual asset sheets
-        for asset_name, schedule in schedules.items():
-            schedule_df = pd.DataFrame(schedule)
-            schedule_df.to_excel(writer, index=False, sheet_name=asset_name[:31])  # Excel sheet name limit is 31 characters
-    return buffer.getvalue()
-
-
-# Fungsi Helper: Format Angka Indonesia
-def format_number_indonesia(number):
-    if isinstance(number, (int, float)):
-        return f"{number:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-    return number
 
 
 # Fungsi Utama Aplikasi
@@ -125,7 +104,7 @@ def app():
             capitalizations_df = excel_data.parse(sheet_name=1)
             corrections_df = excel_data.parse(sheet_name=2)
 
-            # Validate Data
+            # Validate Required Columns
             required_columns_assets = {'Nama Aset', 'Harga Perolehan Awal (Rp)', 'Tahun Perolehan', 'Masa Manfaat (tahun)', 'Tahun Pelaporan'}
             required_columns_cap = {'Nama Aset', 'Tahun', 'Jumlah', 'Tambahan Usia'}
             required_columns_corr = {'Nama Aset', 'Tahun', 'Jumlah'}
@@ -140,20 +119,20 @@ def app():
                 st.error("Sheet 3 (Koreksi) tidak memiliki kolom yang diperlukan.")
                 return
 
-            # Convert required columns to appropriate data types
+            # Convert Required Columns to Appropriate Data Types
             assets_df['Harga Perolehan Awal (Rp)'] = pd.to_numeric(assets_df['Harga Perolehan Awal (Rp)'], errors='coerce')
             assets_df['Tahun Perolehan'] = pd.to_numeric(assets_df['Tahun Perolehan'], errors='coerce').astype('Int64')
             assets_df['Masa Manfaat (tahun)'] = pd.to_numeric(assets_df['Masa Manfaat (tahun)'], errors='coerce').astype('Int64')
             assets_df['Tahun Pelaporan'] = pd.to_numeric(assets_df['Tahun Pelaporan'], errors='coerce').astype('Int64')
 
             capitalizations_df['Tahun'] = pd.to_numeric(capitalizations_df['Tahun'], errors='coerce').astype('Int64')
-            capitalizations_df['Jumlah'] = pd.to_numeric(capitalizations_df['Jumlah'], errors='coerce')
+            capitalizations_df['Jumlah'] = pd.to_numeric(capitalizations_df['Jumlah'], errors='coerce').fillna(0)
             capitalizations_df['Tambahan Usia'] = pd.to_numeric(capitalizations_df['Tambahan Usia'], errors='coerce').fillna(0)
 
             corrections_df['Tahun'] = pd.to_numeric(corrections_df['Tahun'], errors='coerce').astype('Int64')
-            corrections_df['Jumlah'] = pd.to_numeric(corrections_df['Jumlah'], errors='coerce')
+            corrections_df['Jumlah'] = pd.to_numeric(corrections_df['Jumlah'], errors='coerce').fillna(0)
 
-            # Check for missing or invalid values
+            # Check for Missing or Invalid Values
             if assets_df.isnull().values.any():
                 st.error("Sheet 1 (Data Aset Tetap) mengandung nilai kosong atau tidak valid.")
                 return
@@ -177,6 +156,12 @@ def app():
                 # Filter Capitalizations and Corrections for the Asset
                 asset_caps = capitalizations_df[capitalizations_df['Nama Aset'] == asset_name].to_dict(orient='records')
                 asset_corrs = corrections_df[corrections_df['Nama Aset'] == asset_name].to_dict(orient='records')
+
+                # Ensure capitalizations and corrections are lists of dictionaries
+                if not isinstance(asset_caps, list):
+                    asset_caps = []
+                if not isinstance(asset_corrs, list):
+                    asset_corrs = []
 
                 # Calculate Depreciation
                 schedule = calculate_depreciation(
@@ -204,9 +189,9 @@ def app():
             results_df = pd.DataFrame(results)
             st.subheader("📊 Hasil Penyusutan")
             st.dataframe(results_df.style.format({
-                'Penyusutan': format_number_indonesia,
-                'Akumulasi': format_number_indonesia,
-                'Nilai Buku': format_number_indonesia
+                'Penyusutan': lambda x: f"{x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."),
+                'Akumulasi': lambda x: f"{x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."),
+                'Nilai Buku': lambda x: f"{x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
             }), use_container_width=True, hide_index=True)
 
             # Download Results
