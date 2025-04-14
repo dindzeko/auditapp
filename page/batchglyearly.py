@@ -2,25 +2,24 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 
-# Fungsi-fungsi helper
-def calculate_depreciation(initial_cost, acquisition_year, useful_life, reporting_year, capitalizations=None, corrections=None):  
+# Fungsi Helper: Menghitung Depresiasi
+def calculate_depreciation(initial_cost, acquisition_year, useful_life, reporting_year, capitalizations=None, corrections=None):
     if capitalizations is None:
         capitalizations = []
     if corrections is None:
         corrections = []
-    
-    # Organize capitalizations by year
+
+    # Organize capitalizations and corrections by year
     cap_dict = {}
     for cap in capitalizations:
-        year = cap['Tahun']  # Sesuaikan dengan nama kolom di file Excel
+        year = cap['Tahun']
         cap_dict.setdefault(year, []).append(cap)
-    
-    # Organize corrections by year
+
     corr_dict = {}
     for corr in corrections:
-        year = corr['Tahun']  # Sesuaikan dengan nama kolom di file Excel
+        year = corr['Tahun']
         corr_dict.setdefault(year, []).append(corr)
-    
+
     # Initialize variables
     book_value = initial_cost
     remaining_life = useful_life
@@ -28,29 +27,29 @@ def calculate_depreciation(initial_cost, acquisition_year, useful_life, reportin
     original_life = useful_life
     accumulated_dep = 0
     schedule = []
-    
+
     # Calculate yearly depreciation
     while remaining_life > 0 and current_year <= reporting_year:
         # Process capitalizations
         if current_year in cap_dict:
             for cap in cap_dict[current_year]:
-                if cap['Tahun'] > reporting_year:  # Sesuaikan dengan nama kolom di file Excel
+                if cap['Tahun'] > reporting_year:
                     continue
-                book_value += cap['Jumlah']  # Sesuaikan dengan nama kolom di file Excel
-                life_extension = cap.get('Tambahan Usia', 0)  # Sesuaikan dengan nama kolom di file Excel
+                book_value += cap['Jumlah']
+                life_extension = cap.get('Tambahan Usia', 0)
                 remaining_life = min(remaining_life + life_extension, original_life)
-        
+
         # Process corrections
         if current_year in corr_dict:
             for corr in corr_dict[current_year]:
-                if corr['Tahun'] > reporting_year:  # Sesuaikan dengan nama kolom di file Excel
+                if corr['Tahun'] > reporting_year:
                     continue
-                book_value -= corr['Jumlah']  # Sesuaikan dengan nama kolom di file Excel
-        
+                book_value -= corr['Jumlah']
+
         # Calculate annual depreciation
         annual_dep = book_value / remaining_life if remaining_life > 0 else 0
         accumulated_dep += annual_dep
-        
+
         # Add to schedule
         schedule.append({
             'year': current_year,
@@ -59,14 +58,16 @@ def calculate_depreciation(initial_cost, acquisition_year, useful_life, reportin
             'book_value': round(book_value - annual_dep, 2),
             'sisa_mm': remaining_life - 1
         })
-        
+
         # Update values for next year
         book_value -= annual_dep
         remaining_life -= 1
         current_year += 1
-    
+
     return schedule
 
+
+# Fungsi Helper: Konversi DataFrame ke Excel dengan Beberapa Sheet
 def convert_df_to_excel_with_sheets(results, schedules):
     import io
     buffer = io.BytesIO()
@@ -74,23 +75,26 @@ def convert_df_to_excel_with_sheets(results, schedules):
         # Add summary sheet
         results_df = pd.DataFrame(results)
         results_df.to_excel(writer, index=False, sheet_name='Ringkasan')
-        
+
         # Add individual asset sheets
         for asset_name, schedule in schedules.items():
             schedule_df = pd.DataFrame(schedule)
             schedule_df.to_excel(writer, index=False, sheet_name=asset_name[:31])  # Excel sheet name limit is 31 characters
     return buffer.getvalue()
 
+
+# Fungsi Helper: Format Angka Indonesia
 def format_number_indonesia(number):
     if isinstance(number, (int, float)):
         return f"{number:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
     return number
 
-# Fungsi utama aplikasi
+
+# Fungsi Utama Aplikasi
 def app():
     st.title("📉 Depresiasi GL Tahunan")
 
-    # Expander untuk Batch Tahunan
+    # Expander untuk Informasi Batch Tahunan
     with st.expander("📖 Informasi Batch Tahunan ▼", expanded=False):
         st.markdown("""
         ### Fungsi Batch Tahunan
@@ -107,7 +111,6 @@ def app():
     Silakan unduh template Excel berikut untuk mengisi data aset tetap, kapitalisasi, dan koreksi:
     """)
     if st.button("⬇️ Download Template Excel"):
-        # Link ke Google Drive
         st.markdown("""
         [![Download](https://img.shields.io/badge/Download-Template%20Excel-blue)](https://docs.google.com/spreadsheets/d/1b4bueqvZ0vDn7DtKgNK-uVQojLGMM8vQ/edit?usp=drive_link&ouid=106044501644618784207&rtpof=true&sd=true)
         """)
@@ -124,8 +127,8 @@ def app():
 
             # Validate Data
             required_columns_assets = {'Nama Aset', 'Harga Perolehan Awal (Rp)', 'Tahun Perolehan', 'Masa Manfaat (tahun)', 'Tahun Pelaporan'}
-            required_columns_cap = {'Nama Aset', 'Tahun', 'Jumlah', 'Tambahan Usia'}  # Sesuaikan dengan nama kolom di file Excel
-            required_columns_corr = {'Nama Aset', 'Tahun', 'Jumlah'}  # Sesuaikan dengan nama kolom di file Excel
+            required_columns_cap = {'Nama Aset', 'Tahun', 'Jumlah', 'Tambahan Usia'}
+            required_columns_corr = {'Nama Aset', 'Tahun', 'Jumlah'}
 
             if not required_columns_assets.issubset(assets_df.columns):
                 st.error("Sheet 1 (Data Aset Tetap) tidak memiliki kolom yang diperlukan.")
@@ -137,15 +140,39 @@ def app():
                 st.error("Sheet 3 (Koreksi) tidak memiliki kolom yang diperlukan.")
                 return
 
+            # Convert required columns to appropriate data types
+            assets_df['Harga Perolehan Awal (Rp)'] = pd.to_numeric(assets_df['Harga Perolehan Awal (Rp)'], errors='coerce')
+            assets_df['Tahun Perolehan'] = pd.to_numeric(assets_df['Tahun Perolehan'], errors='coerce').astype('Int64')
+            assets_df['Masa Manfaat (tahun)'] = pd.to_numeric(assets_df['Masa Manfaat (tahun)'], errors='coerce').astype('Int64')
+            assets_df['Tahun Pelaporan'] = pd.to_numeric(assets_df['Tahun Pelaporan'], errors='coerce').astype('Int64')
+
+            capitalizations_df['Tahun'] = pd.to_numeric(capitalizations_df['Tahun'], errors='coerce').astype('Int64')
+            capitalizations_df['Jumlah'] = pd.to_numeric(capitalizations_df['Jumlah'], errors='coerce')
+            capitalizations_df['Tambahan Usia'] = pd.to_numeric(capitalizations_df['Tambahan Usia'], errors='coerce').fillna(0)
+
+            corrections_df['Tahun'] = pd.to_numeric(corrections_df['Tahun'], errors='coerce').astype('Int64')
+            corrections_df['Jumlah'] = pd.to_numeric(corrections_df['Jumlah'], errors='coerce')
+
+            # Check for missing or invalid values
+            if assets_df.isnull().values.any():
+                st.error("Sheet 1 (Data Aset Tetap) mengandung nilai kosong atau tidak valid.")
+                return
+            if capitalizations_df.isnull().values.any():
+                st.error("Sheet 2 (Kapitalisasi) mengandung nilai kosong atau tidak valid.")
+                return
+            if corrections_df.isnull().values.any():
+                st.error("Sheet 3 (Koreksi) mengandung nilai kosong atau tidak valid.")
+                return
+
             # Process Data
             results = []
             schedules = {}
             for _, asset in assets_df.iterrows():
                 asset_name = asset['Nama Aset']
                 initial_cost = asset['Harga Perolehan Awal (Rp)']
-                acquisition_year = int(asset['Tahun Perolehan'])
-                useful_life = int(asset['Masa Manfaat (tahun)'])
-                reporting_year = int(asset['Tahun Pelaporan'])
+                acquisition_year = asset['Tahun Perolehan']
+                useful_life = asset['Masa Manfaat (tahun)']
+                reporting_year = asset['Tahun Pelaporan']
 
                 # Filter Capitalizations and Corrections for the Asset
                 asset_caps = capitalizations_df[capitalizations_df['Nama Aset'] == asset_name].to_dict(orient='records')
@@ -176,7 +203,11 @@ def app():
             # Display Results
             results_df = pd.DataFrame(results)
             st.subheader("📊 Hasil Penyusutan")
-            st.dataframe(results_df, use_container_width=True, hide_index=True)
+            st.dataframe(results_df.style.format({
+                'Penyusutan': format_number_indonesia,
+                'Akumulasi': format_number_indonesia,
+                'Nilai Buku': format_number_indonesia
+            }), use_container_width=True, hide_index=True)
 
             # Download Results
             excel_buffer = convert_df_to_excel_with_sheets(results, schedules)
@@ -189,6 +220,7 @@ def app():
 
         except Exception as e:
             st.error(f"❌ Terjadi kesalahan saat memproses file: {str(e)}")
+
 
 # Jalankan aplikasi
 if __name__ == "__main__":
