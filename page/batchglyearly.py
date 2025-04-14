@@ -40,7 +40,7 @@ def calculate_depreciation(initial_cost, acquisition_year, useful_life, reportin
                 
                 # Update masa manfaat dengan batasan tidak melebihi masa manfaat awal
                 life_extension = cap.get("Tambahan Usia", 0)
-                remaining_life = max(remaining_life + life_extension, 1)  # Minimal 1 tahun
+                remaining_life = min(remaining_life + life_extension, original_life)  # Batas maksimal: original_life
 
         # Proses koreksi
         if current_year in corr_dict:
