@@ -9,6 +9,7 @@ def calculate_depreciation(initial_cost, acquisition_year, useful_life, reportin
     if corrections is None:
         corrections = []
 
+    # Organize capitalizations and corrections by year
     cap_dict = {}
     for cap in capitalizations:
         year = cap.get("Tahun")
@@ -29,23 +30,30 @@ def calculate_depreciation(initial_cost, acquisition_year, useful_life, reportin
     schedule = []
 
     while remaining_life > 0 and current_year <= reporting_year:
+        # Apply capitalizations for the current year
         if current_year in cap_dict:
             for cap in cap_dict[current_year]:
                 if cap.get("Tahun", float("inf")) > reporting_year:
                     continue
                 book_value += cap.get("Jumlah", 0)
                 life_extension = cap.get("Tambahan Usia", 0)
-                remaining_life = min(remaining_life + life_extension, original_life)
+                remaining_life = min(remaining_life + life_extension, original_life + life_extension)
+                # Reset remaining life if it was previously expired
+                if remaining_life <= 0:
+                    remaining_life = life_extension
 
+        # Apply corrections for the current year
         if current_year in corr_dict:
             for corr in corr_dict[current_year]:
                 if corr.get("Tahun", float("inf")) > reporting_year:
                     continue
                 book_value -= corr.get("Jumlah", 0)
 
+        # Calculate annual depreciation
         annual_dep = book_value / remaining_life if remaining_life > 0 else 0
         accumulated_dep += annual_dep
 
+        # Record the schedule
         schedule.append({
             "year": current_year,
             "depreciation": round(annual_dep, 2),
@@ -54,6 +62,7 @@ def calculate_depreciation(initial_cost, acquisition_year, useful_life, reportin
             "sisa_mm": remaining_life - 1,
         })
 
+        # Update book value and remaining life
         book_value -= annual_dep
         remaining_life -= 1
         current_year += 1
