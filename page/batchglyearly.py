@@ -9,6 +9,7 @@ def calculate_depreciation(initial_cost, acquisition_year, useful_life, reportin
     if corrections is None:
         corrections = []
 
+    # Group kapitalisasi dan koreksi berdasarkan tahun
     cap_dict = {}
     for cap in capitalizations:
         year = cap.get("Tahun")
@@ -21,6 +22,7 @@ def calculate_depreciation(initial_cost, acquisition_year, useful_life, reportin
         if year is not None:
             corr_dict.setdefault(year, []).append(corr)
 
+    # Inisialisasi variabel
     book_value = initial_cost
     remaining_life = useful_life
     current_year = acquisition_year
@@ -28,21 +30,36 @@ def calculate_depreciation(initial_cost, acquisition_year, useful_life, reportin
     accumulated_dep = 0
     schedule = []
 
-    while remaining_life > 0 and current_year <= reporting_year:
-        if current_year in cap_dict:
-            for cap in cap_dict[current_year]:
-                if cap.get("Tahun", float("inf")) > reporting_year:
-                    continue
-                book_value += cap.get("Jumlah", 0)
-                life_extension = cap.get("Tambahan Usia", 0)
-                remaining_life = min(remaining_life + life_extension, original_life)
+    # Flag untuk menandai apakah aset sudah sepenuhnya terdepresiasi
+    fully_depreciated = False
 
+    while current_year <= reporting_year:
+        # Jika aset sudah sepenuhnya terdepresiasi, periksa kapitalisasi baru
+        if fully_depreciated and current_year in cap_dict:
+            new_capitalizations = cap_dict[current_year]
+            new_initial_cost = sum(cap.get("Jumlah", 0) for cap in new_capitalizations)
+            book_value = new_initial_cost
+            remaining_life = sum(cap.get("Tambahan Usia", 0) for cap in new_capitalizations) or original_life
+            accumulated_dep = 0
+            fully_depreciated = False  # Reset status sepenuhnya terdepresiasi
+            schedule.append({
+                "year": current_year,
+                "depreciation": 0,
+                "accumulated": 0,
+                "book_value": round(book_value, 2),
+                "sisa_mm": remaining_life,
+            })
+            current_year += 1
+            continue
+
+        # Proses koreksi
         if current_year in corr_dict:
             for corr in corr_dict[current_year]:
                 if corr.get("Tahun", float("inf")) > reporting_year:
                     continue
                 book_value -= corr.get("Jumlah", 0)
 
+        # Hitung depresiasi tahunan
         annual_dep = book_value / remaining_life if remaining_life > 0 else 0
         accumulated_dep += annual_dep
 
@@ -56,6 +73,11 @@ def calculate_depreciation(initial_cost, acquisition_year, useful_life, reportin
 
         book_value -= annual_dep
         remaining_life -= 1
+
+        # Periksa apakah aset sudah sepenuhnya terdepresiasi
+        if remaining_life <= 0:
+            fully_depreciated = True
+
         current_year += 1
 
     return schedule
