@@ -9,7 +9,6 @@ def calculate_depreciation(initial_cost, acquisition_year, useful_life, reportin
     if corrections is None:
         corrections = []
 
-    # Organize capitalizations and corrections by year
     cap_dict = {}
     for cap in capitalizations:
         year = cap.get("Tahun")
@@ -25,50 +24,38 @@ def calculate_depreciation(initial_cost, acquisition_year, useful_life, reportin
     book_value = initial_cost
     remaining_life = useful_life
     current_year = acquisition_year
-    original_life = useful_life  # Simpan masa manfaat awal
+    original_life = useful_life
     accumulated_dep = 0
     schedule = []
 
-    while current_year <= reporting_year:
-        # Proses kapitalisasi
+    while remaining_life > 0 and current_year <= reporting_year:
         if current_year in cap_dict:
             for cap in cap_dict[current_year]:
-                if cap.get("Tahun") > reporting_year:
+                if cap.get("Tahun", float("inf")) > reporting_year:
                     continue
-                # Update nilai buku
                 book_value += cap.get("Jumlah", 0)
-                
-                # Update masa manfaat dengan batasan tidak melebihi masa manfaat awal
                 life_extension = cap.get("Tambahan Usia", 0)
-                remaining_life = max(remaining_life + life_extension, 1)  # Minimal 1 tahun
+                remaining_life = min(remaining_life + life_extension, original_life)
 
-        # Proses koreksi
         if current_year in corr_dict:
             for corr in corr_dict[current_year]:
-                if corr.get("Tahun") > reporting_year:
+                if corr.get("Tahun", float("inf")) > reporting_year:
                     continue
-                book_value = max(book_value - corr.get("Jumlah", 0), 0)  # Minimal 0
+                book_value -= corr.get("Jumlah", 0)
 
-        # Hitung penyusutan hanya jika ada sisa masa manfaat
-        annual_dep = 0
-        if remaining_life > 0:
-            annual_dep = book_value / remaining_life
-            accumulated_dep += annual_dep
-            book_value -= annual_dep
-            remaining_life -= 1
+        annual_dep = book_value / remaining_life if remaining_life > 0 else 0
+        accumulated_dep += annual_dep
 
-        # Catat ke schedule
         schedule.append({
             "year": current_year,
             "depreciation": round(annual_dep, 2),
             "accumulated": round(accumulated_dep, 2),
-            "book_value": round(book_value, 2),
-            "sisa_mm": remaining_life,
+            "book_value": round(book_value - annual_dep, 2),
+            "sisa_mm": remaining_life - 1,
         })
 
-        # Debugging (opsional)
-        print(f"Year: {current_year}, Book Value: {book_value}, Remaining Life: {remaining_life}, Annual Depreciation: {annual_dep}")
-
+        book_value -= annual_dep
+        remaining_life -= 1
         current_year += 1
 
     return schedule
