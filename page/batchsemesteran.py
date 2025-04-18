@@ -102,9 +102,9 @@ def app():
     with st.expander("📖 Informasi Batch Semesteran ▼", expanded=False):
         st.markdown("""
         ### Fungsi Batch Semesteran
-        1. Unduh template Form_Batch_Semesteran,
-        2. Isi data aset, kapitalisasi, dan koreksi sebelumnya jangan lupa untuk menghapus data dummy,
-        3. isi data Tanggal Perolehan dan Tanggal Pelaporan pada sheet Data Aset Tetap serta isi kolom  Tanggal  pada Kapitalisasi menggunakan **Tanggal** berformat (DD/MM/YYYY). 
+        1. Unduh template Form_Batch_Semesteran serta jangan lupa untuk menghapus isian data dummy dengan font berwarna merah;
+        2. Isi data aset, kapitalisasi, dan koreksi ;
+        3. isi data Tanggal Perolehan dan Tanggal Pelaporan pada sheet Data Aset Tetap serta isi kolom  Tanggal  pada Kapitalisasi menggunakan **Tanggal** berformat (DD/MM/YYYY) ; dan  
         4. Unggah file Form Excel.
         """)
 
