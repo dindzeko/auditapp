@@ -1,3 +1,8 @@
+import streamlit as st
+import pandas as pd
+from datetime import datetime
+from io import BytesIO
+
 # Fungsi Helper: Konversi Tanggal ke Semester
 def convert_date_to_semester(date_str):
     """
@@ -91,8 +96,26 @@ def calculate_depreciation(initial_cost, acquisition_date, useful_life, reportin
 
     return schedule
 
+# Fungsi untuk konversi DataFrame ke Excel dengan beberapa sheet
+def convert_df_to_excel_with_sheets(results, schedules):
+    output = BytesIO()
+    writer = pd.ExcelWriter(output, engine='xlsxwriter')
+
+    # Sheet 1: Hasil ringkasan
+    results_df = pd.DataFrame(results)
+    results_df.to_excel(writer, sheet_name="Hasil Ringkasan", index=False)
+
+    # Sheet 2: Jadwal penyusutan
+    for asset_name, schedule in schedules.items():
+        schedule_df = pd.DataFrame(schedule)
+        schedule_df.to_excel(writer, sheet_name=asset_name[:31], index=False)  # Nama sheet maksimal 31 karakter
+
+    writer.close()
+    output.seek(0)
+    return output
+
 # Fungsi Utama Aplikasi
-def app():
+def batchsemesteran_app():
     st.title("📉 Depresiasi GL Semesteran")
 
     with st.expander("📖 Informasi Batch Semesteran ▼", expanded=False):
@@ -184,4 +207,4 @@ def app():
             st.error(f"❌ Error: {str(e)}")
 
 if __name__ == "__main__":
-    app()
+    batchsemesteran_app()
