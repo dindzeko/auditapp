@@ -1,5 +1,7 @@
 import streamlit as st
 from streamlit_option_menu import option_menu
+import pandas as pd
+import datetime
 
 # Fungsi untuk menambahkan CSS
 def add_css(css):
@@ -31,21 +33,7 @@ add_css(css_styles)
 
 # Impor modul-modul halaman dari folder `page/`
 try:
-    from page.susuttahunan import app as susuttahunan_app
-    from page.susutsemester import app as susutsemester_app
-    from page.batchglyearly import app as batchtahunan_app
-    from page.batchsemesteran import app as batchsemesteran_app
-    from page.ahp import app as ahp_app
-    from page.mus import app as mus_app
-    from page.benfords import app as benfords_app
-    from page.fifoindividu import app as fifoindividu_app
-    from page.fifobatch import app as fifobatch_app
-    from page.mergepdf import app as mergepdf_app
-    from page.extractpdf import app as extractpdf_app
-    from page.fuzzysearch import app as fuzzysearch_app
-    from page.filterdata import app as filterdata_app
-    from page.gps import app as gps_app
-    from page.recaltab import app as recaltab_app
+    from page.batchsemesteran import batchsemesteran_app
 except ImportError as e:
     st.error(f"Error importing modules: {str(e)}")
     st.stop()
@@ -93,121 +81,16 @@ def depresiasi():
             st.session_state["subpage"] = "Batch Semesteran"
             
     # Render subpage sesuai session state
-    if st.session_state["subpage"] == "Susut Tahunan":
-        try:
-            susuttahunan_app()
-        except Exception as e:
-            st.error(f"Error: {str(e)}")
-    elif st.session_state["subpage"] == "Susut Semester":
-        try:
-            susutsemester_app()
-        except Exception as e:
-            st.error(f"Error: {str(e)}")
-    elif st.session_state["subpage"] == "Batch Tahunan":
-        try:
-            batchtahunan_app()
-        except Exception as e:
-            st.error(f"Error: {str(e)}")
-    elif st.session_state["subpage"] == "Batch Semesteran":
+    if st.session_state["subpage"] == "Batch Semesteran":
         try:
             batchsemesteran_app()
         except Exception as e:
             st.error(f"Error: {str(e)}")
 
-# ----------- HALAMAN SAMPLE -----------
-def sample():
-    st.title("Pengambilan Sampel")
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        if st.button("AHP", use_container_width=True):
-            st.session_state["subpage"] = "AHP"
-    with col2:
-        if st.button("MUS", use_container_width=True):
-            st.session_state["subpage"] = "MUS"
-    with col3:
-        if st.button("Benford's Law", use_container_width=True):
-            st.session_state["subpage"] = "Benford's Law"
-    
-    # Render subpage sesuai session state
-    if st.session_state["subpage"] == "AHP":
-        st.subheader("Analytic Hierarchy Process")
-        ahp_app()
-    elif st.session_state["subpage"] == "MUS":
-        st.subheader("Monetary Unit Sampling")
-        mus_app()
-    elif st.session_state["subpage"] == "Benford's Law":
-        st.subheader("Benford's Law Analysis")
-        benfords_app()
-
-# ----------- HALAMAN PDF TOOLS -----------
-def pdf_tools():
-    st.title("PDF Tools")
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        if st.button("Gabungkan PDF", use_container_width=True):
-            st.session_state["subpage"] = "Merge PDF"
-    with col2:
-        if st.button("Ekstrak PDF", use_container_width=True):
-            st.session_state["subpage"] = "Extract PDF"
-    
-    # Render subpage sesuai session state
-    if st.session_state["subpage"] == "Merge PDF":
-        st.subheader("Gabung File PDF")
-        mergepdf_app()
-    elif st.session_state["subpage"] == "Extract PDF":
-        st.subheader("Ekstrak Halaman PDF")
-        extractpdf_app()
-
-# ----------- HALAMAN FIFO -----------
-def fifo():
-    st.title("FIFO Inventory Calculator")
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        if st.button("Input Manual", use_container_width=True):
-            st.session_state["subpage"] = "Individu"
-    with col2:
-        if st.button("Upload Excel", use_container_width=True):
-            st.session_state["subpage"] = "Batch"
-    
-    # Render subpage sesuai session state
-    if st.session_state["subpage"] == "Individu":
-        st.subheader("Metode Manual")
-        fifoindividu_app()
-    elif st.session_state["subpage"] == "Batch":
-        st.subheader("Metode Batch")
-        fifobatch_app()
-
-# ----------- HALAMAN LAINNYA -----------
-def fuzzy_searching():
-    st.title("Fuzzy Searching")
-    fuzzysearch_app()
-
-def filterdata():
-    st.title("Buku Besar LK Tangcit")
-    filterdata_app()
-
-def gps():
-    st.title("🌍 KML Generator")
-    gps_app()
-
-def recaltab():
-    st.title("📝 RecalTab")
-    recaltab_app()
-
 # ----------- KONFIGURASI NAVIGASI -----------
 page_config = {
     "Main Page": main_page,
     "Depresiasi": depresiasi,
-    "Sample": sample,
-    "Fuzzy Searching": fuzzy_searching,
-    "Buku Besar LKTangcit24": filterdata,
-    "PDF Tools": pdf_tools,
-    "FIFO": fifo,
-    "GPS": gps,
-    "RecalTab": recaltab,
 }
 
 # ----------- SIDEBAR -----------
@@ -216,9 +99,7 @@ with st.sidebar:
         menu_title="AuditApp",
         options=list(page_config.keys()),
         icons=[
-            "house", "calculator", "clipboard-data", "search",
-            "code-slash", "file-earmark-pdf", "box",
-            "geo-alt", "file-earmark-check"
+            "house", "calculator"
         ],
         menu_icon="cast",
         default_index=0,
