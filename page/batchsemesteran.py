@@ -11,7 +11,13 @@ def convert_date_to_semester(date_str):
         "01/03/2023" -> (2023, 1)  # Semester 1
         "15/09/2023" -> (2023, 2)  # Semester 2
     """
-    date = datetime.strptime(date_str, "%d/%m/%Y")  # Format tanggal: DD/MM/YYYY
+    try:
+        date = datetime.strptime(date_str, "%m/%d/%Y")  # Format MM/DD/YYYY
+    except ValueError:
+        try:
+            date = datetime.strptime(date_str, "%d/%m/%Y")  # Coba format DD/MM/YYYY
+        except ValueError:
+            raise ValueError(f"Tanggal tidak valid: {date_str}")
     year = date.year
     month = date.month
     semester = 1 if 1 <= month <= 6 else 2
@@ -84,9 +90,6 @@ def calculate_depreciation(initial_cost, acquisition_date, useful_life, reportin
             "sisa_mm": remaining_life,
         })
 
-        # Debugging (opsional)
-        print(f"Year: {current_year}, Semester: {current_semester}, Book Value: {book_value}, Remaining Life: {remaining_life}, Semester Depreciation: {semester_dep}")
-
         # Pindah ke semester berikutnya
         if current_semester == 1:
             current_semester = 2
@@ -145,10 +148,16 @@ def app():
             corrections_df["Nama Aset"] = corrections_df["Nama Aset"].astype(str)
 
             # Validasi kolom dan tipe data
-            required_assets = {"Nama Aset", "Harga Perolehan Awal (Rp)", "Tanggal Perolehan", "Masa Manfaat (tahun)", "Tanggal Pelaporan"}
+            required_assets = {"Nama Aset", "Harga Perolehan Awal (Rp)", "Tahun Perolehan", "Masa Manfaat (tahun)", "Tahun Pelaporan"}
             if not required_assets.issubset(assets_df.columns):
                 st.error("Kolom di Sheet 1 tidak valid!")
                 return
+
+            # Rename kolom sesuai dengan yang diharapkan oleh kode
+            assets_df.rename(columns={
+                "Tahun Perolehan": "Tanggal Perolehan",
+                "Tahun Pelaporan": "Tanggal Pelaporan"
+            }, inplace=True)
 
             # Konversi tipe data numerik
             numeric_columns = ["Harga Perolehan Awal (Rp)", "Masa Manfaat (tahun)"]
@@ -156,8 +165,12 @@ def app():
                 assets_df[col] = pd.to_numeric(assets_df[col], errors="coerce")
             
             # Konversi kolom tanggal
-            assets_df["Tanggal Perolehan"] = assets_df["Tanggal Perolehan"].astype(str)
-            assets_df["Tanggal Pelaporan"] = assets_df["Tanggal Pelaporan"].astype(str)
+            assets_df["Tanggal Perolehan"] = assets_df["Tanggal Perolehan"].apply(
+                lambda x: datetime.strptime(x, "%m/%d/%Y").strftime("%d/%m/%Y")
+            )
+            assets_df["Tanggal Pelaporan"] = assets_df["Tanggal Pelaporan"].apply(
+                lambda x: datetime.strptime(x, "%m/%d/%Y").strftime("%d/%m/%Y")
+            )
 
             # Proses perhitungan
             results = []
@@ -207,4 +220,4 @@ def app():
             st.error(f"❌ Error: {str(e)}")
 
 if __name__ == "__main__":
-    batchsemesteran_app()
+    app()
