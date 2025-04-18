@@ -6,12 +6,12 @@ from io import BytesIO
 # Fungsi Helper: Konversi Tanggal ke Semester
 def convert_date_to_semester(date_str):
     try:
-        date = datetime.strptime(date_str, "%m/%d/%Y")
+        # Coba parse tanggal dengan format DD/MM/YYYY
+        date = datetime.strptime(date_str, "%d/%m/%Y")
     except ValueError:
-        try:
-            date = datetime.strptime(date_str, "%d/%m/%Y")
-        except ValueError:
-            raise ValueError(f"Tanggal tidak valid: {date_str}")
+        # Jika gagal, berikan pesan kesalahan yang jelas
+        raise ValueError(f"Tanggal tidak valid: {date_str}. Format yang diterima adalah DD/MM/YYYY.")
+    
     year = date.year
     month = date.month
     semester = 1 if 1 <= month <= 6 else 2
@@ -82,6 +82,7 @@ def calculate_depreciation(initial_cost, acquisition_date, useful_life, reportin
 
     return schedule
 
+# Fungsi Helper: Konversi DataFrame ke Excel dengan Beberapa Sheet
 def convert_df_to_excel_with_sheets(results, schedules):
     output = BytesIO()
     writer = pd.ExcelWriter(output, engine='xlsxwriter')
@@ -94,6 +95,7 @@ def convert_df_to_excel_with_sheets(results, schedules):
     output.seek(0)
     return output
 
+# Fungsi Utama Streamlit App
 def app():
     st.title("📉 Depresiasi GL Semesteran")
 
@@ -141,13 +143,16 @@ def app():
             assets_df["Harga Perolehan Awal (Rp)"] = pd.to_numeric(assets_df["Harga Perolehan Awal (Rp)"], errors="coerce")
             assets_df["Masa Manfaat (tahun)"] = pd.to_numeric(assets_df["Masa Manfaat (tahun)"], errors="coerce")
             
+            # Fungsi untuk konversi tanggal dengan penanganan kesalahan
+            def safe_convert_date(date_str):
+                try:
+                    return datetime.strptime(date_str, "%d/%m/%Y").strftime("%d/%m/%Y")
+                except ValueError:
+                    raise ValueError(f"Tanggal tidak valid: {date_str}. Format yang diterima adalah DD/MM/YYYY.")
+
             # Konversi tanggal
-            assets_df["Tanggal Perolehan"] = assets_df["Tanggal Perolehan"].apply(
-                lambda x: datetime.strptime(x, "%m/%d/%Y").strftime("%d/%m/%Y") if isinstance(x, str) else x.strftime("%d/%m/%Y")
-            )
-            assets_df["Tanggal Pelaporan"] = assets_df["Tanggal Pelaporan"].apply(
-                lambda x: datetime.strptime(x, "%m/%d/%Y").strftime("%d/%m/%Y") if isinstance(x, str) else x.strftime("%d/%m/%Y")
-            )
+            assets_df["Tanggal Perolehan"] = assets_df["Tanggal Perolehan"].apply(safe_convert_date)
+            assets_df["Tanggal Pelaporan"] = assets_df["Tanggal Pelaporan"].apply(safe_convert_date)
 
             results = []
             schedules = {}
