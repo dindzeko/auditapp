@@ -115,7 +115,7 @@ def convert_df_to_excel_with_sheets(results, schedules):
     return output
 
 # Fungsi Utama Aplikasi
-def batchsemesteran_app():
+def app():
     st.title("📉 Depresiasi GL Semesteran")
 
     with st.expander("📖 Informasi Batch Semesteran ▼", expanded=False):
