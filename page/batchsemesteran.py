@@ -92,7 +92,7 @@ def calculate_depreciation(initial_cost, acquisition_date, useful_life, reportin
     return schedule
 
 # Fungsi Utama Aplikasi
-def batchsemesteran_app():
+def app():
     st.title("📉 Depresiasi GL Semesteran")
 
     with st.expander("📖 Informasi Batch Semesteran ▼", expanded=False):
