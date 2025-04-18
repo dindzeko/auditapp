@@ -34,7 +34,7 @@ try:
     from page.susuttahunan import app as susuttahunan_app
     from page.susutsemester import app as susutsemester_app
     from page.batchglyearly import app as batchtahunan_app
-    from page.batchsemesteran import app as batchsemeseteran_app
+    from page.batchsemesteran import app as batchsemesteran_app
     from page.ahp import app as ahp_app
     from page.mus import app as mus_app
     from page.benfords import app as benfords_app
