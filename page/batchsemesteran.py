@@ -124,7 +124,8 @@ def app():
 
     st.subheader("📥 Download Template Excel")
     if st.button("⬇️ Download Template Excel"):
-        st.markdown("[Download](https://docs.google.com/spreadsheets/d/1b4bueqvZ0vDn7DtKgNK-uVQojLGMM8vQ/edit?usp=drive_link)")
+        st.markdown("[Download](https://docs.google.com/spreadsheets/d/1U5EUhvqeQfOPtBDqZNB8P1q-wvdQakPZ/edit?usp=drive_link&ouid=106044501644618784207&rtpof=true&sd=true)")
+        
 
     uploaded_file = st.file_uploader("📤 Unggah File Excel", type=["xlsx"])
     if uploaded_file is not None:
