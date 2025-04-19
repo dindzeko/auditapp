@@ -119,15 +119,20 @@ def convert_df_to_excel_with_sheets(results, schedules):
     for asset_name, schedule in schedules.items():
         schedule_df = pd.DataFrame(schedule)
         
-        # Membuka worksheet untuk aset tertentu
-        worksheet = writer.sheets[str(asset_name)[:31]]
+        # Pastikan nama sheet valid (maksimal 31 karakter, tanpa karakter khusus)
+        valid_sheet_name = str(asset_name)[:31].replace("/", "_").replace(":", "_")
         
-        # Menambahkan baris tambahan di awal
+        # Tulis DataFrame jadwal depresiasi ke worksheet
+        schedule_df.to_excel(writer, sheet_name=valid_sheet_name, index=False)
+        
+        # Dapatkan worksheet yang baru saja dibuat
+        worksheet = writer.sheets[valid_sheet_name]
+        
+        # Tambahkan baris tambahan di awal
+        # Geser semua data ke bawah satu baris
+        worksheet.insert_rows(0)
         worksheet.write(0, 0, "Nama Aset")  # Kolom A1
         worksheet.write(0, 1, asset_name)   # Kolom B1
-        
-        # Menulis DataFrame jadwal depresiasi mulai dari baris kedua
-        schedule_df.to_excel(writer, sheet_name=str(asset_name)[:31], startrow=1, index=False)
     
     writer.close()
     output.seek(0)
