@@ -110,11 +110,25 @@ def convert_indonesian_number(number_str):
 def convert_df_to_excel_with_sheets(results, schedules):
     output = BytesIO()
     writer = pd.ExcelWriter(output, engine='xlsxwriter')
+    
+    # Menulis sheet Hasil Ringkasan
     results_df = pd.DataFrame(results)
     results_df.to_excel(writer, sheet_name="Hasil Ringkasan", index=False)
+
+    # Menulis sheet untuk setiap aset
     for asset_name, schedule in schedules.items():
         schedule_df = pd.DataFrame(schedule)
-        schedule_df.to_excel(writer, sheet_name=str(asset_name)[:31], index=False)
+        
+        # Membuka worksheet untuk aset tertentu
+        worksheet = writer.sheets[str(asset_name)[:31]]
+        
+        # Menambahkan baris tambahan di awal
+        worksheet.write(0, 0, "Nama Aset")  # Kolom A1
+        worksheet.write(0, 1, asset_name)   # Kolom B1
+        
+        # Menulis DataFrame jadwal depresiasi mulai dari baris kedua
+        schedule_df.to_excel(writer, sheet_name=str(asset_name)[:31], startrow=1, index=False)
+    
     writer.close()
     output.seek(0)
     return output
