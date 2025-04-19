@@ -14,6 +14,31 @@ def convert_date_to_semester(date_str):
     semester = 1 if 1 <= month <= 6 else 2
     return (year, semester)
 
+# Fungsi Helper: Membersihkan Nilai Numerik
+def clean_numeric(value):
+    if isinstance(value, str):
+        # Ganti pemisah ribuan (.) dengan kosong dan ganti pemisah desimal (,) dengan titik (.)
+        value = value.replace(".", "").replace(",", ".")
+    return pd.to_numeric(value, errors="coerce")
+
+# Fungsi Helper: Memastikan Format Tanggal
+def ensure_date_format(date_value):
+    if isinstance(date_value, pd.Timestamp):  # Jika tipe data adalah Timestamp
+        return date_value.strftime("%d/%m/%Y")  # Konversi ke string dengan format DD/MM/YYYY
+    elif isinstance(date_value, str):  # Jika tipe data sudah string
+        try:
+            # Coba parse tanggal ke format datetime lalu kembalikan ke string
+            parsed_date = datetime.strptime(date_value, "%d/%m/%Y")  # Format DD/MM/YYYY
+            return parsed_date.strftime("%d/%m/%Y")
+        except ValueError:
+            try:
+                parsed_date = datetime.strptime(date_value, "%m/%d/%y")  # Format MM/DD/YY
+                return parsed_date.strftime("%d/%m/%Y")
+            except ValueError:
+                raise ValueError(f"Format tanggal tidak valid: {date_value}")
+    else:
+        raise ValueError(f"Tipe data tanggal tidak valid: {type(date_value)}")
+
 # Fungsi Helper: Menghitung Depresiasi Semesteran
 def calculate_depreciation(initial_cost, acquisition_date, useful_life, reporting_date, capitalizations=None, corrections=None):
     if capitalizations is None:
@@ -79,24 +104,6 @@ def calculate_depreciation(initial_cost, acquisition_date, useful_life, reportin
 
     return schedule
 
-# Fungsi Helper: Memastikan Format Tanggal
-def ensure_date_format(date_value):
-    if isinstance(date_value, pd.Timestamp):  # Jika tipe data adalah Timestamp
-        return date_value.strftime("%d/%m/%Y")  # Konversi ke string dengan format DD/MM/YYYY
-    elif isinstance(date_value, str):  # Jika tipe data sudah string
-        try:
-            # Coba parse tanggal ke format datetime lalu kembalikan ke string
-            parsed_date = datetime.strptime(date_value, "%m/%d/%y")  # Format MM/DD/YY
-            return parsed_date.strftime("%d/%m/%Y")  # Ubah ke DD/MM/YYYY
-        except ValueError:
-            try:
-                parsed_date = datetime.strptime(date_value, "%d/%m/%Y")  # Format DD/MM/YYYY
-                return parsed_date.strftime("%d/%m/%Y")
-            except ValueError:
-                raise ValueError(f"Format tanggal tidak valid: {date_value}")
-    else:
-        raise ValueError(f"Tipe data tanggal tidak valid: {type(date_value)}")
-
 # Fungsi Helper: Konversi DataFrame ke Excel dengan Beberapa Sheet
 def convert_df_to_excel_with_sheets(results, schedules):
     output = BytesIO()
@@ -155,9 +162,7 @@ def app():
             corrections_df = excel_data.parse(sheet_name=2)
             
             # Konversi tipe data
-            assets_df["Harga Perolehan Awal (Rp)"] = pd.to_numeric(
-                assets_df["Harga Perolehan Awal (Rp)"].astype(str).str.replace(",", ""), errors="coerce"
-            )
+            assets_df["Harga Perolehan Awal (Rp)"] = assets_df["Harga Perolehan Awal (Rp)"].apply(clean_numeric)
             assets_df["Masa Manfaat (tahun)"] = pd.to_numeric(assets_df["Masa Manfaat (tahun)"], errors="coerce")
             
             # Konversi tanggal
@@ -167,16 +172,18 @@ def app():
             # Proses tanggal di Sheet 2: Kapitalisasi
             capitalizations_df.rename(columns={"Tahun": "Tanggal"}, inplace=True)
             capitalizations_df["Tanggal"] = capitalizations_df["Tanggal"].apply(ensure_date_format)
-            capitalizations_df["Jumlah"] = pd.to_numeric(
-                capitalizations_df["Jumlah"].astype(str).str.replace(",", ""), errors="coerce"
-            )
+            capitalizations_df["Jumlah"] = capitalizations_df["Jumlah"].apply(clean_numeric)
+            capitalizations_df["Tambahan Usia"] = pd.to_numeric(capitalizations_df["Tambahan Usia"], errors="coerce")
 
             # Proses tanggal di Sheet 3: Koreksi
             corrections_df.rename(columns={"Tahun": "Tanggal"}, inplace=True)
             corrections_df["Tanggal"] = corrections_df["Tanggal"].apply(ensure_date_format)
-            corrections_df["Jumlah"] = pd.to_numeric(
-                corrections_df["Jumlah"].astype(str).str.replace(",", ""), errors="coerce"
-            )
+            corrections_df["Jumlah"] = corrections_df["Jumlah"].apply(clean_numeric)
+
+            # Bersihkan nama aset dari spasi tambahan
+            assets_df["Nama Aset"] = assets_df["Nama Aset"].str.strip()
+            capitalizations_df["Nama Aset"] = capitalizations_df["Nama Aset"].str.strip()
+            corrections_df["Nama Aset"] = corrections_df["Nama Aset"].str.strip()
 
             results = []
             schedules = {}
