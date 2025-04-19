@@ -180,10 +180,16 @@ def app():
             corrections_df["Tanggal"] = corrections_df["Tanggal"].apply(ensure_date_format)
             corrections_df["Jumlah"] = corrections_df["Jumlah"].apply(clean_numeric)
 
-            # Bersihkan nama aset dari spasi tambahan
-            assets_df["Nama Aset"] = assets_df["Nama Aset"].str.strip()
-            capitalizations_df["Nama Aset"] = capitalizations_df["Nama Aset"].str.strip()
-            corrections_df["Nama Aset"] = corrections_df["Nama Aset"].str.strip()
+            # Bersihkan nama aset dari spasi tambahan dan tangani NaN
+            assets_df["Nama Aset"] = assets_df["Nama Aset"].fillna("").astype(str).str.strip()
+            capitalizations_df["Nama Aset"] = capitalizations_df["Nama Aset"].fillna("").astype(str).str.strip()
+            corrections_df["Nama Aset"] = corrections_df["Nama Aset"].fillna("").astype(str).str.strip()
+
+            # Debugging: Periksa tipe data kolom Nama Aset
+            st.write("Tipe data kolom Nama Aset:")
+            st.write(assets_df["Nama Aset"].apply(type).unique())
+            st.write(capitalizations_df["Nama Aset"].apply(type).unique())
+            st.write(corrections_df["Nama Aset"].apply(type).unique())
 
             results = []
             schedules = {}
