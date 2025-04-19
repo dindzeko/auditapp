@@ -21,12 +21,15 @@ def calculate_depreciation(initial_cost, acquisition_date, useful_life, reportin
     if corrections is None:
         corrections = []
 
+    # Konversi masa manfaat ke semester
     useful_life_semesters = useful_life * 2
     original_life_semesters = useful_life_semesters
 
+    # Konversi tanggal ke format semester
     acquisition_year, acquisition_semester = convert_date_to_semester(acquisition_date)
     reporting_year, reporting_semester = convert_date_to_semester(reporting_date)
 
+    # Organisasi data kapitalisasi dan koreksi berdasarkan tanggal
     cap_dict = {}
     for cap in capitalizations:
         key = convert_date_to_semester(cap["Tanggal"])
@@ -37,31 +40,38 @@ def calculate_depreciation(initial_cost, acquisition_date, useful_life, reportin
         key = convert_date_to_semester(corr["Tanggal"])
         corr_dict.setdefault(key, []).append(corr)
 
+    # Inisialisasi variabel untuk perhitungan
     book_value = initial_cost
     remaining_life = useful_life_semesters
     current_year, current_semester = acquisition_year, acquisition_semester
     accumulated_dep = 0
     schedule = []
 
+    # Loop untuk menghitung depresiasi setiap semester
     while (current_year < reporting_year) or (current_year == reporting_year and current_semester <= reporting_semester):
         key = (current_year, current_semester)
+
+        # Proses kapitalisasi jika ada pada semester ini
         if key in cap_dict:
             for cap in cap_dict[key]:
-                book_value += cap.get("Jumlah", 0)
-                life_extension = cap.get("Tambahan Usia", 0) * 2
-                remaining_life = min(remaining_life + life_extension, original_life_semesters)
+                book_value += cap.get("Jumlah", 0)  # Tambahkan nilai kapitalisasi ke nilai buku
+                life_extension = cap.get("Tambahan Usia", 0) * 2  # Konversi tambahan usia ke semester
+                remaining_life = min(remaining_life + life_extension, original_life_semesters)  # Perpanjang sisa masa manfaat
 
+        # Proses koreksi jika ada pada semester ini
         if key in corr_dict:
             for corr in corr_dict[key]:
-                book_value = max(book_value - corr.get("Jumlah", 0), 0)
+                book_value = max(book_value - corr.get("Jumlah", 0), 0)  # Kurangi nilai koreksi dari nilai buku
 
+        # Hitung depresiasi semester ini
         semester_dep = 0
         if remaining_life > 0:
-            semester_dep = book_value / remaining_life
-            accumulated_dep += semester_dep
-            book_value -= semester_dep
-            remaining_life -= 1
+            semester_dep = book_value / remaining_life  # Hitung depresiasi berdasarkan nilai buku dan sisa masa manfaat
+            accumulated_dep += semester_dep  # Akumulasi depresiasi
+            book_value -= semester_dep  # Kurangi nilai buku dengan depresiasi
+            remaining_life -= 1  # Kurangi sisa masa manfaat
 
+        # Simpan hasil perhitungan untuk semester ini
         schedule.append({
             "year": current_year,
             "semester": current_semester,
@@ -71,6 +81,7 @@ def calculate_depreciation(initial_cost, acquisition_date, useful_life, reportin
             "sisa_mm": remaining_life,
         })
 
+        # Pindah ke semester berikutnya
         if current_semester == 1:
             current_semester = 2
         else:
