@@ -114,7 +114,7 @@ def convert_df_to_excel_with_sheets(results, schedules):
     results_df.to_excel(writer, sheet_name="Hasil Ringkasan", index=False)
     for asset_name, schedule in schedules.items():
         schedule_df = pd.DataFrame(schedule)
-        schedule_df.to_excel(writer, sheet_name=asset_name[:31], index=False)
+        schedule_df.to_excel(writer, sheet_name=str(asset_name)[:31], index=False)
     writer.close()
     output.seek(0)
     return output
@@ -167,27 +167,33 @@ def app():
             assets_df["Tanggal Perolehan"] = assets_df["Tanggal Perolehan"].apply(ensure_date_format)
             assets_df["Tanggal Pelaporan"] = assets_df["Tanggal Pelaporan"].apply(ensure_date_format)
 
+            # Pastikan kolom "Nama Aset" selalu string
+            assets_df["Nama Aset"] = assets_df["Nama Aset"].astype(str)
+
             # Proses sheet kapitalisasi
             capitalizations_df = excel_data.parse(sheet_name=1)
             capitalizations_df.rename(columns={"Tahun": "Tanggal"}, inplace=True)
             capitalizations_df["Tanggal"] = capitalizations_df["Tanggal"].apply(ensure_date_format)
             capitalizations_df["Jumlah"] = capitalizations_df["Jumlah"].apply(convert_indonesian_number)
+            capitalizations_df["Nama Aset"] = capitalizations_df["Nama Aset"].astype(str)
 
             # Proses sheet koreksi
             corrections_df = excel_data.parse(sheet_name=2)
             corrections_df.rename(columns={"Tahun": "Tanggal"}, inplace=True)
             corrections_df["Tanggal"] = corrections_df["Tanggal"].apply(ensure_date_format)
             corrections_df["Jumlah"] = corrections_df["Jumlah"].apply(convert_indonesian_number)
+            corrections_df["Nama Aset"] = corrections_df["Nama Aset"].astype(str)
 
             results = []
             schedules = {}
             for _, asset in assets_df.iterrows():
-                asset_name = str(asset["Nama Aset"])
+                asset_name = str(asset["Nama Aset"])  # Pastikan string
                 initial_cost = asset["Harga Perolehan Awal (Rp)"]
                 acquisition_date = asset["Tanggal Perolehan"]
                 useful_life = int(asset["Masa Manfaat (tahun)"])
                 reporting_date = asset["Tanggal Pelaporan"]
 
+                # Filter kapitalisasi dan koreksi berdasarkan nama aset
                 asset_caps = capitalizations_df[capitalizations_df["Nama Aset"] == asset_name].to_dict("records")
                 asset_corrs = corrections_df[corrections_df["Nama Aset"] == asset_name].to_dict("records")
 
