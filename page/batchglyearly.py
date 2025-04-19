@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
+from io import BytesIO
 
 # Fungsi Helper: Menghitung Depresiasi
 def calculate_depreciation(initial_cost, acquisition_year, useful_life, reporting_year, capitalizations=None, corrections=None):
@@ -75,8 +76,7 @@ def calculate_depreciation(initial_cost, acquisition_year, useful_life, reportin
 
 # Fungsi Helper: Konversi DataFrame ke Excel dengan Multiple Sheets
 def convert_df_to_excel_with_sheets(results, schedules):
-    import io
-    buffer = io.BytesIO()
+    buffer = BytesIO()
     with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
         # Sheet Ringkasan
         results_df = pd.DataFrame(results)
@@ -85,8 +85,21 @@ def convert_df_to_excel_with_sheets(results, schedules):
         # Sheet per Aset
         for asset_name, schedule in schedules.items():
             schedule_df = pd.DataFrame(schedule)
-            sheet_name = str(asset_name)[:31]  # Pastikan nama sheet bertipe string
-            schedule_df.to_excel(writer, index=False, sheet_name=sheet_name)
+            
+            # Pastikan nama sheet valid (maksimal 31 karakter, tanpa karakter khusus)
+            valid_sheet_name = str(asset_name)[:31].replace("/", "_").replace(":", "_")
+            
+            # Buat worksheet baru untuk aset tertentu
+            worksheet = writer.book.add_worksheet(valid_sheet_name)
+            
+            # Tulis DataFrame jadwal depresiasi ke worksheet mulai dari baris kedua
+            schedule_df.to_excel(writer, sheet_name=valid_sheet_name, startrow=1, index=False)
+            
+            # Tambahkan baris tambahan di awal
+            worksheet.write(0, 0, "Nama Aset")  # Kolom A1
+            worksheet.write(0, 1, asset_name)   # Kolom B1
+
+    buffer.seek(0)
     return buffer.getvalue()
 
 # Fungsi Utama Aplikasi
