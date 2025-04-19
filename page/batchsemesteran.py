@@ -201,10 +201,17 @@ def app():
                     initial_cost, acquisition_date, useful_life, reporting_date, asset_caps, asset_corrs
                 )
 
+                # Hitung total penyusutan untuk tahun pelaporan (semester I + semester II)
+                reporting_year, _ = convert_date_to_semester(reporting_date)
+                depreciation_in_reporting_year = sum(
+                    entry["depreciation"] for entry in schedule
+                    if entry["year"] == reporting_year
+                )
+
                 results.append({
                     "Nama Aset": asset_name,
                     "Tanggal Pelaporan": reporting_date,
-                    "Penyusutan": schedule[-1]["depreciation"] if schedule else 0,
+                    "Penyusutan": round(depreciation_in_reporting_year, 2),
                     "Akumulasi": schedule[-1]["accumulated"] if schedule else 0,
                     "Nilai Buku": schedule[-1]["book_value"] if schedule else 0,
                 })
