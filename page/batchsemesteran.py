@@ -97,6 +97,15 @@ def ensure_date_format(date_value):
     else:
         raise ValueError(f"Tipe data tanggal tidak valid: {type(date_value)}")
 
+# Fungsi Helper: Membersihkan Format Angka
+def clean_number(value):
+    if isinstance(value, str):  # Pastikan nilai adalah string
+        # Hapus pemisah ribuan (.)
+        value = value.replace('.', '')
+        # Ganti pemisah desimal (,) dengan titik (.)
+        value = value.replace(',', '.')
+    return value
+
 # Fungsi Helper: Konversi DataFrame ke Excel dengan Beberapa Sheet
 def convert_df_to_excel_with_sheets(results, schedules):
     output = BytesIO()
@@ -154,11 +163,12 @@ def app():
             capitalizations_df = excel_data.parse(sheet_name=1)
             corrections_df = excel_data.parse(sheet_name=2)
             
-            # Konversi tipe data
-            assets_df["Harga Perolehan Awal (Rp)"] = pd.to_numeric(
-                assets_df["Harga Perolehan Awal (Rp)"].astype(str).str.replace(",", ""), errors="coerce"
-            )
-            assets_df["Masa Manfaat (tahun)"] = pd.to_numeric(assets_df["Masa Manfaat (tahun)"], errors="coerce")
+            # Konversi tipe data untuk kolom numerik
+            for df in [assets_df, capitalizations_df, corrections_df]:
+                for col in df.select_dtypes(include=['object']).columns:
+                    if "Jumlah" in col or "Harga" in col:
+                        df[col] = df[col].apply(clean_number)  # Bersihkan format angka
+                        df[col] = pd.to_numeric(df[col], errors="coerce")  # Konversi ke numerik
             
             # Konversi tanggal
             assets_df["Tanggal Perolehan"] = assets_df["Tanggal Perolehan"].apply(ensure_date_format)
@@ -167,16 +177,10 @@ def app():
             # Proses tanggal di Sheet 2: Kapitalisasi
             capitalizations_df.rename(columns={"Tahun": "Tanggal"}, inplace=True)
             capitalizations_df["Tanggal"] = capitalizations_df["Tanggal"].apply(ensure_date_format)
-            capitalizations_df["Jumlah"] = pd.to_numeric(
-                capitalizations_df["Jumlah"].astype(str).str.replace(",", ""), errors="coerce"
-            )
 
             # Proses tanggal di Sheet 3: Koreksi
             corrections_df.rename(columns={"Tahun": "Tanggal"}, inplace=True)
             corrections_df["Tanggal"] = corrections_df["Tanggal"].apply(ensure_date_format)
-            corrections_df["Jumlah"] = pd.to_numeric(
-                corrections_df["Jumlah"].astype(str).str.replace(",", ""), errors="coerce"
-            )
 
             results = []
             schedules = {}
