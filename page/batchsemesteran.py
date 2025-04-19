@@ -81,30 +81,30 @@ def calculate_depreciation(initial_cost, acquisition_date, useful_life, reportin
 
 # Fungsi Helper: Memastikan Format Tanggal
 def ensure_date_format(date_value):
-    if isinstance(date_value, pd.Timestamp):  # Jika tipe data adalah Timestamp
-        return date_value.strftime("%d/%m/%Y")  # Konversi ke string dengan format DD/MM/YYYY
-    elif isinstance(date_value, str):  # Jika tipe data sudah string
+    if isinstance(date_value, pd.Timestamp):
+        return date_value.strftime("%d/%m/%Y")
+    elif isinstance(date_value, str):
         try:
-            # Coba parse tanggal ke format datetime lalu kembalikan ke string
-            parsed_date = datetime.strptime(date_value, "%m/%d/%y")  # Format MM/DD/YY
-            return parsed_date.strftime("%d/%m/%Y")  # Ubah ke DD/MM/YYYY
+            parsed_date = datetime.strptime(date_value, "%m/%d/%y")
+            return parsed_date.strftime("%d/%m/%Y")
         except ValueError:
             try:
-                parsed_date = datetime.strptime(date_value, "%d/%m/%Y")  # Format DD/MM/YYYY
+                parsed_date = datetime.strptime(date_value, "%d/%m/%Y")
                 return parsed_date.strftime("%d/%m/%Y")
             except ValueError:
                 raise ValueError(f"Format tanggal tidak valid: {date_value}")
     else:
         raise ValueError(f"Tipe data tanggal tidak valid: {type(date_value)}")
 
-# Fungsi Helper: Membersihkan Format Angka
-def clean_number(value):
-    if isinstance(value, str):  # Pastikan nilai adalah string
-        # Hapus pemisah ribuan (.)
-        value = value.replace('.', '')
-        # Ganti pemisah desimal (,) dengan titik (.)
-        value = value.replace(',', '.')
-    return value
+# Fungsi konversi angka Indonesia ke float
+def convert_indonesian_number(number_str):
+    if isinstance(number_str, (int, float)):
+        return float(number_str)
+    return float(
+        str(number_str)
+        .replace(".", "")  # Hapus pemisah ribuan
+        .replace(",", ".")  # Ganti desimal koma dengan titik
+    )
 
 # Fungsi Helper: Konversi DataFrame ke Excel dengan Beberapa Sheet
 def convert_df_to_excel_with_sheets(results, schedules):
@@ -140,14 +140,14 @@ def app():
         try:
             excel_data = pd.ExcelFile(uploaded_file)
             
-            # Baca data dan proses rename kolom terlebih dahulu
+            # Baca data dan proses rename kolom
             assets_df = excel_data.parse(sheet_name=0)
             assets_df.rename(columns={
                 "TANGGAL PEROLEHAN": "Tanggal Perolehan",
                 "Tahun Pelaporan": "Tanggal Pelaporan"
             }, inplace=True)
             
-            # Validasi kolom setelah rename
+            # Validasi kolom
             required_assets = {
                 "Nama Aset", 
                 "Harga Perolehan Awal (Rp)", 
@@ -159,28 +159,25 @@ def app():
                 st.error("Kolom di Sheet 1 tidak valid! Pastikan kolom sesuai template.")
                 return
 
-            # Proses data lainnya
-            capitalizations_df = excel_data.parse(sheet_name=1)
-            corrections_df = excel_data.parse(sheet_name=2)
-            
-            # Konversi tipe data untuk kolom numerik
-            for df in [assets_df, capitalizations_df, corrections_df]:
-                for col in df.select_dtypes(include=['object']).columns:
-                    if "Jumlah" in col or "Harga" in col:
-                        df[col] = df[col].apply(clean_number)  # Bersihkan format angka
-                        df[col] = pd.to_numeric(df[col], errors="coerce")  # Konversi ke numerik
+            # Proses data numerik dengan format Indonesia
+            assets_df["Harga Perolehan Awal (Rp)"] = assets_df["Harga Perolehan Awal (Rp)"].apply(convert_indonesian_number)
+            assets_df["Masa Manfaat (tahun)"] = pd.to_numeric(assets_df["Masa Manfaat (tahun)"], errors="coerce")
             
             # Konversi tanggal
             assets_df["Tanggal Perolehan"] = assets_df["Tanggal Perolehan"].apply(ensure_date_format)
             assets_df["Tanggal Pelaporan"] = assets_df["Tanggal Pelaporan"].apply(ensure_date_format)
 
-            # Proses tanggal di Sheet 2: Kapitalisasi
+            # Proses sheet kapitalisasi
+            capitalizations_df = excel_data.parse(sheet_name=1)
             capitalizations_df.rename(columns={"Tahun": "Tanggal"}, inplace=True)
             capitalizations_df["Tanggal"] = capitalizations_df["Tanggal"].apply(ensure_date_format)
+            capitalizations_df["Jumlah"] = capitalizations_df["Jumlah"].apply(convert_indonesian_number)
 
-            # Proses tanggal di Sheet 3: Koreksi
+            # Proses sheet koreksi
+            corrections_df = excel_data.parse(sheet_name=2)
             corrections_df.rename(columns={"Tahun": "Tanggal"}, inplace=True)
             corrections_df["Tanggal"] = corrections_df["Tanggal"].apply(ensure_date_format)
+            corrections_df["Jumlah"] = corrections_df["Jumlah"].apply(convert_indonesian_number)
 
             results = []
             schedules = {}
