@@ -14,22 +14,20 @@ def convert_date_to_semester(date_str):
     semester = 1 if 1 <= month <= 6 else 2
     return (year, semester)
 
-# Fungsi Helper: Menghitung Depresiasi Semesteran
+# Fungsi Helper: Menghitung Depresiasi Semesteran (DIPERBAIKI)
 def calculate_depreciation(initial_cost, acquisition_date, useful_life, reporting_date, capitalizations=None, corrections=None):
     if capitalizations is None:
         capitalizations = []
     if corrections is None:
         corrections = []
 
-    # Konversi masa manfaat ke semester
     useful_life_semesters = useful_life * 2
-    original_life_semesters = useful_life_semesters
+    original_life_semesters = useful_life_semesters  # Simpan masa manfaat awal
 
-    # Konversi tanggal ke format semester
     acquisition_year, acquisition_semester = convert_date_to_semester(acquisition_date)
     reporting_year, reporting_semester = convert_date_to_semester(reporting_date)
 
-    # Organisasi data kapitalisasi dan koreksi berdasarkan tanggal
+    # Struktur data untuk kapitalisasi dan koreksi
     cap_dict = {}
     for cap in capitalizations:
         key = convert_date_to_semester(cap["Tanggal"])
@@ -40,38 +38,43 @@ def calculate_depreciation(initial_cost, acquisition_date, useful_life, reportin
         key = convert_date_to_semester(corr["Tanggal"])
         corr_dict.setdefault(key, []).append(corr)
 
-    # Inisialisasi variabel untuk perhitungan
+    # Inisialisasi nilai
     book_value = initial_cost
     remaining_life = useful_life_semesters
     current_year, current_semester = acquisition_year, acquisition_semester
     accumulated_dep = 0
     schedule = []
 
-    # Loop untuk menghitung depresiasi setiap semester
     while (current_year < reporting_year) or (current_year == reporting_year and current_semester <= reporting_semester):
         key = (current_year, current_semester)
-
-        # Proses kapitalisasi jika ada pada semester ini
+        
+        # PROSES KAPITALISASI (DIPERBAIKI)
         if key in cap_dict:
             for cap in cap_dict[key]:
-                book_value += cap.get("Jumlah", 0)  # Tambahkan nilai kapitalisasi ke nilai buku
-                life_extension = cap.get("Tambahan Usia", 0) * 2  # Konversi tambahan usia ke semester
-                remaining_life = min(remaining_life + life_extension, original_life_semesters)  # Perpanjang sisa masa manfaat
+                # Tambahan nilai buku
+                book_value += cap.get("Jumlah", 0)
+                
+                # Tambahan masa manfaat dengan batasan masa manfaat awal
+                life_extension = cap.get("Tambahan Usia", 0) * 2
+                remaining_life = min(
+                    remaining_life + life_extension,
+                    original_life_semesters  # Batasi tidak melebihi masa manfaat awal
+                )
 
-        # Proses koreksi jika ada pada semester ini
+        # PROSES KOREKSI (DIPERBAIKI)
         if key in corr_dict:
             for corr in corr_dict[key]:
-                book_value = max(book_value - corr.get("Jumlah", 0), 0)  # Kurangi nilai koreksi dari nilai buku
+                book_value = max(book_value - corr.get("Jumlah", 0), 0)  # Pastikan tidak negatif
 
-        # Hitung depresiasi semester ini
+        # HITUNG DEPRESIASI
         semester_dep = 0
         if remaining_life > 0:
-            semester_dep = book_value / remaining_life  # Hitung depresiasi berdasarkan nilai buku dan sisa masa manfaat
-            accumulated_dep += semester_dep  # Akumulasi depresiasi
-            book_value -= semester_dep  # Kurangi nilai buku dengan depresiasi
-            remaining_life -= 1  # Kurangi sisa masa manfaat
+            semester_dep = book_value / remaining_life
+            accumulated_dep += semester_dep
+            book_value -= semester_dep
+            remaining_life -= 1
 
-        # Simpan hasil perhitungan untuk semester ini
+        # Catat jadwal
         schedule.append({
             "year": current_year,
             "semester": current_semester,
@@ -81,7 +84,7 @@ def calculate_depreciation(initial_cost, acquisition_date, useful_life, reportin
             "sisa_mm": remaining_life,
         })
 
-        # Pindah ke semester berikutnya
+        # UPDATE SEMESTER
         if current_semester == 1:
             current_semester = 2
         else:
@@ -92,16 +95,15 @@ def calculate_depreciation(initial_cost, acquisition_date, useful_life, reportin
 
 # Fungsi Helper: Memastikan Format Tanggal
 def ensure_date_format(date_value):
-    if isinstance(date_value, pd.Timestamp):  # Jika tipe data adalah Timestamp
-        return date_value.strftime("%d/%m/%Y")  # Konversi ke string dengan format DD/MM/YYYY
-    elif isinstance(date_value, str):  # Jika tipe data sudah string
+    if isinstance(date_value, pd.Timestamp):
+        return date_value.strftime("%d/%m/%Y")
+    elif isinstance(date_value, str):
         try:
-            # Coba parse tanggal ke format datetime lalu kembalikan ke string
-            parsed_date = datetime.strptime(date_value, "%m/%d/%y")  # Format MM/DD/YY
-            return parsed_date.strftime("%d/%m/%Y")  # Ubah ke DD/MM/YYYY
+            parsed_date = datetime.strptime(date_value, "%m/%d/%y")
+            return parsed_date.strftime("%d/%m/%Y")
         except ValueError:
             try:
-                parsed_date = datetime.strptime(date_value, "%d/%m/%Y")  # Format DD/MM/YYYY
+                parsed_date = datetime.strptime(date_value, "%d/%m/%Y")
                 return parsed_date.strftime("%d/%m/%Y")
             except ValueError:
                 raise ValueError(f"Format tanggal tidak valid: {date_value}")
@@ -142,14 +144,12 @@ def app():
         try:
             excel_data = pd.ExcelFile(uploaded_file)
             
-            # Baca data dan proses rename kolom terlebih dahulu
-            assets_df = excel_data.parse(sheet_name=0)
-            assets_df.rename(columns={
+            # Baca dan validasi data aset
+            assets_df = excel_data.parse(sheet_name=0).rename(columns={
                 "TANGGAL PEROLEHAN": "Tanggal Perolehan",
                 "Tahun Pelaporan": "Tanggal Pelaporan"
-            }, inplace=True)
+            })
             
-            # Validasi kolom setelah rename
             required_assets = {
                 "Nama Aset", 
                 "Harga Perolehan Awal (Rp)", 
@@ -161,66 +161,51 @@ def app():
                 st.error("Kolom di Sheet 1 tidak valid! Pastikan kolom sesuai template.")
                 return
 
-            # Proses data lainnya
-            capitalizations_df = excel_data.parse(sheet_name=1)
-            corrections_df = excel_data.parse(sheet_name=2)
+            # Proses data kapitalisasi dan koreksi
+            capitalizations_df = excel_data.parse(sheet_name=1).rename(columns={"Tahun": "Tanggal"})
+            corrections_df = excel_data.parse(sheet_name=2).rename(columns={"Tahun": "Tanggal"})
             
-            # Konversi tipe data
+            # Konversi nilai
             assets_df["Harga Perolehan Awal (Rp)"] = pd.to_numeric(
                 assets_df["Harga Perolehan Awal (Rp)"].astype(str).str.replace(",", ""), errors="coerce"
             )
             assets_df["Masa Manfaat (tahun)"] = pd.to_numeric(assets_df["Masa Manfaat (tahun)"], errors="coerce")
             
             # Konversi tanggal
-            assets_df["Tanggal Perolehan"] = assets_df["Tanggal Perolehan"].apply(ensure_date_format)
-            assets_df["Tanggal Pelaporan"] = assets_df["Tanggal Pelaporan"].apply(ensure_date_format)
-
-            # Proses tanggal di Sheet 2: Kapitalisasi
-            capitalizations_df.rename(columns={"Tahun": "Tanggal"}, inplace=True)
-            capitalizations_df["Tanggal"] = capitalizations_df["Tanggal"].apply(ensure_date_format)
-            capitalizations_df["Jumlah"] = pd.to_numeric(
-                capitalizations_df["Jumlah"].astype(str).str.replace(",", ""), errors="coerce"
-            )
-
-            # Proses tanggal di Sheet 3: Koreksi
-            corrections_df.rename(columns={"Tahun": "Tanggal"}, inplace=True)
-            corrections_df["Tanggal"] = corrections_df["Tanggal"].apply(ensure_date_format)
-            corrections_df["Jumlah"] = pd.to_numeric(
-                corrections_df["Jumlah"].astype(str).str.replace(",", ""), errors="coerce"
-            )
+            for df in [assets_df, capitalizations_df, corrections_df]:
+                df["Tanggal"] = df["Tanggal"].apply(ensure_date_format)
 
             results = []
             schedules = {}
             for _, asset in assets_df.iterrows():
                 asset_name = str(asset["Nama Aset"])
-                initial_cost = asset["Harga Perolehan Awal (Rp)"]
-                acquisition_date = asset["Tanggal Perolehan"]
-                useful_life = int(asset["Masa Manfaat (tahun)"])
-                reporting_date = asset["Tanggal Pelaporan"]
-
-                asset_caps = capitalizations_df[capitalizations_df["Nama Aset"] == asset_name].to_dict("records")
-                asset_corrs = corrections_df[corrections_df["Nama Aset"] == asset_name].to_dict("records")
-
                 schedule = calculate_depreciation(
-                    initial_cost, acquisition_date, useful_life, reporting_date, asset_caps, asset_corrs
+                    initial_cost=asset["Harga Perolehan Awal (Rp)"],
+                    acquisition_date=asset["Tanggal Perolehan"],
+                    useful_life=int(asset["Masa Manfaat (tahun)"]),
+                    reporting_date=asset["Tanggal Pelaporan"],
+                    capitalizations=capitalizations_df[capitalizations_df["Nama Aset"] == asset_name].to_dict("records"),
+                    corrections=corrections_df[corrections_df["Nama Aset"] == asset_name].to_dict("records")
                 )
-
+                
                 results.append({
                     "Nama Aset": asset_name,
-                    "Tanggal Pelaporan": reporting_date,
+                    "Tanggal Pelaporan": asset["Tanggal Pelaporan"],
                     "Penyusutan": schedule[-1]["depreciation"] if schedule else 0,
                     "Akumulasi": schedule[-1]["accumulated"] if schedule else 0,
                     "Nilai Buku": schedule[-1]["book_value"] if schedule else 0,
                 })
                 schedules[asset_name] = schedule
 
+            # Tampilkan hasil
             results_df = pd.DataFrame(results)
             st.dataframe(results_df.style.format({
-                "Penyusutan": "{:,.2f}".format,
-                "Akumulasi": "{:,.2f}".format,
-                "Nilai Buku": "{:,.2f}".format,
+                "Penyusutan": "{:,.2f}",
+                "Akumulasi": "{:,.2f}",
+                "Nilai Buku": "{:,.2f}",
             }))
 
+            # Download hasil
             excel_buffer = convert_df_to_excel_with_sheets(results, schedules)
             st.download_button(
                 "📥 Download Hasil",
