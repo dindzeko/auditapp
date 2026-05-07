@@ -271,8 +271,8 @@ def should_skip_row_automatically(table, row, row_idx, numeric_cols):
     """
     Mode otomatis.
     Return:
-    - (True, reason) jika baris dilewati
-    - (False, "") jika baris dihitung
+    - (True, reason) jika baris dilewati.
+    - (False, "") jika baris dihitung.
     """
 
     if is_header_number_row(row):
@@ -576,10 +576,10 @@ def is_probable_subtotal_row(table, row, row_idx, numeric_cols):
     """
     Deteksi subtotal agar tidak double counting.
 
-    Perbaikan penting:
-    - subtotal dengan beberapa rincian di bawahnya akan dilewati;
-    - subtotal dengan satu rincian di bawahnya juga dilewati jika nilainya sama/mendekati;
-    - boundary grup berhenti ketika menemukan baris bold berikutnya.
+    Baris dianggap subtotal jika:
+    - memiliki nilai numerik;
+    - memiliki uraian teks;
+    - nilainya sama/mendekati jumlah satu atau beberapa baris rincian di bawahnya.
     """
 
     current_values = get_numeric_values(row, numeric_cols)
@@ -637,11 +637,11 @@ def is_probable_subtotal_row(table, row, row_idx, numeric_cols):
     if checked == 0:
         return False
 
-    # Jika baris sekarang bold, satu kolom yang cocok sudah cukup kuat sebagai subtotal.
+    # Jika baris subtotal/kelompok bold, satu kolom cocok sudah cukup kuat.
     if is_bold_row(row) and matched >= 1:
         return True
 
-    # Jika bukan bold, butuh kecocokan yang lebih kuat.
+    # Jika bukan bold, perlu setidaknya ada dua child atau kecocokan kuat.
     if len(candidate_children) >= 2 and matched >= 1:
         return True
 
@@ -655,7 +655,6 @@ def collect_candidate_child_rows(table, row_idx, numeric_cols, max_children=20):
     Berhenti jika:
     - bertemu baris JUMLAH/TOTAL;
     - bertemu baris bold berikutnya setelah minimal satu child terkumpul.
-      Ini penting agar subtotal grup A tidak ikut menjumlahkan grup B.
     """
 
     candidate_children = []
@@ -770,13 +769,20 @@ def verify_total_row(total_row, numeric_cols, vertical_sums):
 
         if numbers_are_equal(existing_number, calculated_number, tolerance):
             add_status_mark(cell, "^", RGBColor(0, 176, 80))
+            add_recalculation_note_to_cell(
+                cell=cell,
+                calculated_number=calculated_number,
+                is_percent=False,
+                color=RGBColor(0, 176, 80)
+            )
             result["verified"] += 1
         else:
             add_status_mark(cell, "X", RGBColor(255, 0, 0))
             add_recalculation_note_to_cell(
                 cell=cell,
                 calculated_number=calculated_number,
-                is_percent=False
+                is_percent=False,
+                color=RGBColor(255, 0, 0)
             )
             result["different"] += 1
 
@@ -998,13 +1004,20 @@ def apply_percentage_formula_check(table, percent_col, formula):
 
         if percentage_numbers_equal(existing_value, calculated_value):
             add_status_mark(cell, "^", RGBColor(0, 176, 80))
+            add_recalculation_note_to_cell(
+                cell=cell,
+                calculated_number=calculated_value,
+                is_percent=True,
+                color=RGBColor(0, 176, 80)
+            )
             result["verified"] += 1
         else:
             add_status_mark(cell, "X", RGBColor(255, 0, 0))
             add_recalculation_note_to_cell(
                 cell=cell,
                 calculated_number=calculated_value,
-                is_percent=True
+                is_percent=True,
+                color=RGBColor(255, 0, 0)
             )
             result["different"] += 1
 
@@ -1049,6 +1062,10 @@ def add_status_mark(cell, mark, color):
 
 
 def clean_existing_marks_and_notes(cell):
+    """
+    Membersihkan tanda dan catatan lama jika dokumen diproses ulang.
+    """
+
     for paragraph in cell.paragraphs:
         if "Rekalkulasi:" in paragraph.text:
             for run in paragraph.runs:
@@ -1064,7 +1081,12 @@ def clean_existing_marks_and_notes(cell):
             run.text = text
 
 
-def add_recalculation_note_to_cell(cell, calculated_number, is_percent=False):
+def add_recalculation_note_to_cell(cell, calculated_number, is_percent=False, color=None):
+    """
+    Menambahkan catatan hasil rekalkulasi.
+    Hijau jika sesuai, merah jika berbeda.
+    """
+
     paragraph = cell.add_paragraph()
     paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.RIGHT
 
@@ -1073,11 +1095,14 @@ def add_recalculation_note_to_cell(cell, calculated_number, is_percent=False):
     else:
         text = f"Rekalkulasi: {format_number(calculated_number)}"
 
+    if color is None:
+        color = RGBColor(255, 0, 0)
+
     run = paragraph.add_run(text)
     run.font.name = "Calibri"
     run.font.size = Pt(8)
     run.font.bold = True
-    run.font.color.rgb = RGBColor(255, 0, 0)
+    run.font.color.rgb = color
 
 
 # =========================================================
