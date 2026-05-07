@@ -83,16 +83,37 @@ def app():
                 st.subheader("Ringkasan Proses")
                 st.json(summary)
 
+            nama_file_hasil = buat_nama_file_hasil(uploaded_file.name)
+
             st.download_button(
                 label="📥 Unduh Hasil Rekalkulasi",
                 data=output,
-                file_name="hasil_rekalkulasi.docx",
+                file_name=nama_file_hasil,
                 mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             )
 
         except Exception as e:
             st.error(f"Terjadi kesalahan: {str(e)}")
             st.error("Pastikan file yang diupload adalah dokumen Word `.docx` valid.")
+
+
+def buat_nama_file_hasil(nama_file_upload):
+    """
+    Membuat nama file hasil berdasarkan nama file upload.
+
+    Contoh:
+    bab 5.docx -> bab 5_Rekalkulasi.docx
+    """
+
+    if not nama_file_upload:
+        return "hasil_Rekalkulasi.docx"
+
+    if nama_file_upload.lower().endswith(".docx"):
+        nama_file_tanpa_ext = nama_file_upload[:-5]
+    else:
+        nama_file_tanpa_ext = nama_file_upload
+
+    return f"{nama_file_tanpa_ext}_Rekalkulasi.docx"
 
 
 # =========================================================
