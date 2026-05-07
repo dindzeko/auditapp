@@ -35,7 +35,7 @@ def app():
     )
 
     st.caption(
-        "Metode footing berjalan otomatis: sistem melewati header, baris jumlah, dan subtotal yang terdeteksi dari struktur tabel."
+        "Metode otomatis: sistem melewati header, baris jumlah, dan subtotal/kelompok yang terdeteksi dari struktur tabel."
     )
 
     col1, col2 = st.columns(2)
@@ -105,6 +105,7 @@ def recalculate_tables(doc, tambah_baris_rekalkulasi=False, cek_persentase=True)
         "tabel_diproses": 0,
         "tabel_tanpa_kolom_numerik": 0,
         "baris_total_ditemukan": 0,
+        "baris_subtotal_dilewati": 0,
         "sel_footing_verified": 0,
         "sel_footing_berbeda": 0,
         "baris_rekalkulasi_ditambahkan": 0,
@@ -140,15 +141,15 @@ def recalculate_tables(doc, tambah_baris_rekalkulasi=False, cek_persentase=True)
         if total_indices:
             summary["baris_total_ditemukan"] += len(total_indices)
 
-            # Fokus pada baris JUMLAH/TOTAL paling bawah.
-            # Ini menghindari total ikut dijumlahkan lagi.
             final_total_idx = total_indices[-1]
 
-            vertical_sums = calculate_sums_before_total_row(
+            vertical_sums, skipped_subtotal_count = calculate_sums_before_total_row(
                 table=table,
                 total_row_idx=final_total_idx,
                 numeric_cols=numeric_cols
             )
+
+            summary["baris_subtotal_dilewati"] += skipped_subtotal_count
 
             total_row = table.rows[final_total_idx]
 
@@ -163,10 +164,12 @@ def recalculate_tables(doc, tambah_baris_rekalkulasi=False, cek_persentase=True)
 
         else:
             if tambah_baris_rekalkulasi:
-                vertical_sums = calculate_sums_all_rows(
+                vertical_sums, skipped_subtotal_count = calculate_sums_all_rows(
                     table=table,
                     numeric_cols=numeric_cols
                 )
+
+                summary["baris_subtotal_dilewati"] += skipped_subtotal_count
 
                 added = add_recalculation_row(
                     table=table,
@@ -194,20 +197,25 @@ def recalculate_tables(doc, tambah_baris_rekalkulasi=False, cek_persentase=True)
 def calculate_sums_before_total_row(table, total_row_idx, numeric_cols):
     """
     Menjumlahkan hanya baris sebelum baris JUMLAH/TOTAL.
-    Baris JUMLAH/TOTAL tidak ikut dihitung.
+    Subtotal/kelompok dilewati agar tidak double counting.
     """
 
     vertical_sums = [0.0] * len(table.columns)
+    skipped_subtotal_count = 0
 
     for row_idx in range(0, total_row_idx):
         row = table.rows[row_idx]
 
-        if should_skip_row_automatically(
+        skip, reason = should_skip_row_automatically(
             table=table,
             row=row,
             row_idx=row_idx,
             numeric_cols=numeric_cols
-        ):
+        )
+
+        if skip:
+            if reason == "subtotal":
+                skipped_subtotal_count += 1
             continue
 
         for col_idx in numeric_cols:
@@ -221,7 +229,7 @@ def calculate_sums_before_total_row(table, total_row_idx, numeric_cols):
 
             vertical_sums[col_idx] += number
 
-    return vertical_sums
+    return vertical_sums, skipped_subtotal_count
 
 
 def calculate_sums_all_rows(table, numeric_cols):
@@ -230,14 +238,19 @@ def calculate_sums_all_rows(table, numeric_cols):
     """
 
     vertical_sums = [0.0] * len(table.columns)
+    skipped_subtotal_count = 0
 
     for row_idx, row in enumerate(table.rows):
-        if should_skip_row_automatically(
+        skip, reason = should_skip_row_automatically(
             table=table,
             row=row,
             row_idx=row_idx,
             numeric_cols=numeric_cols
-        ):
+        )
+
+        if skip:
+            if reason == "subtotal":
+                skipped_subtotal_count += 1
             continue
 
         for col_idx in numeric_cols:
@@ -251,32 +264,30 @@ def calculate_sums_all_rows(table, numeric_cols):
 
             vertical_sums[col_idx] += number
 
-    return vertical_sums
+    return vertical_sums, skipped_subtotal_count
 
 
 def should_skip_row_automatically(table, row, row_idx, numeric_cols):
     """
     Mode otomatis.
-    Baris dilewati hanya jika bukan baris data yang seharusnya dijumlahkan.
+    Return:
+    - (True, reason) jika baris dilewati
+    - (False, "") jika baris dihitung
     """
 
-    # Baris penomoran kolom, misalnya 1 | 2 | 3 | 7=5/3
     if is_header_number_row(row):
-        return True
+        return True, "header_number"
 
-    # Baris JUMLAH/TOTAL tidak boleh ikut dijumlahkan
     if is_total_row(row):
-        return True
+        return True, "total"
 
-    # Baris header teks murni tidak dihitung
     if is_likely_header_text_row(row):
-        return True
+        return True, "header_text"
 
-    # Baris subtotal dilewati hanya kalau terbukti merupakan jumlah rincian di bawahnya
     if is_probable_subtotal_row(table, row, row_idx, numeric_cols):
-        return True
+        return True, "subtotal"
 
-    return False
+    return False, ""
 
 
 # =========================================================
@@ -296,7 +307,7 @@ def find_total_row_indices(table):
 def is_total_row(row):
     """
     Deteksi baris total.
-    Fokus pada kolom uraian / sel pertama yang berisi teks.
+    Fokus pada sel pertama yang berisi teks.
     """
 
     keywords = [
@@ -564,7 +575,11 @@ def detect_percentage_columns(table):
 def is_probable_subtotal_row(table, row, row_idx, numeric_cols):
     """
     Deteksi subtotal agar tidak double counting.
-    Baris dianggap subtotal jika nilainya mendekati jumlah beberapa baris setelahnya.
+
+    Perbaikan penting:
+    - subtotal dengan beberapa rincian di bawahnya akan dilewati;
+    - subtotal dengan satu rincian di bawahnya juga dilewati jika nilainya sama/mendekati;
+    - boundary grup berhenti ketika menemukan baris bold berikutnya.
     """
 
     current_values = get_numeric_values(row, numeric_cols)
@@ -572,27 +587,17 @@ def is_probable_subtotal_row(table, row, row_idx, numeric_cols):
     if not current_values:
         return False
 
-    candidate_children = []
+    if not row_has_meaningful_text(row):
+        return False
 
-    for next_row in list(table.rows)[row_idx + 1:]:
-        if is_header_number_row(next_row):
-            continue
+    candidate_children = collect_candidate_child_rows(
+        table=table,
+        row_idx=row_idx,
+        numeric_cols=numeric_cols,
+        max_children=20
+    )
 
-        if is_total_row(next_row):
-            break
-
-        if is_likely_header_text_row(next_row):
-            continue
-
-        next_values = get_numeric_values(next_row, numeric_cols)
-
-        if next_values:
-            candidate_children.append(next_row)
-
-        if len(candidate_children) >= 10:
-            break
-
-    if len(candidate_children) < 2:
+    if not candidate_children:
         return False
 
     checked = 0
@@ -620,7 +625,7 @@ def is_probable_subtotal_row(table, row, row_idx, numeric_cols):
                 child_sum += child_value
                 child_count += 1
 
-        if child_count < 2:
+        if child_count < 1:
             continue
 
         checked += 1
@@ -632,7 +637,73 @@ def is_probable_subtotal_row(table, row, row_idx, numeric_cols):
     if checked == 0:
         return False
 
-    return matched >= 1
+    # Jika baris sekarang bold, satu kolom yang cocok sudah cukup kuat sebagai subtotal.
+    if is_bold_row(row) and matched >= 1:
+        return True
+
+    # Jika bukan bold, butuh kecocokan yang lebih kuat.
+    if len(candidate_children) >= 2 and matched >= 1:
+        return True
+
+    return False
+
+
+def collect_candidate_child_rows(table, row_idx, numeric_cols, max_children=20):
+    """
+    Mengumpulkan baris rincian setelah baris induk/subtotal.
+
+    Berhenti jika:
+    - bertemu baris JUMLAH/TOTAL;
+    - bertemu baris bold berikutnya setelah minimal satu child terkumpul.
+      Ini penting agar subtotal grup A tidak ikut menjumlahkan grup B.
+    """
+
+    candidate_children = []
+    rows = list(table.rows)
+
+    for next_idx in range(row_idx + 1, len(rows)):
+        next_row = rows[next_idx]
+
+        if is_header_number_row(next_row):
+            continue
+
+        if is_total_row(next_row):
+            break
+
+        if is_likely_header_text_row(next_row):
+            continue
+
+        # Boundary grup berikutnya.
+        # Contoh:
+        # Retribusi Jasa Umum        <- parent
+        #   Retribusi Pelayanan...   <- child
+        # Retribusi Jasa Usaha       <- parent berikutnya, stop di sini
+        if candidate_children and is_bold_row(next_row):
+            break
+
+        next_values = get_numeric_values(next_row, numeric_cols)
+
+        if next_values:
+            candidate_children.append(next_row)
+
+        if len(candidate_children) >= max_children:
+            break
+
+    return candidate_children
+
+
+def row_has_meaningful_text(row):
+    """
+    Mengecek apakah baris memiliki uraian teks.
+    """
+
+    for cell in row.cells:
+        text = cell.text.strip()
+
+        if text and parse_number(text, dash_as_zero=False) is None:
+            return True
+
+    return False
 
 
 def get_numeric_values(row, numeric_cols):
@@ -648,6 +719,30 @@ def get_numeric_values(row, numeric_cols):
             values[col_idx] = number
 
     return values
+
+
+def is_bold_row(row):
+    """
+    Mengecek apakah mayoritas teks pada baris bold.
+    Banyak tabel laporan memakai bold untuk subtotal/kelompok.
+    """
+
+    total_runs = 0
+    bold_runs = 0
+
+    for cell in row.cells:
+        for paragraph in cell.paragraphs:
+            for run in paragraph.runs:
+                if run.text.strip():
+                    total_runs += 1
+
+                    if run.bold:
+                        bold_runs += 1
+
+    if total_runs == 0:
+        return False
+
+    return bold_runs >= max(1, int(total_runs * 0.5))
 
 
 # =========================================================
@@ -926,7 +1021,7 @@ def get_cell_number(row, col_idx, dash_as_zero=True):
 def percentage_numbers_equal(a, b, tolerance=0.05):
     """
     Toleransi persentase.
-    91,37 dianggap sesuai dengan 91,374 setelah pembulatan.
+    112,75 dianggap sesuai dengan 112,748 setelah pembulatan.
     """
 
     return abs(a - b) <= tolerance
