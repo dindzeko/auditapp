@@ -22,7 +22,7 @@ def app():
     st.write(
         """
         Upload dokumen Word `.docx`. Aplikasi akan memverifikasi angka pada tabel,
-        terutama baris `JUMLAH/TOTAL` dan kolom persentase.
+        terutama baris `JUMLAH/TOTAL`, baris total tanpa label, dan kolom persentase.
         """
     )
 
@@ -35,14 +35,14 @@ def app():
     )
 
     st.caption(
-        "Metode otomatis: sistem melewati header, baris jumlah, dan subtotal/kelompok yang terdeteksi dari struktur tabel."
+        "Metode otomatis: sistem melewati header, baris jumlah, subtotal/kelompok, dan total tanpa label yang terdeteksi di bagian bawah tabel."
     )
 
     col1, col2 = st.columns(2)
 
     with col1:
         tambah_baris_rekalkulasi = st.checkbox(
-            "Jika tidak ada baris JUMLAH/TOTAL, tambahkan baris Rekalkulasi Sistem",
+            "Jika tidak ada baris JUMLAH/TOTAL/total implisit, tambahkan baris Rekalkulasi Sistem",
             value=False
         )
 
@@ -98,13 +98,6 @@ def app():
 
 
 def buat_nama_file_hasil(nama_file_upload):
-    """
-    Membuat nama file hasil berdasarkan nama file upload.
-
-    Contoh:
-    bab 5.docx -> bab 5_Rekalkulasi.docx
-    """
-
     if not nama_file_upload:
         return "hasil_Rekalkulasi.docx"
 
@@ -126,6 +119,7 @@ def recalculate_tables(doc, tambah_baris_rekalkulasi=False, cek_persentase=True)
         "tabel_diproses": 0,
         "tabel_tanpa_kolom_numerik": 0,
         "baris_total_ditemukan": 0,
+        "baris_total_implisit_ditemukan": 0,
         "baris_subtotal_dilewati": 0,
         "sel_footing_verified": 0,
         "sel_footing_berbeda": 0,
@@ -143,7 +137,6 @@ def recalculate_tables(doc, tambah_baris_rekalkulasi=False, cek_persentase=True)
         clean_table_old_marks(table)
 
         numeric_cols = detect_numeric_columns_for_footing(table)
-        total_indices = find_total_row_indices(table)
 
         if not numeric_cols:
             summary["tabel_tanpa_kolom_numerik"] += 1
@@ -159,10 +152,27 @@ def recalculate_tables(doc, tambah_baris_rekalkulasi=False, cek_persentase=True)
 
         summary["tabel_diproses"] += 1
 
-        if total_indices:
-            summary["baris_total_ditemukan"] += len(total_indices)
+        total_indices = find_total_row_indices(table)
 
-            final_total_idx = total_indices[-1]
+        # Jika tidak ada JUMLAH/TOTAL eksplisit, cari total implisit.
+        # Contoh: baris bawah hanya berisi Rp 44.670.257.956 tanpa label "JUMLAH".
+        implicit_total_indices = []
+
+        if not total_indices:
+            implicit_total_indices = find_implicit_total_row_indices(
+                table=table,
+                numeric_cols=numeric_cols
+            )
+
+        final_total_indices = total_indices if total_indices else implicit_total_indices
+
+        if final_total_indices:
+            if total_indices:
+                summary["baris_total_ditemukan"] += len(total_indices)
+            else:
+                summary["baris_total_implisit_ditemukan"] += len(implicit_total_indices)
+
+            final_total_idx = final_total_indices[-1]
 
             vertical_sums, skipped_subtotal_count = calculate_sums_before_total_row(
                 table=table,
@@ -216,11 +226,6 @@ def recalculate_tables(doc, tambah_baris_rekalkulasi=False, cek_persentase=True)
 # =========================================================
 
 def calculate_sums_before_total_row(table, total_row_idx, numeric_cols):
-    """
-    Menjumlahkan hanya baris sebelum baris JUMLAH/TOTAL.
-    Subtotal/kelompok dilewati agar tidak double counting.
-    """
-
     vertical_sums = [0.0] * len(table.columns)
     skipped_subtotal_count = 0
 
@@ -254,10 +259,6 @@ def calculate_sums_before_total_row(table, total_row_idx, numeric_cols):
 
 
 def calculate_sums_all_rows(table, numeric_cols):
-    """
-    Dipakai hanya jika tabel tidak punya baris JUMLAH/TOTAL.
-    """
-
     vertical_sums = [0.0] * len(table.columns)
     skipped_subtotal_count = 0
 
@@ -289,13 +290,6 @@ def calculate_sums_all_rows(table, numeric_cols):
 
 
 def should_skip_row_automatically(table, row, row_idx, numeric_cols):
-    """
-    Mode otomatis.
-    Return:
-    - (True, reason) jika baris dilewati.
-    - (False, "") jika baris dihitung.
-    """
-
     if is_header_number_row(row):
         return True, "header_number"
 
@@ -326,11 +320,6 @@ def find_total_row_indices(table):
 
 
 def is_total_row(row):
-    """
-    Deteksi baris total.
-    Fokus pada sel pertama yang berisi teks.
-    """
-
     keywords = [
         "JUMLAH",
         "TOTAL",
@@ -363,16 +352,178 @@ def is_total_row(row):
     return False
 
 
+def find_implicit_total_row_indices(table, numeric_cols):
+    """
+    Mendeteksi baris total tanpa label.
+
+    Contoh:
+    |                    | Rp | 44.670.257.956 |
+    atau
+    |                    |    | 44.670.257.956 |
+
+    Logika:
+    - dicari dari bagian bawah tabel;
+    - baris punya angka;
+    - uraian kosong / sangat minim / hanya simbol;
+    - atau nilai numeriknya bold;
+    - atau nilainya cocok dengan hasil penjumlahan baris di atasnya.
+    """
+
+    rows = list(table.rows)
+    candidates = []
+
+    # Cek maksimal 8 baris terakhir agar tidak terlalu agresif.
+    start_idx = max(0, len(rows) - 8)
+
+    for idx in range(len(rows) - 1, start_idx - 1, -1):
+        row = rows[idx]
+
+        if is_header_number_row(row):
+            continue
+
+        if is_total_row(row):
+            continue
+
+        numeric_values = get_numeric_values(row, numeric_cols)
+
+        if not numeric_values:
+            continue
+
+        if is_implicit_total_row_candidate(table, idx, numeric_cols):
+            candidates.append(idx)
+            break
+
+    return sorted(candidates)
+
+
+def is_implicit_total_row_candidate(table, row_idx, numeric_cols):
+    row = table.rows[row_idx]
+
+    if row_idx <= 0:
+        return False
+
+    numeric_values = get_numeric_values(row, numeric_cols)
+
+    if not numeric_values:
+        return False
+
+    label_text = get_row_label_text(row, numeric_cols)
+    label_norm = normalize_text(label_text)
+
+    label_is_empty_or_weak = (
+        label_norm == ""
+        or label_norm in ["RP", "-", "–", "—"]
+        or len(label_norm) <= 3
+    )
+
+    numeric_is_bold = numeric_cells_are_bold(row, numeric_cols)
+
+    # Cek apakah angka baris ini cocok dengan penjumlahan baris di atasnya.
+    vertical_sums, _ = calculate_sums_before_total_row(
+        table=table,
+        total_row_idx=row_idx,
+        numeric_cols=numeric_cols
+    )
+
+    match_count = 0
+    checked_count = 0
+
+    for col_idx in numeric_cols:
+        if col_idx >= len(row.cells):
+            continue
+
+        existing_number = parse_number(row.cells[col_idx].text, dash_as_zero=True)
+
+        if existing_number is None:
+            continue
+
+        calculated_number = vertical_sums[col_idx]
+
+        if abs(existing_number) < 1:
+            continue
+
+        checked_count += 1
+        tolerance = max(5, abs(existing_number) * 0.00001)
+
+        if numbers_are_equal(existing_number, calculated_number, tolerance):
+            match_count += 1
+
+    # Paling aman: kalau cocok dengan jumlah di atas, anggap total implisit.
+    if checked_count > 0 and match_count >= 1:
+        return True
+
+    # Jika tidak cocok, tetapi baris bawah tanpa label dan angka bold,
+    # tetap anggap total implisit agar tidak dijumlahkan ulang.
+    # Nanti verify_total_row akan memberi X jika memang berbeda.
+    if label_is_empty_or_weak and numeric_is_bold:
+        return True
+
+    # Jika tanpa label dan posisinya benar-benar baris paling bawah,
+    # sering ini merupakan total tanpa label.
+    if label_is_empty_or_weak and row_idx == len(table.rows) - 1:
+        return True
+
+    return False
+
+
+def get_row_label_text(row, numeric_cols):
+    """
+    Mengambil teks non-numerik dari baris, selain kolom angka yang dihitung.
+    """
+
+    parts = []
+
+    for idx, cell in enumerate(row.cells):
+        text = cell.text.strip()
+
+        if idx in numeric_cols:
+            continue
+
+        if not text:
+            continue
+
+        clean = normalize_text(text)
+
+        if clean in ["RP", "-", "–", "—"]:
+            continue
+
+        if parse_number(text, dash_as_zero=False) is not None:
+            continue
+
+        parts.append(text)
+
+    return " ".join(parts).strip()
+
+
+def numeric_cells_are_bold(row, numeric_cols):
+    total_runs = 0
+    bold_runs = 0
+
+    for col_idx in numeric_cols:
+        if col_idx >= len(row.cells):
+            continue
+
+        cell = row.cells[col_idx]
+
+        for paragraph in cell.paragraphs:
+            for run in paragraph.runs:
+                if run.text.strip():
+                    total_runs += 1
+
+                    if run.bold:
+                        bold_runs += 1
+
+    if total_runs == 0:
+        return False
+
+    return bold_runs >= max(1, int(total_runs * 0.5))
+
+
 # =========================================================
 # NUMERIC COLUMN DETECTION
 # =========================================================
 
 def detect_numeric_columns_for_footing(table, sample_rows=15):
-    """
-    Deteksi kolom numerik untuk footing.
-    Kolom persentase tidak ikut dijumlahkan.
-    """
-
     numeric_cols = []
     data_rows = []
 
@@ -418,11 +569,6 @@ def detect_numeric_columns_for_footing(table, sample_rows=15):
 
 
 def detect_all_money_value_columns(table):
-    """
-    Deteksi kolom nilai uang/angka non-persentase.
-    Dipakai sebagai kandidat pembanding rumus persentase.
-    """
-
     cols = []
 
     for col_idx in range(len(table.columns)):
@@ -458,11 +604,6 @@ def detect_all_money_value_columns(table):
 # =========================================================
 
 def is_header_number_row(row):
-    """
-    Deteksi baris penomoran kolom:
-    1 | 2 | 3 | 4 | 5 | 6 | 7=5/3
-    """
-
     values = []
 
     for cell in row.cells:
@@ -489,12 +630,6 @@ def is_header_number_row(row):
 
 
 def is_likely_header_text_row(row):
-    """
-    Baris header teks murni.
-    Contoh:
-    URAIAN | ANGGARAN 2025 | REALISASI 2025
-    """
-
     non_empty = []
 
     for cell in row.cells:
@@ -516,10 +651,6 @@ def is_likely_header_text_row(row):
 
 
 def is_percent_column(table, col_idx):
-    """
-    Deteksi kolom persen/rasio.
-    """
-
     header_text = ""
 
     for row in table.rows[:8]:
@@ -594,15 +725,6 @@ def detect_percentage_columns(table):
 # =========================================================
 
 def is_probable_subtotal_row(table, row, row_idx, numeric_cols):
-    """
-    Deteksi subtotal agar tidak double counting.
-
-    Baris dianggap subtotal jika:
-    - memiliki nilai numerik;
-    - memiliki uraian teks;
-    - nilainya sama/mendekati jumlah satu atau beberapa baris rincian di bawahnya.
-    """
-
     current_values = get_numeric_values(row, numeric_cols)
 
     if not current_values:
@@ -658,11 +780,9 @@ def is_probable_subtotal_row(table, row, row_idx, numeric_cols):
     if checked == 0:
         return False
 
-    # Jika baris subtotal/kelompok bold, satu kolom cocok sudah cukup kuat.
     if is_bold_row(row) and matched >= 1:
         return True
 
-    # Jika bukan bold, perlu setidaknya ada dua child atau kecocokan kuat.
     if len(candidate_children) >= 2 and matched >= 1:
         return True
 
@@ -670,14 +790,6 @@ def is_probable_subtotal_row(table, row, row_idx, numeric_cols):
 
 
 def collect_candidate_child_rows(table, row_idx, numeric_cols, max_children=20):
-    """
-    Mengumpulkan baris rincian setelah baris induk/subtotal.
-
-    Berhenti jika:
-    - bertemu baris JUMLAH/TOTAL;
-    - bertemu baris bold berikutnya setelah minimal satu child terkumpul.
-    """
-
     candidate_children = []
     rows = list(table.rows)
 
@@ -693,11 +805,6 @@ def collect_candidate_child_rows(table, row_idx, numeric_cols, max_children=20):
         if is_likely_header_text_row(next_row):
             continue
 
-        # Boundary grup berikutnya.
-        # Contoh:
-        # Retribusi Jasa Umum        <- parent
-        #   Retribusi Pelayanan...   <- child
-        # Retribusi Jasa Usaha       <- parent berikutnya, stop di sini
         if candidate_children and is_bold_row(next_row):
             break
 
@@ -713,10 +820,6 @@ def collect_candidate_child_rows(table, row_idx, numeric_cols, max_children=20):
 
 
 def row_has_meaningful_text(row):
-    """
-    Mengecek apakah baris memiliki uraian teks.
-    """
-
     for cell in row.cells:
         text = cell.text.strip()
 
@@ -742,11 +845,6 @@ def get_numeric_values(row, numeric_cols):
 
 
 def is_bold_row(row):
-    """
-    Mengecek apakah mayoritas teks pada baris bold.
-    Banyak tabel laporan memakai bold untuk subtotal/kelompok.
-    """
-
     total_runs = 0
     bold_runs = 0
 
@@ -901,8 +999,6 @@ def build_candidate_percentage_formulas(table, percent_col, money_cols):
 
     left_money_cols = [col for col in money_cols if col < percent_col]
 
-    # Kandidat utama kolom % biasa:
-    # kolom sebelum % / kolom sebelumnya lagi x 100
     if len(left_money_cols) >= 2:
         numerator = left_money_cols[-1]
         denominator = left_money_cols[-2]
@@ -915,8 +1011,6 @@ def build_candidate_percentage_formulas(table, percent_col, money_cols):
             "description": f"Kolom {numerator + 1} / Kolom {denominator + 1} x 100"
         })
 
-    # Kandidat utama kolom % NAIK/TURUN:
-    # (kolom realisasi sekarang - kolom realisasi pembanding) / kolom realisasi pembanding x 100
     if "NAIK" in header_text or "TURUN" in header_text:
         previous_candidates = [col for col in money_cols if col < percent_col]
 
@@ -936,7 +1030,6 @@ def build_candidate_percentage_formulas(table, percent_col, money_cols):
                         "description": f"(Kolom {current_col + 1} - Kolom {previous_col + 1}) / Kolom {previous_col + 1} x 100"
                     })
 
-    # Kandidat umum
     for numerator_col in money_cols:
         for denominator_col in money_cols:
             if numerator_col == denominator_col:
@@ -1053,11 +1146,6 @@ def get_cell_number(row, col_idx, dash_as_zero=True):
 
 
 def percentage_numbers_equal(a, b, tolerance=0.05):
-    """
-    Toleransi persentase.
-    112,75 dianggap sesuai dengan 112,748 setelah pembulatan.
-    """
-
     return abs(a - b) <= tolerance
 
 
@@ -1083,10 +1171,6 @@ def add_status_mark(cell, mark, color):
 
 
 def clean_existing_marks_and_notes(cell):
-    """
-    Membersihkan tanda dan catatan lama jika dokumen diproses ulang.
-    """
-
     for paragraph in cell.paragraphs:
         if "Rekalkulasi:" in paragraph.text:
             for run in paragraph.runs:
@@ -1103,11 +1187,6 @@ def clean_existing_marks_and_notes(cell):
 
 
 def add_recalculation_note_to_cell(cell, calculated_number, is_percent=False, color=None):
-    """
-    Menambahkan catatan hasil rekalkulasi.
-    Hijau jika sesuai, merah jika berbeda.
-    """
-
     paragraph = cell.add_paragraph()
     paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.RIGHT
 
@@ -1162,18 +1241,6 @@ def set_recalculation_cell_style(cell):
 # =========================================================
 
 def parse_number(text, dash_as_zero=True):
-    """
-    Mengubah angka format Indonesia menjadi float.
-
-    Contoh:
-    1.105.550.130      -> 1105550130
-    99,73              -> 99.73
-    99,73%             -> 99.73
-    (17,85)            -> -17.85
-    Rp1.000.000,00     -> 1000000
-    -                  -> 0 jika dash_as_zero=True
-    """
-
     if text is None:
         return None
 
