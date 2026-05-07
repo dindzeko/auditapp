@@ -7,7 +7,7 @@ import io
 
 
 # =========================================================
-# STREAMLIT APP
+# APP
 # =========================================================
 
 def app():
@@ -21,16 +21,18 @@ def app():
 
     st.write(
         """
-        Upload dokumen Word `.docx`. Aplikasi akan membaca tabel, melakukan rekalkulasi angka,
-        mengecek baris total/jumlah, serta mengecek kolom persentase jika rumusnya bisa disimpulkan otomatis.
+        Upload dokumen Word `.docx`. Aplikasi akan memeriksa:
+        - footing baris JUMLAH/TOTAL;
+        - kolom persentase;
+        - kolom persentase naik/turun.
         """
     )
 
     st.info(
         """
-        Tanda hasil pemeriksaan:
-        - `^` warna hijau = hasil sesuai / verified.
-        - `X` warna merah = hasil berbeda dengan hitungan sistem.
+        Tanda hasil:
+        - `^` hijau = sesuai / verified.
+        - `X` merah = berbeda dengan hitungan sistem.
         """
     )
 
@@ -48,13 +50,13 @@ def app():
 
     with col1:
         tambah_baris_rekalkulasi = st.checkbox(
-            "Tambahkan baris Rekalkulasi Sistem jika tabel tidak memiliki baris JUMLAH/TOTAL",
+            "Tambahkan baris Rekalkulasi Sistem jika tidak ada baris JUMLAH/TOTAL",
             value=True
         )
 
     with col2:
         cek_persentase = st.checkbox(
-            "Cek kolom persentase/rasio secara otomatis",
+            "Cek kolom persentase otomatis",
             value=True
         )
 
@@ -99,7 +101,7 @@ def app():
 
         except Exception as e:
             st.error(f"Terjadi kesalahan: {str(e)}")
-            st.error("Pastikan file yang diupload adalah dokumen Word `.docx` yang valid.")
+            st.error("Pastikan file yang diupload adalah dokumen Word `.docx` valid.")
 
 
 # =========================================================
@@ -125,7 +127,11 @@ def recalculate_tables(doc, metode, tambah_baris_rekalkulasi=True, cek_persentas
         if not table.rows:
             continue
 
+        clean_table_old_marks(table)
+
         numeric_cols = detect_numeric_columns_for_footing(table)
+
+        total_rows = find_total_rows(table)
 
         if not numeric_cols:
             summary["tabel_tanpa_kolom_numerik"] += 1
@@ -142,7 +148,6 @@ def recalculate_tables(doc, metode, tambah_baris_rekalkulasi=True, cek_persentas
         summary["tabel_diproses"] += 1
 
         vertical_sums = [0.0] * len(table.columns)
-        total_rows = []
 
         rows = list(table.rows)
 
@@ -150,8 +155,7 @@ def recalculate_tables(doc, metode, tambah_baris_rekalkulasi=True, cek_persentas
             if is_header_number_row(row):
                 continue
 
-            if is_total_row(row):
-                total_rows.append(row)
+            if row in total_rows:
                 continue
 
             if should_skip_row_by_method(
@@ -167,7 +171,7 @@ def recalculate_tables(doc, metode, tambah_baris_rekalkulasi=True, cek_persentas
                 if col_idx >= len(row.cells):
                     continue
 
-                number = parse_number(row.cells[col_idx].text)
+                number = parse_number(row.cells[col_idx].text, dash_as_zero=True)
 
                 if number is None:
                     continue
@@ -209,13 +213,81 @@ def recalculate_tables(doc, metode, tambah_baris_rekalkulasi=True, cek_persentas
 
 
 # =========================================================
-# FOOTING NUMERIC COLUMN DETECTION
+# CLEAN OLD MARKS
 # =========================================================
 
-def detect_numeric_columns_for_footing(table, sample_rows=10):
+def clean_table_old_marks(table):
+    for row in table.rows:
+        for cell in row.cells:
+            clean_existing_marks_and_notes(cell)
+
+
+# =========================================================
+# TOTAL ROW DETECTION
+# =========================================================
+
+def find_total_rows(table):
+    total_rows = []
+
+    for row in table.rows:
+        if is_total_row(row):
+            total_rows.append(row)
+
+    return total_rows
+
+
+def is_total_row(row):
+    """
+    Deteksi baris total lebih kuat.
+    Fokus utama pada cell pertama/uraian.
+    """
+
+    keywords = [
+        "JUMLAH",
+        "TOTAL",
+        "GRANDTOTAL",
+        "GRAND TOTAL"
+    ]
+
+    cell_texts = [normalize_text(cell.text) for cell in row.cells]
+
+    non_empty = [text for text in cell_texts if text != ""]
+
+    if not non_empty:
+        return False
+
+    first_text = non_empty[0]
+
+    for keyword in keywords:
+        key = normalize_text(keyword)
+
+        if first_text == key:
+            return True
+
+        if first_text.startswith(key):
+            return True
+
+        if key in first_text and len(first_text) <= len(key) + 10:
+            return True
+
+    for text in non_empty:
+        for keyword in keywords:
+            key = normalize_text(keyword)
+
+            if text == key:
+                return True
+
+    return False
+
+
+# =========================================================
+# NUMERIC COLUMN DETECTION FOR FOOTING
+# =========================================================
+
+def detect_numeric_columns_for_footing(table, sample_rows=12):
     """
     Deteksi kolom numerik untuk footing.
-    Kolom persen/rasio tidak dimasukkan agar tidak dijumlahkan.
+    Kolom persentase tidak dihitung sebagai footing.
     """
 
     numeric_cols = []
@@ -237,11 +309,10 @@ def detect_numeric_columns_for_footing(table, sample_rows=10):
             break
 
     for col_idx in range(len(table.columns)):
-        if is_ratio_or_percent_column(table, col_idx):
+        if is_percent_column(table, col_idx):
             continue
 
         numeric_count = 0
-        checked_count = 0
 
         for row in data_rows:
             if col_idx >= len(row.cells):
@@ -252,27 +323,30 @@ def detect_numeric_columns_for_footing(table, sample_rows=10):
             if text == "":
                 continue
 
-            checked_count += 1
+            number = parse_number(text, dash_as_zero=True)
 
-            if parse_number(text) is not None:
+            if number is not None:
                 numeric_count += 1
 
-        if numeric_count > 0:
+        if numeric_count >= 1:
             numeric_cols.append(col_idx)
 
     return numeric_cols
 
 
-def detect_all_numeric_columns(table):
+def detect_all_money_value_columns(table):
     """
-    Deteksi semua kolom numerik, termasuk kolom persen.
-    Dipakai untuk simulasi rumus persentase.
+    Deteksi kolom angka nilai, bukan kolom persentase.
+    Dipakai untuk mencari pasangan rumus persentase.
     """
 
-    numeric_cols = []
+    cols = []
 
     for col_idx in range(len(table.columns)):
-        numeric_count = 0
+        if is_percent_column(table, col_idx):
+            continue
+
+        count = 0
 
         for row in table.rows:
             if is_header_number_row(row):
@@ -286,50 +360,25 @@ def detect_all_numeric_columns(table):
             if text == "":
                 continue
 
-            if parse_number(text) is not None:
-                numeric_count += 1
+            number = parse_number(text, dash_as_zero=True)
 
-            if numeric_count >= 2:
-                numeric_cols.append(col_idx)
+            if number is not None:
+                count += 1
+
+            if count >= 2:
+                cols.append(col_idx)
                 break
 
-    return numeric_cols
+    return cols
 
 
 # =========================================================
-# ROW DETECTION
+# ROW / COLUMN DETECTION
 # =========================================================
-
-def is_total_row(row):
-    """
-    Mendeteksi baris total/jumlah.
-    """
-
-    total_keywords = [
-        "JUMLAH",
-        "TOTAL",
-        "SUM",
-        "GRANDTOTAL",
-        "SUBJUMLAH",
-        "SUBTOTAL"
-    ]
-
-    normalized_cells = [
-        normalize_text(cell.text)
-        for cell in row.cells
-    ]
-
-    for text in normalized_cells:
-        for keyword in total_keywords:
-            if keyword in text:
-                return True
-
-    return False
-
 
 def is_header_number_row(row):
     """
-    Mendeteksi baris header angka seperti:
+    Deteksi baris header angka:
     1 | 2 | 3 | 4 | 5 | 6 | 7=5/3 | 8 | 9=(2+5)-8
     """
 
@@ -341,7 +390,7 @@ def is_header_number_row(row):
         text = text.replace("\n", "")
         text = text.replace("\r", "")
 
-        if text != "":
+        if text:
             values.append(text)
 
     if not values:
@@ -360,11 +409,11 @@ def is_header_number_row(row):
 
 def is_likely_header_text_row(row):
     """
-    Mendeteksi baris header teks biasa yang tidak berisi angka.
+    Deteksi baris header teks yang tidak berisi angka.
     """
 
     texts = [cell.text.strip() for cell in row.cells]
-    non_empty = [t for t in texts if t != ""]
+    non_empty = [t for t in texts if t]
 
     if not non_empty:
         return True
@@ -372,73 +421,82 @@ def is_likely_header_text_row(row):
     numeric_found = 0
 
     for text in non_empty:
-        if parse_number(text) is not None:
+        if parse_number(text, dash_as_zero=False) is not None:
             numeric_found += 1
 
     return numeric_found == 0
 
 
-def is_ratio_or_percent_column(table, col_idx):
+def is_percent_column(table, col_idx):
     """
-    Kolom persen/rasio tidak dijumlahkan pada footing.
+    Deteksi kolom persentase.
     """
-
-    rows_to_check = list(table.rows[:8])
 
     header_text = ""
 
-    for row in rows_to_check:
-        if col_idx >= len(row.cells):
-            continue
-
-        raw_text = row.cells[col_idx].text.strip()
-        header_text += " " + normalize_text(raw_text)
+    for row in table.rows[:8]:
+        if col_idx < len(row.cells):
+            header_text += " " + normalize_text(row.cells[col_idx].text)
 
     if "%" in header_text:
         return True
 
-    if "PERSEN" in header_text or "PERSENTASE" in header_text or "RASIO" in header_text:
+    if "PERSEN" in header_text:
         return True
 
-    if re.search(r"\d+=.+", header_text):
+    if "PERSENTASE" in header_text:
         return True
 
-    sample_numbers = []
+    if "RASIO" in header_text:
+        return True
+
+    if "NAIK" in header_text and "TURUN" in header_text:
+        return True
+
+    # Deteksi dari pola isi: banyak angka kecil/desimal seperti 87,89 atau (20,98)
+    sample_values = []
 
     for row in table.rows:
         if is_header_number_row(row):
             continue
 
-        if is_total_row(row):
-            continue
-
         if col_idx >= len(row.cells):
             continue
 
-        text = row.cells[col_idx].text.strip()
+        raw = row.cells[col_idx].text.strip()
 
-        if text == "":
+        if raw in ["", "-", "–", "—"]:
             continue
 
-        number = parse_number(text)
+        number = parse_number(raw, dash_as_zero=False)
 
         if number is not None:
-            sample_numbers.append(number)
+            sample_values.append(number)
 
-        if len(sample_numbers) >= 6:
+        if len(sample_values) >= 6:
             break
 
-    if len(sample_numbers) >= 3:
-        small_ratio_like = 0
+    if len(sample_values) >= 3:
+        small_count = 0
 
-        for number in sample_numbers:
-            if -500 <= number <= 500 and abs(number) != 0:
-                small_ratio_like += 1
+        for value in sample_values:
+            if -500 <= value <= 10000:
+                small_count += 1
 
-        if small_ratio_like >= 3:
+        if small_count >= 3:
             return True
 
     return False
+
+
+def detect_percentage_columns(table):
+    percent_cols = []
+
+    for col_idx in range(len(table.columns)):
+        if is_percent_column(table, col_idx):
+            percent_cols.append(col_idx)
+
+    return sorted(list(set(percent_cols)))
 
 
 # =========================================================
@@ -446,38 +504,19 @@ def is_ratio_or_percent_column(table, col_idx):
 # =========================================================
 
 def should_skip_row_by_method(table, row, row_idx, numeric_cols, metode):
-    """
-    Menentukan apakah baris perlu dilewati berdasarkan metode footing.
-    """
-
     if metode == "Hitung semua baris numerik":
         return False
 
     if metode == "Lewati subtotal otomatis":
-        return is_probable_subtotal_row(
-            table=table,
-            row=row,
-            row_idx=row_idx,
-            numeric_cols=numeric_cols
-        )
+        return is_probable_subtotal_row(table, row, row_idx, numeric_cols)
 
     if metode == "Hitung hanya baris rincian/leaf rows":
-        return is_non_leaf_row(
-            table=table,
-            row=row,
-            row_idx=row_idx,
-            numeric_cols=numeric_cols
-        )
+        return is_non_leaf_row(table, row, row_idx, numeric_cols)
 
     return False
 
 
 def is_probable_subtotal_row(table, row, row_idx, numeric_cols):
-    """
-    Baris dianggap subtotal jika angka pada baris tersebut mendekati jumlah
-    beberapa baris setelahnya.
-    """
-
     current_values = get_numeric_values(row, numeric_cols)
 
     if not current_values:
@@ -506,26 +545,26 @@ def is_probable_subtotal_row(table, row, row_idx, numeric_cols):
     if len(candidate_children) < 2:
         return False
 
-    match_count = 0
-    checked_count = 0
+    checked = 0
+    matched = 0
 
     for col_idx in numeric_cols:
         if col_idx >= len(row.cells):
             continue
 
-        current_value = parse_number(row.cells[col_idx].text)
+        current_value = parse_number(row.cells[col_idx].text, dash_as_zero=True)
 
         if current_value is None or abs(current_value) < 1:
             continue
 
-        child_sum = 0.0
+        child_sum = 0
         child_count = 0
 
         for child_row in candidate_children:
             if col_idx >= len(child_row.cells):
                 continue
 
-            child_value = parse_number(child_row.cells[col_idx].text)
+            child_value = parse_number(child_row.cells[col_idx].text, dash_as_zero=True)
 
             if child_value is not None:
                 child_sum += child_value
@@ -534,25 +573,19 @@ def is_probable_subtotal_row(table, row, row_idx, numeric_cols):
         if child_count < 2:
             continue
 
-        checked_count += 1
-
+        checked += 1
         tolerance = max(5, abs(current_value) * 0.00001)
 
-        if numbers_are_equal(current_value, child_sum, tolerance=tolerance):
-            match_count += 1
+        if numbers_are_equal(current_value, child_sum, tolerance):
+            matched += 1
 
-    if checked_count == 0:
+    if checked == 0:
         return False
 
-    return match_count >= 1
+    return matched >= 1
 
 
 def is_non_leaf_row(table, row, row_idx, numeric_cols):
-    """
-    Mode leaf rows:
-    Baris dilewati jika kemungkinan merupakan induk/subtotal.
-    """
-
     if is_probable_subtotal_row(table, row, row_idx, numeric_cols):
         return True
 
@@ -586,7 +619,7 @@ def get_numeric_values(row, numeric_cols):
         if col_idx >= len(row.cells):
             continue
 
-        number = parse_number(row.cells[col_idx].text)
+        number = parse_number(row.cells[col_idx].text, dash_as_zero=True)
 
         if number is not None:
             values[col_idx] = number
@@ -595,25 +628,17 @@ def get_numeric_values(row, numeric_cols):
 
 
 def is_bold_row(row):
-    """
-    Mengecek apakah mayoritas teks dalam baris menggunakan bold.
-    """
-
     total_runs = 0
     bold_runs = 0
 
     for cell in row.cells:
         for paragraph in cell.paragraphs:
             for run in paragraph.runs:
-                text = run.text.strip()
+                if run.text.strip():
+                    total_runs += 1
 
-                if text == "":
-                    continue
-
-                total_runs += 1
-
-                if run.bold:
-                    bold_runs += 1
+                    if run.bold:
+                        bold_runs += 1
 
     if total_runs == 0:
         return False
@@ -636,7 +661,7 @@ def verify_total_row(total_row, numeric_cols, vertical_sums):
             continue
 
         cell = total_row.cells[col_idx]
-        existing_number = parse_number(cell.text)
+        existing_number = parse_number(cell.text, dash_as_zero=True)
 
         if existing_number is None:
             continue
@@ -644,50 +669,34 @@ def verify_total_row(total_row, numeric_cols, vertical_sums):
         calculated_number = vertical_sums[col_idx]
         tolerance = max(5, abs(existing_number) * 0.00001)
 
-        if numbers_are_equal(existing_number, calculated_number, tolerance=tolerance):
-            add_status_mark(
-                cell=cell,
-                mark="^",
-                color=RGBColor(0, 176, 80)
-            )
+        if numbers_are_equal(existing_number, calculated_number, tolerance):
+            add_status_mark(cell, "^", RGBColor(0, 176, 80))
             result["verified"] += 1
         else:
-            add_status_mark(
-                cell=cell,
-                mark="X",
-                color=RGBColor(255, 0, 0)
-            )
-
+            add_status_mark(cell, "X", RGBColor(255, 0, 0))
             add_recalculation_note_to_cell(
                 cell=cell,
-                calculated_number=calculated_number
+                calculated_number=calculated_number,
+                is_percent=False
             )
-
             result["different"] += 1
 
     return result
 
 
 # =========================================================
-# PERCENTAGE FORMULA DETECTION AND VERIFICATION
+# PERCENTAGE VERIFICATION
 # =========================================================
 
 def verify_percentage_columns(table, summary=None, table_idx=None):
-    """
-    Mendeteksi dan memverifikasi kolom persentase.
-    Sistem mencoba menyimpulkan rumus dari beberapa sampel baris.
-    """
-
     percent_cols = detect_percentage_columns(table)
-    numeric_cols = detect_all_numeric_columns(table)
-
-    results = []
+    money_cols = detect_all_money_value_columns(table)
 
     for percent_col in percent_cols:
         formula = infer_percentage_formula(
             table=table,
             percent_col=percent_col,
-            numeric_cols=numeric_cols
+            money_cols=money_cols
         )
 
         if formula is None:
@@ -698,8 +707,6 @@ def verify_percentage_columns(table, summary=None, table_idx=None):
             percent_col=percent_col,
             formula=formula
         )
-
-        results.append(result)
 
         if summary is not None:
             summary["kolom_persen_dicek"] += 1
@@ -713,84 +720,21 @@ def verify_percentage_columns(table, summary=None, table_idx=None):
                 "different": result["different"]
             })
 
-    return results
 
-
-def detect_percentage_columns(table):
-    """
-    Deteksi kolom persentase berdasarkan header, tanda %, atau pola angka kecil.
-    """
-
-    percent_cols = []
-
-    for col_idx in range(len(table.columns)):
-        header_text = ""
-
-        for row in table.rows[:8]:
-            if col_idx < len(row.cells):
-                header_text += " " + normalize_text(row.cells[col_idx].text)
-
-        if "%" in header_text:
-            percent_cols.append(col_idx)
-            continue
-
-        if "PERSEN" in header_text or "PERSENTASE" in header_text or "RASIO" in header_text:
-            percent_cols.append(col_idx)
-            continue
-
-        sample_values = []
-
-        for row in table.rows:
-            if is_header_number_row(row):
-                continue
-
-            if col_idx >= len(row.cells):
-                continue
-
-            text = row.cells[col_idx].text.strip()
-
-            if text == "":
-                continue
-
-            number = parse_number(text)
-
-            if number is not None:
-                sample_values.append(number)
-
-            if len(sample_values) >= 6:
-                break
-
-        if len(sample_values) >= 3:
-            ratio_like_count = 0
-
-            for value in sample_values:
-                if -500 <= value <= 500:
-                    ratio_like_count += 1
-
-            if ratio_like_count >= 3:
-                percent_cols.append(col_idx)
-
-    return sorted(list(set(percent_cols)))
-
-
-def infer_percentage_formula(table, percent_col, numeric_cols, min_match=2):
-    """
-    Menebak rumus kolom persentase.
-    Minimal cocok 2 sampel agar rumus dianggap valid.
-    """
-
-    candidate_formulas = build_candidate_percentage_formulas(
+def infer_percentage_formula(table, percent_col, money_cols, min_match=2):
+    candidates = build_candidate_percentage_formulas(
+        table=table,
         percent_col=percent_col,
-        numeric_cols=numeric_cols
+        money_cols=money_cols
     )
 
     best_formula = None
-    best_score = 0
+    best_score = -1
     best_tested = 0
 
-    for formula in candidate_formulas:
-        match_count = 0
-        tested_count = 0
+    for formula in candidates:
+        tested = 0
+        matched = 0
 
         for row in table.rows:
             if is_header_number_row(row):
@@ -799,7 +743,7 @@ def infer_percentage_formula(table, percent_col, numeric_cols, min_match=2):
             if is_likely_header_text_row(row):
                 continue
 
-            expected = get_cell_number(row, percent_col)
+            expected = get_cell_number(row, percent_col, dash_as_zero=False)
 
             if expected is None:
                 continue
@@ -809,17 +753,22 @@ def infer_percentage_formula(table, percent_col, numeric_cols, min_match=2):
             if calculated is None:
                 continue
 
-            tested_count += 1
+            tested += 1
 
             if percentage_numbers_equal(expected, calculated):
-                match_count += 1
+                matched += 1
 
-            if tested_count >= 10:
+            if tested >= 10:
                 break
 
-        if match_count > best_score:
-            best_score = match_count
-            best_tested = tested_count
+        if tested == 0:
+            continue
+
+        score = matched / tested
+
+        if matched > best_score:
+            best_score = matched
+            best_tested = tested
             best_formula = formula
 
     if best_formula is None:
@@ -828,25 +777,58 @@ def infer_percentage_formula(table, percent_col, numeric_cols, min_match=2):
     if best_score >= min_match:
         return best_formula
 
-    if best_tested > 0 and best_score / best_tested >= 0.75 and best_score >= 1:
+    if best_tested > 0 and best_score / max(best_tested, 1) >= 0.70:
         return best_formula
 
     return None
 
 
-def build_candidate_percentage_formulas(percent_col, numeric_cols):
-    """
-    Membuat kandidat rumus:
-    1. ratio: A / B x 100
-    2. growth: (A - B) / B x 100
-    """
-
+def build_candidate_percentage_formulas(table, percent_col, money_cols):
     candidates = []
 
-    value_cols = [col for col in numeric_cols if col != percent_col]
+    header_text = get_column_header_text(table, percent_col)
 
-    for numerator_col in value_cols:
-        for denominator_col in value_cols:
+    # Candidate prioritas untuk kolom % biasa:
+    # biasanya kolom sebelum % / kolom dua sebelum %
+    left_money_cols = [col for col in money_cols if col < percent_col]
+
+    if len(left_money_cols) >= 2:
+        numerator = left_money_cols[-1]
+        denominator = left_money_cols[-2]
+
+        candidates.append({
+            "type": "ratio",
+            "numerator_col": numerator,
+            "denominator_col": denominator,
+            "priority": 0,
+            "description": f"Kolom {numerator + 1} / Kolom {denominator + 1} x 100"
+        })
+
+    # Candidate prioritas untuk % NAIK/TURUN:
+    # cari current value dari kolom sebelum % biasa atau realisasi tahun ini,
+    # previous value dari kolom tepat sebelum % naik/turun.
+    if "NAIK" in header_text or "TURUN" in header_text:
+        previous_candidates = [col for col in money_cols if col < percent_col]
+
+        if previous_candidates:
+            previous_col = previous_candidates[-1]
+
+            for current_col in money_cols:
+                if current_col == previous_col:
+                    continue
+
+                if current_col < previous_col:
+                    candidates.append({
+                        "type": "growth",
+                        "current_col": current_col,
+                        "previous_col": previous_col,
+                        "priority": 0,
+                        "description": f"(Kolom {current_col + 1} - Kolom {previous_col + 1}) / Kolom {previous_col + 1} x 100"
+                    })
+
+    # Candidate umum ratio dan growth
+    for numerator_col in money_cols:
+        for denominator_col in money_cols:
             if numerator_col == denominator_col:
                 continue
 
@@ -854,6 +836,7 @@ def build_candidate_percentage_formulas(percent_col, numeric_cols):
                 "type": "ratio",
                 "numerator_col": numerator_col,
                 "denominator_col": denominator_col,
+                "priority": 10 + abs(percent_col - numerator_col) + abs(percent_col - denominator_col),
                 "description": f"Kolom {numerator_col + 1} / Kolom {denominator_col + 1} x 100"
             })
 
@@ -861,34 +844,29 @@ def build_candidate_percentage_formulas(percent_col, numeric_cols):
                 "type": "growth",
                 "current_col": numerator_col,
                 "previous_col": denominator_col,
+                "priority": 20 + abs(percent_col - numerator_col) + abs(percent_col - denominator_col),
                 "description": f"(Kolom {numerator_col + 1} - Kolom {denominator_col + 1}) / Kolom {denominator_col + 1} x 100"
             })
 
-    def candidate_priority(formula):
-        if formula["type"] == "ratio":
-            return (
-                abs(percent_col - formula["numerator_col"])
-                + abs(percent_col - formula["denominator_col"])
-            )
-
-        return (
-            abs(percent_col - formula["current_col"])
-            + abs(percent_col - formula["previous_col"])
-        )
-
-    candidates.sort(key=candidate_priority)
+    candidates.sort(key=lambda x: x["priority"])
 
     return candidates
 
 
-def calculate_formula_value(row, formula):
-    """
-    Menghitung nilai berdasarkan formula kandidat.
-    """
+def get_column_header_text(table, col_idx):
+    text = ""
 
+    for row in table.rows[:8]:
+        if col_idx < len(row.cells):
+            text += " " + normalize_text(row.cells[col_idx].text)
+
+    return text
+
+
+def calculate_formula_value(row, formula):
     if formula["type"] == "ratio":
-        numerator = get_cell_number(row, formula["numerator_col"])
-        denominator = get_cell_number(row, formula["denominator_col"])
+        numerator = get_cell_number(row, formula["numerator_col"], dash_as_zero=True)
+        denominator = get_cell_number(row, formula["denominator_col"], dash_as_zero=True)
 
         if numerator is None or denominator is None or denominator == 0:
             return None
@@ -896,8 +874,8 @@ def calculate_formula_value(row, formula):
         return numerator / denominator * 100
 
     if formula["type"] == "growth":
-        current = get_cell_number(row, formula["current_col"])
-        previous = get_cell_number(row, formula["previous_col"])
+        current = get_cell_number(row, formula["current_col"], dash_as_zero=True)
+        previous = get_cell_number(row, formula["previous_col"], dash_as_zero=True)
 
         if current is None or previous is None or previous == 0:
             return None
@@ -908,13 +886,7 @@ def calculate_formula_value(row, formula):
 
 
 def apply_percentage_formula_check(table, percent_col, formula):
-    """
-    Setelah rumus ditemukan, cek seluruh baris pada kolom persentase.
-    """
-
     result = {
-        "percent_col": percent_col,
-        "formula": formula["description"],
         "verified": 0,
         "different": 0
     }
@@ -929,7 +901,7 @@ def apply_percentage_formula_check(table, percent_col, formula):
         if percent_col >= len(row.cells):
             continue
 
-        existing_value = get_cell_number(row, percent_col)
+        existing_value = get_cell_number(row, percent_col, dash_as_zero=False)
 
         if existing_value is None:
             continue
@@ -942,60 +914,36 @@ def apply_percentage_formula_check(table, percent_col, formula):
         cell = row.cells[percent_col]
 
         if percentage_numbers_equal(existing_value, calculated_value):
-            add_status_mark(
-                cell=cell,
-                mark="^",
-                color=RGBColor(0, 176, 80)
-            )
-
+            add_status_mark(cell, "^", RGBColor(0, 176, 80))
             result["verified"] += 1
-
         else:
-            add_status_mark(
-                cell=cell,
-                mark="X",
-                color=RGBColor(255, 0, 0)
-            )
-
+            add_status_mark(cell, "X", RGBColor(255, 0, 0))
             add_recalculation_note_to_cell(
                 cell=cell,
-                calculated_number=calculated_value
+                calculated_number=calculated_value,
+                is_percent=True
             )
-
             result["different"] += 1
 
     return result
 
 
-def get_cell_number(row, col_idx):
+def get_cell_number(row, col_idx, dash_as_zero=True):
     if col_idx >= len(row.cells):
         return None
 
-    return parse_number(row.cells[col_idx].text)
+    return parse_number(row.cells[col_idx].text, dash_as_zero=dash_as_zero)
 
 
 def percentage_numbers_equal(a, b, tolerance=0.05):
-    """
-    Toleransi untuk persentase.
-    87,89 dianggap sesuai dengan 87,894.
-    """
-
     return abs(a - b) <= tolerance
 
 
 # =========================================================
-# MARKING AND NOTES
+# MARKING
 # =========================================================
 
 def add_status_mark(cell, mark, color):
-    """
-    Menambahkan tanda:
-    ^ hijau = sesuai
-    X merah = berbeda
-    """
-
-    clean_existing_marks_and_notes(cell)
-
     paragraph = cell.paragraphs[0] if cell.paragraphs else cell.add_paragraph()
     paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.RIGHT
 
@@ -1007,37 +955,39 @@ def add_status_mark(cell, mark, color):
 
 
 def clean_existing_marks_and_notes(cell):
-    """
-    Membersihkan tanda lama jika dokumen diproses ulang.
-    """
+    paragraphs_to_clear = []
 
     for paragraph in cell.paragraphs:
+        full_text = paragraph.text
+
+        if "Rekalkulasi:" in full_text:
+            paragraphs_to_clear.append(paragraph)
+            continue
+
         for run in paragraph.runs:
             text = run.text
-
             text = text.replace(" ^", "")
             text = text.replace(" X", "")
             text = text.replace("^", "")
             text = text.replace("X", "")
-
-            text = re.sub(
-                r"\s*Rekalkulasi:\s*[-\d\.\,]+",
-                "",
-                text
-            )
-
             run.text = text
 
+    # Kosongkan paragraf catatan lama
+    for paragraph in paragraphs_to_clear:
+        for run in paragraph.runs:
+            run.text = ""
 
-def add_recalculation_note_to_cell(cell, calculated_number):
-    """
-    Menambahkan catatan kecil hasil rekalkulasi pada sel yang berbeda.
-    """
 
+def add_recalculation_note_to_cell(cell, calculated_number, is_percent=False):
     paragraph = cell.add_paragraph()
     paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.RIGHT
 
-    run = paragraph.add_run(f"Rekalkulasi: {format_number(calculated_number)}")
+    if is_percent:
+        text = f"Rekalkulasi: {format_percent(calculated_number)}"
+    else:
+        text = f"Rekalkulasi: {format_number(calculated_number)}"
+
+    run = paragraph.add_run(text)
     run.font.name = "Calibri"
     run.font.size = Pt(8)
     run.font.bold = True
@@ -1077,20 +1027,18 @@ def set_recalculation_cell_style(cell):
 
 
 # =========================================================
-# NUMBER PARSER AND FORMATTER
+# NUMBER PARSER
 # =========================================================
 
-def parse_number(text):
+def parse_number(text, dash_as_zero=True):
     """
-    Mengubah teks angka Indonesia menjadi float.
+    Mengubah angka format Indonesia menjadi float.
 
-    Contoh dikenali:
-    - 1.105.550.130
-    - 99,73
-    - 99,73%
-    - (17,85)
-    - Rp1.000.000,00
-    - -
+    dash_as_zero=True:
+    - dipakai untuk footing, sehingga '-' dianggap 0.
+
+    dash_as_zero=False:
+    - dipakai untuk persentase, sehingga '-' tidak dicek.
     """
 
     if text is None:
@@ -1109,19 +1057,15 @@ def parse_number(text):
     text = text.replace("Rp", "")
     text = text.replace("RP", "")
     text = text.replace("rp", "")
-
     text = text.replace("%", "")
+
     text = text.replace("^", "")
     text = text.replace("X", "")
 
-    text = re.sub(
-        r"Rekalkulasi:[-\d\.\,]+",
-        "",
-        text
-    )
+    text = re.sub(r"Rekalkulasi:[-\d\.\,\(\)]+", "", text)
 
     if text in ["-", "–", "—"]:
-        return 0.0
+        return 0.0 if dash_as_zero else None
 
     is_negative = False
 
@@ -1148,10 +1092,13 @@ def parse_number(text):
 
 
 def format_number(number):
-    """
-    Format angka ke format Indonesia.
-    """
+    if number is None:
+        return ""
 
+    return f"{number:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+def format_percent(number):
     if number is None:
         return ""
 
@@ -1178,7 +1125,7 @@ def normalize_text(text):
 
 
 # =========================================================
-# RUN APP
+# RUN
 # =========================================================
 
 if __name__ == "__main__":
