@@ -1,20 +1,14 @@
-import os
-import re
-import io
-
 import streamlit as st
-
 from docx import Document
 from docx.shared import Pt, RGBColor
 from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
+import re
+import io
+import os
 
-from openpyxl import load_workbook, Workbook
-from openpyxl.styles import Font
-from openpyxl.comments import Comment
-
-import pandas as pd
-import fitz  # PyMuPDF
 import pdfplumber
+from openpyxl import load_workbook
+import pandas as pd
 
 
 # =========================================================
@@ -22,19 +16,13 @@ import pdfplumber
 # =========================================================
 
 def app():
-    st.set_page_config(
-        page_title="Verifikasi Tabel Word PDF Excel",
-        page_icon="📄",
-        layout="wide"
-    )
-
-    st.title("📄 Verifikasi Footing dan Persentase Tabel Word, PDF, dan Excel")
+    st.title("📄 Verifikasi Footing dan Persentase Tabel Word/PDF/Excel")
 
     st.write(
         """
         Upload dokumen Word `.docx`, PDF `.pdf`, atau Excel `.xlsx/.xlsm/.xls`.
         Aplikasi akan memverifikasi angka pada tabel, terutama baris `JUMLAH/TOTAL`,
-        baris total tanpa label, subtotal/kelompok, dan kolom persentase.
+        baris total tanpa label, dan kolom persentase.
         """
     )
 
@@ -46,12 +34,17 @@ def app():
         """
     )
 
+    st.caption(
+        "Metode otomatis: sistem melewati header, baris jumlah/total, subtotal/kelompok, dan total tanpa label yang terdeteksi di bagian bawah tabel."
+    )
+
     st.warning(
         """
         Catatan:
-        - Untuk Word, hasil berupa file Word baru.
-        - Untuk Excel, hasil berupa file Excel baru dengan komentar pada sel total.
-        - Untuk PDF, sistem mencoba membaca tabel selectable. PDF hasil scan/gambar biasanya tidak terbaca tanpa OCR.
+        - Word diproses langsung dari tabel Word.
+        - PDF dan Excel akan dibaca tabelnya lalu diproses memakai logika yang sama seperti Word.
+        - Output untuk semua jenis file dibuat dalam bentuk Word `.docx`.
+        - PDF hasil scan/gambar biasanya tidak terbaca otomatis tanpa OCR.
         """
     )
 
@@ -80,561 +73,238 @@ def app():
     )
 
     if uploaded_file is not None:
-        nama_file = uploaded_file.name.lower()
-
         try:
-            if nama_file.endswith(".docx"):
+            nama_file = uploaded_file.name
+            nama_file_lower = nama_file.lower()
+
+            if nama_file_lower.endswith(".docx"):
                 doc = Document(uploaded_file)
+                label_download = "📥 Unduh Hasil Rekalkulasi Word"
 
-                with st.spinner("Memproses dokumen Word..."):
-                    summary = recalculate_word_tables(
-                        doc=doc,
-                        tambah_baris_rekalkulasi=tambah_baris_rekalkulasi,
-                        cek_persentase=cek_persentase
-                    )
-
-                    output = io.BytesIO()
-                    doc.save(output)
-                    output.seek(0)
-
-                st.success("Rekalkulasi Word selesai!")
-
-                if tampilkan_debug:
-                    st.subheader("Ringkasan Proses")
-                    st.json(summary)
-
-                nama_file_hasil = buat_nama_file_hasil_multi(uploaded_file.name, ".docx")
-
-                st.download_button(
-                    label="📥 Unduh Hasil Rekalkulasi Word",
-                    data=output,
-                    file_name=nama_file_hasil,
-                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                )
-
-            elif nama_file.endswith(".pdf"):
+            elif nama_file_lower.endswith(".pdf"):
                 pdf_bytes = uploaded_file.read()
+                doc = convert_pdf_to_word_table_doc(pdf_bytes)
+                label_download = "📥 Unduh Hasil Rekalkulasi PDF dalam Word"
 
-                with st.spinner("Memproses dokumen PDF..."):
-                    output_pdf, summary = recalculate_pdf_tables(
-                        pdf_bytes=pdf_bytes,
-                        cek_persentase=cek_persentase
-                    )
-
-                st.success("Rekalkulasi PDF selesai!")
-
-                if tampilkan_debug:
-                    st.subheader("Ringkasan Proses")
-                    st.json(summary)
-
-                nama_file_hasil = buat_nama_file_hasil_multi(uploaded_file.name, ".pdf")
-
-                st.download_button(
-                    label="📥 Unduh Hasil Rekalkulasi PDF",
-                    data=output_pdf,
-                    file_name=nama_file_hasil,
-                    mime="application/pdf"
-                )
-
-            elif nama_file.endswith((".xlsx", ".xlsm", ".xls")):
+            elif nama_file_lower.endswith((".xlsx", ".xlsm", ".xls")):
                 excel_bytes = uploaded_file.read()
-
-                with st.spinner("Memproses dokumen Excel..."):
-                    output_excel, summary = recalculate_excel_tables(
-                        excel_bytes=excel_bytes,
-                        nama_file=uploaded_file.name,
-                        tambah_baris_rekalkulasi=tambah_baris_rekalkulasi,
-                        cek_persentase=cek_persentase
-                    )
-
-                st.success("Rekalkulasi Excel selesai!")
-
-                if tampilkan_debug:
-                    st.subheader("Ringkasan Proses")
-                    st.json(summary)
-
-                nama_file_hasil = buat_nama_file_hasil_multi(uploaded_file.name, ".xlsx")
-
-                st.download_button(
-                    label="📥 Unduh Hasil Rekalkulasi Excel",
-                    data=output_excel,
-                    file_name=nama_file_hasil,
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                )
+                doc = convert_excel_to_word_table_doc(excel_bytes, nama_file)
+                label_download = "📥 Unduh Hasil Rekalkulasi Excel dalam Word"
 
             else:
-                st.error("Format file tidak didukung. Upload file .docx, .pdf, .xlsx, .xlsm, atau .xls.")
+                st.error("Format file tidak didukung.")
+                return
+
+            with st.spinner("Memproses dokumen..."):
+                summary = recalculate_tables(
+                    doc=doc,
+                    tambah_baris_rekalkulasi=tambah_baris_rekalkulasi,
+                    cek_persentase=cek_persentase
+                )
+
+                output = io.BytesIO()
+                doc.save(output)
+                output.seek(0)
+
+            st.success("Rekalkulasi selesai!")
+
+            if tampilkan_debug:
+                st.subheader("Ringkasan Proses")
+                st.json(summary)
+
+            nama_file_hasil = buat_nama_file_hasil(nama_file)
+
+            st.download_button(
+                label=label_download,
+                data=output,
+                file_name=nama_file_hasil,
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            )
 
         except Exception as e:
             st.error(f"Terjadi kesalahan: {str(e)}")
+            st.error("Pastikan file yang diupload valid dan tabelnya bisa dibaca.")
 
 
-def buat_nama_file_hasil_multi(nama_file_upload, ekstensi_baru):
+def buat_nama_file_hasil(nama_file_upload):
     if not nama_file_upload:
-        return f"hasil_Rekalkulasi{ekstensi_baru}"
+        return "hasil_Rekalkulasi.docx"
 
     nama_file_tanpa_ext = os.path.splitext(nama_file_upload)[0]
-    return f"{nama_file_tanpa_ext}_Rekalkulasi{ekstensi_baru}"
+    return f"{nama_file_tanpa_ext}_Rekalkulasi.docx"
 
 
 # =========================================================
-# SIMPLE TABLE ADAPTER UNTUK PDF DAN EXCEL
+# CONVERTER PDF / EXCEL KE DOKUMEN WORD SEMENTARA
 # =========================================================
 
-class SimpleCell:
-    def __init__(self, text="", ref=None, bbox=None, page_number=None):
-        self.text = "" if text is None else str(text)
-        self.ref = ref
-        self.bbox = bbox
-        self.page_number = page_number
+def convert_pdf_to_word_table_doc(pdf_bytes):
+    doc = Document()
+    doc.add_paragraph("Hasil Ekstraksi Tabel dari PDF")
 
+    jumlah_tabel = 0
 
-class SimpleRow:
-    def __init__(self, cells):
-        self.cells = cells
+    with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
+        for page_idx, page in enumerate(pdf.pages, start=1):
+            try:
+                tables = page.extract_tables()
+            except Exception:
+                tables = []
 
+            if not tables:
+                continue
 
-class SimpleTable:
-    def __init__(self, rows):
-        self.rows = rows
+            doc.add_paragraph(f"Halaman PDF {page_idx}")
 
-        max_cols = 0
-        for row in rows:
-            max_cols = max(max_cols, len(row.cells))
+            for table_data in tables:
+                if not table_data:
+                    continue
 
-        self.columns = list(range(max_cols))
+                cleaned_table = clean_extracted_table(table_data)
 
+                if not cleaned_table:
+                    continue
 
-# =========================================================
-# WORD MAIN PROCESS
-# =========================================================
+                jumlah_tabel += 1
+                add_table_to_docx(doc, cleaned_table, title=f"Tabel PDF {jumlah_tabel}")
 
-def recalculate_word_tables(doc, tambah_baris_rekalkulasi=False, cek_persentase=True):
-    summary = default_summary("word")
-    summary["jumlah_tabel"] = len(doc.tables)
-
-    for table_idx, table in enumerate(doc.tables, start=1):
-        if not table.rows:
-            continue
-
-        clean_table_old_marks(table)
-
-        process_result = process_word_table(
-            table=table,
-            table_idx=table_idx,
-            tambah_baris_rekalkulasi=tambah_baris_rekalkulasi,
-            cek_persentase=cek_persentase
+    if jumlah_tabel == 0:
+        doc.add_paragraph(
+            "Tidak ada tabel yang berhasil dibaca dari PDF. "
+            "Kemungkinan PDF berupa scan/gambar atau struktur tabel tidak terbaca."
         )
 
-        merge_summary(summary, process_result)
-
-    return summary
+    return doc
 
 
-def process_word_table(table, table_idx, tambah_baris_rekalkulasi=False, cek_persentase=True):
-    summary = default_summary("word_table")
-
-    numeric_cols = detect_numeric_columns_for_footing(table)
-
-    if not numeric_cols:
-        summary["tabel_tanpa_kolom_numerik"] += 1
-
-        if cek_persentase:
-            verify_percentage_columns_word(
-                table=table,
-                summary=summary,
-                table_idx=table_idx
-            )
-
-        return summary
-
-    summary["tabel_diproses"] += 1
-
-    total_indices = find_total_row_indices(table)
-    implicit_total_indices = []
-
-    if not total_indices:
-        implicit_total_indices = find_implicit_total_row_indices(
-            table=table,
-            numeric_cols=numeric_cols
-        )
-
-    final_total_indices = total_indices if total_indices else implicit_total_indices
-
-    if final_total_indices:
-        if total_indices:
-            summary["baris_total_ditemukan"] += len(total_indices)
-        else:
-            summary["baris_total_implisit_ditemukan"] += len(implicit_total_indices)
-
-        final_total_idx = final_total_indices[-1]
-
-        vertical_sums, skipped_subtotal_count = calculate_sums_before_total_row(
-            table=table,
-            total_row_idx=final_total_idx,
-            numeric_cols=numeric_cols
-        )
-
-        summary["baris_subtotal_dilewati"] += skipped_subtotal_count
-
-        total_row = get_table_rows(table)[final_total_idx]
-
-        result = verify_total_row_word(
-            total_row=total_row,
-            numeric_cols=numeric_cols,
-            vertical_sums=vertical_sums
-        )
-
-        summary["sel_footing_verified"] += result["verified"]
-        summary["sel_footing_berbeda"] += result["different"]
-
-    else:
-        if tambah_baris_rekalkulasi:
-            vertical_sums, skipped_subtotal_count = calculate_sums_all_rows(
-                table=table,
-                numeric_cols=numeric_cols
-            )
-
-            summary["baris_subtotal_dilewati"] += skipped_subtotal_count
-
-            added = add_recalculation_row_word(
-                table=table,
-                numeric_cols=numeric_cols,
-                vertical_sums=vertical_sums
-            )
-
-            if added:
-                summary["baris_rekalkulasi_ditambahkan"] += 1
-
-    if cek_persentase:
-        verify_percentage_columns_word(
-            table=table,
-            summary=summary,
-            table_idx=table_idx
-        )
-
-    return summary
-
-
-# =========================================================
-# EXCEL MAIN PROCESS
-# =========================================================
-
-def recalculate_excel_tables(excel_bytes, nama_file, tambah_baris_rekalkulasi=False, cek_persentase=True):
-    summary = default_summary("excel")
+def convert_excel_to_word_table_doc(excel_bytes, nama_file):
+    doc = Document()
+    doc.add_paragraph("Hasil Ekstraksi Tabel dari Excel")
 
     lower_name = nama_file.lower()
 
     if lower_name.endswith((".xlsx", ".xlsm")):
-        wb = load_workbook(io.BytesIO(excel_bytes))
+        wb = load_workbook(io.BytesIO(excel_bytes), data_only=True)
+
+        for ws in wb.worksheets:
+            table_data = []
+
+            for row in ws.iter_rows():
+                row_values = []
+
+                for cell in row:
+                    value = cell.value
+
+                    if value is None:
+                        row_values.append("")
+                    else:
+                        row_values.append(str(value))
+
+                table_data.append(row_values)
+
+            cleaned_table = clean_extracted_table(table_data)
+
+            if cleaned_table:
+                add_table_to_docx(doc, cleaned_table, title=f"Sheet: {ws.title}")
+
     elif lower_name.endswith(".xls"):
-        wb = convert_xls_bytes_to_openpyxl_workbook(excel_bytes)
-    else:
-        raise ValueError("Format Excel tidak didukung.")
+        sheets = pd.read_excel(
+            io.BytesIO(excel_bytes),
+            sheet_name=None,
+            header=None
+        )
 
-    summary["jumlah_tabel"] = len(wb.worksheets)
+        for sheet_name, df in sheets.items():
+            table_data = []
 
-    for ws in wb.worksheets:
-        table = convert_excel_sheet_to_simple_table(ws)
+            for _, row in df.iterrows():
+                row_values = []
 
-        if not table.rows:
+                for value in row:
+                    if pd.isna(value):
+                        row_values.append("")
+                    else:
+                        row_values.append(str(value))
+
+                table_data.append(row_values)
+
+            cleaned_table = clean_extracted_table(table_data)
+
+            if cleaned_table:
+                add_table_to_docx(doc, cleaned_table, title=f"Sheet: {sheet_name}")
+
+    return doc
+
+
+def clean_extracted_table(table_data):
+    cleaned = []
+
+    for row in table_data:
+        if row is None:
             continue
 
-        result = process_simple_table_for_excel(
-            table=table,
-            ws=ws,
-            tambah_baris_rekalkulasi=tambah_baris_rekalkulasi,
-            cek_persentase=cek_persentase
-        )
-
-        merge_summary(summary, result)
-
-    output = io.BytesIO()
-    wb.save(output)
-    output.seek(0)
-
-    return output.getvalue(), summary
-
-
-def convert_xls_bytes_to_openpyxl_workbook(excel_bytes):
-    xls_stream = io.BytesIO(excel_bytes)
-    all_sheets = pd.read_excel(xls_stream, sheet_name=None, header=None)
-
-    wb = Workbook()
-    first = True
-
-    for sheet_name, df in all_sheets.items():
-        if first:
-            ws = wb.active
-            ws.title = str(sheet_name)[:31]
-            first = False
-        else:
-            ws = wb.create_sheet(title=str(sheet_name)[:31])
-
-        for r_idx, row in df.iterrows():
-            for c_idx, value in enumerate(row):
-                if pd.isna(value):
-                    value = None
-                ws.cell(row=r_idx + 1, column=c_idx + 1, value=value)
-
-    return wb
-
-
-def convert_excel_sheet_to_simple_table(ws):
-    rows = []
-
-    max_row = ws.max_row
-    max_col = ws.max_column
-
-    for row in ws.iter_rows(min_row=1, max_row=max_row, min_col=1, max_col=max_col):
-        cells = []
+        new_row = []
 
         for cell in row:
-            value = cell.value
-            text = "" if value is None else str(value)
+            if cell is None:
+                new_row.append("")
+            else:
+                text = str(cell)
+                text = text.replace("\r", "\n")
+                text = text.strip()
+                new_row.append(text)
 
-            cells.append(
-                SimpleCell(
-                    text=text,
-                    ref=cell.coordinate
-                )
-            )
+        if any(cell.strip() for cell in new_row):
+            cleaned.append(new_row)
 
-        rows.append(SimpleRow(cells))
+    if not cleaned:
+        return []
 
-    return SimpleTable(rows)
+    max_cols = max(len(row) for row in cleaned)
+
+    normalized = []
+
+    for row in cleaned:
+        row = row + [""] * (max_cols - len(row))
+        normalized.append(row)
+
+    return normalized
 
 
-def process_simple_table_for_excel(table, ws, tambah_baris_rekalkulasi=False, cek_persentase=True):
-    summary = default_summary("excel_table")
+def add_table_to_docx(doc, table_data, title=None):
+    if title:
+        p = doc.add_paragraph()
+        run = p.add_run(title)
+        run.bold = True
 
-    numeric_cols = detect_numeric_columns_for_footing(table)
+    if not table_data:
+        return
 
-    if not numeric_cols:
-        summary["tabel_tanpa_kolom_numerik"] += 1
-        return summary
+    rows = len(table_data)
+    cols = max(len(row) for row in table_data)
 
-    summary["tabel_diproses"] += 1
+    table = doc.add_table(rows=rows, cols=cols)
+    table.style = "Table Grid"
 
-    total_indices = find_total_row_indices(table)
-    implicit_total_indices = []
+    for r_idx, row_data in enumerate(table_data):
+        for c_idx in range(cols):
+            value = ""
 
-    if not total_indices:
-        implicit_total_indices = find_implicit_total_row_indices(
-            table=table,
-            numeric_cols=numeric_cols
-        )
+            if c_idx < len(row_data):
+                value = row_data[c_idx]
 
-    final_total_indices = total_indices if total_indices else implicit_total_indices
+            table.cell(r_idx, c_idx).text = value
 
-    if final_total_indices:
-        if total_indices:
-            summary["baris_total_ditemukan"] += len(total_indices)
-        else:
-            summary["baris_total_implisit_ditemukan"] += len(implicit_total_indices)
-
-        final_total_idx = final_total_indices[-1]
-
-        vertical_sums, skipped_subtotal_count = calculate_sums_before_total_row(
-            table=table,
-            total_row_idx=final_total_idx,
-            numeric_cols=numeric_cols
-        )
-
-        summary["baris_subtotal_dilewati"] += skipped_subtotal_count
-
-        total_row = table.rows[final_total_idx]
-
-        result = verify_total_row_excel(
-            total_row=total_row,
-            numeric_cols=numeric_cols,
-            vertical_sums=vertical_sums,
-            ws=ws
-        )
-
-        summary["sel_footing_verified"] += result["verified"]
-        summary["sel_footing_berbeda"] += result["different"]
-
-    else:
-        if tambah_baris_rekalkulasi:
-            vertical_sums, skipped_subtotal_count = calculate_sums_all_rows(
-                table=table,
-                numeric_cols=numeric_cols
-            )
-
-            summary["baris_subtotal_dilewati"] += skipped_subtotal_count
-
-            added = add_recalculation_row_excel(
-                ws=ws,
-                numeric_cols=numeric_cols,
-                vertical_sums=vertical_sums
-            )
-
-            if added:
-                summary["baris_rekalkulasi_ditambahkan"] += 1
-
-    if cek_persentase:
-        verify_percentage_columns_excel(
-            table=table,
-            ws=ws,
-            summary=summary
-        )
-
-    return summary
+    doc.add_paragraph("")
 
 
 # =========================================================
-# PDF MAIN PROCESS
+# MAIN PROCESS
 # =========================================================
 
-def recalculate_pdf_tables(pdf_bytes, cek_persentase=True):
-    summary = default_summary("pdf")
-
-    pdf_doc = fitz.open(stream=pdf_bytes, filetype="pdf")
-    summary["jumlah_halaman"] = len(pdf_doc)
-
-    with pdfplumber.open(io.BytesIO(pdf_bytes)) as plumber_pdf:
-        for page_idx, plumber_page in enumerate(plumber_pdf.pages):
-            fitz_page = pdf_doc[page_idx]
-
-            try:
-                plumber_tables = plumber_page.find_tables()
-            except Exception:
-                plumber_tables = []
-
-            if not plumber_tables:
-                continue
-
-            for table_idx_on_page, plumber_table in enumerate(plumber_tables, start=1):
-                pdf_table = convert_pdfplumber_table_to_simple_table(
-                    plumber_table=plumber_table,
-                    page_number=page_idx
-                )
-
-                if not pdf_table.rows:
-                    continue
-
-                summary["jumlah_tabel"] += 1
-
-                result = process_simple_table_for_pdf(
-                    table=pdf_table,
-                    fitz_page=fitz_page,
-                    cek_persentase=cek_persentase,
-                    table_label=f"Halaman {page_idx + 1} Tabel {table_idx_on_page}"
-                )
-
-                merge_summary(summary, result)
-
-    output = io.BytesIO()
-    pdf_doc.save(output)
-    pdf_doc.close()
-    output.seek(0)
-
-    return output.getvalue(), summary
-
-
-def convert_pdfplumber_table_to_simple_table(plumber_table, page_number):
-    extracted_rows = plumber_table.extract()
-    rows = []
-
-    pdfplumber_rows = getattr(plumber_table, "rows", [])
-
-    for r_idx, extracted_row in enumerate(extracted_rows):
-        cells = []
-        row_bboxes = []
-
-        if r_idx < len(pdfplumber_rows):
-            row_bboxes = getattr(pdfplumber_rows[r_idx], "cells", [])
-
-        for c_idx, value in enumerate(extracted_row):
-            bbox = None
-
-            if c_idx < len(row_bboxes):
-                bbox = row_bboxes[c_idx]
-
-            cells.append(
-                SimpleCell(
-                    text=value or "",
-                    bbox=bbox,
-                    page_number=page_number
-                )
-            )
-
-        rows.append(SimpleRow(cells))
-
-    return SimpleTable(rows)
-
-
-def process_simple_table_for_pdf(table, fitz_page, cek_persentase=True, table_label=""):
-    summary = default_summary("pdf_table")
-
-    numeric_cols = detect_numeric_columns_for_footing(table)
-
-    if not numeric_cols:
-        summary["tabel_tanpa_kolom_numerik"] += 1
-        return summary
-
-    summary["tabel_diproses"] += 1
-
-    total_indices = find_total_row_indices(table)
-    implicit_total_indices = []
-
-    if not total_indices:
-        implicit_total_indices = find_implicit_total_row_indices(
-            table=table,
-            numeric_cols=numeric_cols
-        )
-
-    final_total_indices = total_indices if total_indices else implicit_total_indices
-
-    if final_total_indices:
-        if total_indices:
-            summary["baris_total_ditemukan"] += len(total_indices)
-        else:
-            summary["baris_total_implisit_ditemukan"] += len(implicit_total_indices)
-
-        final_total_idx = final_total_indices[-1]
-
-        vertical_sums, skipped_subtotal_count = calculate_sums_before_total_row(
-            table=table,
-            total_row_idx=final_total_idx,
-            numeric_cols=numeric_cols
-        )
-
-        summary["baris_subtotal_dilewati"] += skipped_subtotal_count
-
-        total_row = table.rows[final_total_idx]
-
-        result = verify_total_row_pdf(
-            total_row=total_row,
-            numeric_cols=numeric_cols,
-            vertical_sums=vertical_sums,
-            fitz_page=fitz_page
-        )
-
-        summary["sel_footing_verified"] += result["verified"]
-        summary["sel_footing_berbeda"] += result["different"]
-
-    if cek_persentase:
-        verify_percentage_columns_pdf(
-            table=table,
-            fitz_page=fitz_page,
-            summary=summary,
-            table_idx=table_label
-        )
-
-    return summary
-
-
-# =========================================================
-# DEFAULT SUMMARY
-# =========================================================
-
-def default_summary(jenis_file):
-    return {
-        "jenis_file": jenis_file,
-        "jumlah_halaman": 0,
-        "jumlah_tabel": 0,
+def recalculate_tables(doc, tambah_baris_rekalkulasi=False, cek_persentase=True):
+    summary = {
+        "jumlah_tabel": len(doc.tables),
         "tabel_diproses": 0,
         "tabel_tanpa_kolom_numerik": 0,
         "baris_total_ditemukan": 0,
@@ -649,51 +319,93 @@ def default_summary(jenis_file):
         "formula_persen_ditemukan": []
     }
 
+    for table_idx, table in enumerate(doc.tables, start=1):
+        if not table.rows:
+            continue
 
-def merge_summary(summary, result):
-    numeric_keys = [
-        "jumlah_tabel",
-        "tabel_diproses",
-        "tabel_tanpa_kolom_numerik",
-        "baris_total_ditemukan",
-        "baris_total_implisit_ditemukan",
-        "baris_subtotal_dilewati",
-        "sel_footing_verified",
-        "sel_footing_berbeda",
-        "baris_rekalkulasi_ditambahkan",
-        "kolom_persen_dicek",
-        "sel_persen_verified",
-        "sel_persen_berbeda"
-    ]
+        clean_table_old_marks(table)
 
-    for key in numeric_keys:
-        if key in result:
-            summary[key] = summary.get(key, 0) + result.get(key, 0)
+        numeric_cols = detect_numeric_columns_for_footing(table)
 
-    if "formula_persen_ditemukan" in result:
-        summary["formula_persen_ditemukan"].extend(result.get("formula_persen_ditemukan", []))
+        if not numeric_cols:
+            summary["tabel_tanpa_kolom_numerik"] += 1
 
+            if cek_persentase:
+                verify_percentage_columns(
+                    table=table,
+                    summary=summary,
+                    table_idx=table_idx
+                )
 
-# =========================================================
-# GENERIC TABLE HELPERS
-# =========================================================
+            continue
 
-def get_table_rows(table):
-    return list(table.rows)
+        summary["tabel_diproses"] += 1
 
+        total_indices = find_total_row_indices(table)
 
-def get_cell_text(cell):
-    return getattr(cell, "text", "") or ""
+        implicit_total_indices = []
 
+        if not total_indices:
+            implicit_total_indices = find_implicit_total_row_indices(
+                table=table,
+                numeric_cols=numeric_cols
+            )
 
-def get_table_col_count(table):
-    try:
-        return len(table.columns)
-    except Exception:
-        max_cols = 0
-        for row in get_table_rows(table):
-            max_cols = max(max_cols, len(row.cells))
-        return max_cols
+        final_total_indices = total_indices if total_indices else implicit_total_indices
+
+        if final_total_indices:
+            if total_indices:
+                summary["baris_total_ditemukan"] += len(total_indices)
+            else:
+                summary["baris_total_implisit_ditemukan"] += len(implicit_total_indices)
+
+            final_total_idx = final_total_indices[-1]
+
+            vertical_sums, skipped_subtotal_count = calculate_sums_before_total_row(
+                table=table,
+                total_row_idx=final_total_idx,
+                numeric_cols=numeric_cols
+            )
+
+            summary["baris_subtotal_dilewati"] += skipped_subtotal_count
+
+            total_row = table.rows[final_total_idx]
+
+            result = verify_total_row(
+                total_row=total_row,
+                numeric_cols=numeric_cols,
+                vertical_sums=vertical_sums
+            )
+
+            summary["sel_footing_verified"] += result["verified"]
+            summary["sel_footing_berbeda"] += result["different"]
+
+        else:
+            if tambah_baris_rekalkulasi:
+                vertical_sums, skipped_subtotal_count = calculate_sums_all_rows(
+                    table=table,
+                    numeric_cols=numeric_cols
+                )
+
+                summary["baris_subtotal_dilewati"] += skipped_subtotal_count
+
+                added = add_recalculation_row(
+                    table=table,
+                    numeric_cols=numeric_cols,
+                    vertical_sums=vertical_sums
+                )
+
+                if added:
+                    summary["baris_rekalkulasi_ditambahkan"] += 1
+
+        if cek_persentase:
+            verify_percentage_columns(
+                table=table,
+                summary=summary,
+                table_idx=table_idx
+            )
+
+    return summary
 
 
 # =========================================================
@@ -701,12 +413,11 @@ def get_table_col_count(table):
 # =========================================================
 
 def calculate_sums_before_total_row(table, total_row_idx, numeric_cols):
-    vertical_sums = [0.0] * get_table_col_count(table)
+    vertical_sums = [0.0] * len(table.columns)
     skipped_subtotal_count = 0
-    rows = get_table_rows(table)
 
     for row_idx in range(0, total_row_idx):
-        row = rows[row_idx]
+        row = table.rows[row_idx]
 
         skip, reason = should_skip_row_automatically(
             table=table,
@@ -724,7 +435,7 @@ def calculate_sums_before_total_row(table, total_row_idx, numeric_cols):
             if col_idx >= len(row.cells):
                 continue
 
-            number = parse_number(get_cell_text(row.cells[col_idx]), dash_as_zero=True)
+            number = parse_number(row.cells[col_idx].text, dash_as_zero=True)
 
             if number is None:
                 continue
@@ -735,10 +446,10 @@ def calculate_sums_before_total_row(table, total_row_idx, numeric_cols):
 
 
 def calculate_sums_all_rows(table, numeric_cols):
-    vertical_sums = [0.0] * get_table_col_count(table)
+    vertical_sums = [0.0] * len(table.columns)
     skipped_subtotal_count = 0
 
-    for row_idx, row in enumerate(get_table_rows(table)):
+    for row_idx, row in enumerate(table.rows):
         skip, reason = should_skip_row_automatically(
             table=table,
             row=row,
@@ -755,7 +466,7 @@ def calculate_sums_all_rows(table, numeric_cols):
             if col_idx >= len(row.cells):
                 continue
 
-            number = parse_number(get_cell_text(row.cells[col_idx]), dash_as_zero=True)
+            number = parse_number(row.cells[col_idx].text, dash_as_zero=True)
 
             if number is None:
                 continue
@@ -782,13 +493,13 @@ def should_skip_row_automatically(table, row, row_idx, numeric_cols):
 
 
 # =========================================================
-# TOTAL ROW DETECTION - SUDAH DIPERBAIKI
+# TOTAL ROW DETECTION
 # =========================================================
 
 def find_total_row_indices(table):
     total_indices = []
 
-    for idx, row in enumerate(get_table_rows(table)):
+    for idx, row in enumerate(table.rows):
         if is_total_row(row):
             total_indices.append(idx)
 
@@ -796,21 +507,6 @@ def find_total_row_indices(table):
 
 
 def is_total_row(row):
-    """
-    Deteksi baris TOTAL/JUMLAH dengan lebih kuat.
-
-    Bisa membaca variasi:
-    - TOTAL / total / Total
-    - JUMLAH / jumlah / Jumlah
-    - TOTAL:
-    - JUMLAH.
-    - Grand Total
-    - Sub Total
-    - Total Keseluruhan
-    - Jumlah Seluruhnya
-    - label total tidak harus berada di kolom pertama
-    """
-
     keywords = [
         "JUMLAH",
         "TOTAL",
@@ -819,30 +515,21 @@ def is_total_row(row):
         "SUBTOTAL",
         "SUB TOTAL",
         "JUMLAHSELURUHNYA",
-        "TOTALSELURUHNYA",
-        "JUMLAHTOTAL",
-        "TOTALJUMLAH"
+        "TOTALSELURUHNYA"
     ]
 
-    texts = []
+    non_empty_texts = []
 
     for cell in row.cells:
-        raw = get_cell_text(cell).strip()
+        text = normalize_text(cell.text)
 
-        if not raw:
-            continue
+        if text:
+            non_empty_texts.append(text)
 
-        norm = normalize_text(raw)
-
-        if not norm:
-            continue
-
-        texts.append(norm)
-
-    if not texts:
+    if not non_empty_texts:
         return False
 
-    for text in texts:
+    for text in non_empty_texts:
         for keyword in keywords:
             key = normalize_text(keyword)
 
@@ -852,14 +539,14 @@ def is_total_row(row):
             if text.startswith(key):
                 return True
 
-            if key in text and len(text) <= len(key) + 20:
+            if key in text and len(text) <= len(key) + 25:
                 return True
 
     return False
 
 
 def find_implicit_total_row_indices(table, numeric_cols):
-    rows = get_table_rows(table)
+    rows = list(table.rows)
     candidates = []
 
     start_idx = max(0, len(rows) - 8)
@@ -886,8 +573,7 @@ def find_implicit_total_row_indices(table, numeric_cols):
 
 
 def is_implicit_total_row_candidate(table, row_idx, numeric_cols):
-    rows = get_table_rows(table)
-    row = rows[row_idx]
+    row = table.rows[row_idx]
 
     if row_idx <= 0:
         return False
@@ -921,7 +607,7 @@ def is_implicit_total_row_candidate(table, row_idx, numeric_cols):
         if col_idx >= len(row.cells):
             continue
 
-        existing_number = parse_number(get_cell_text(row.cells[col_idx]), dash_as_zero=True)
+        existing_number = parse_number(row.cells[col_idx].text, dash_as_zero=True)
 
         if existing_number is None:
             continue
@@ -943,7 +629,7 @@ def is_implicit_total_row_candidate(table, row_idx, numeric_cols):
     if label_is_empty_or_weak and numeric_is_bold:
         return True
 
-    if label_is_empty_or_weak and row_idx == len(rows) - 1:
+    if label_is_empty_or_weak and row_idx == len(table.rows) - 1:
         return True
 
     return False
@@ -953,7 +639,7 @@ def get_row_label_text(row, numeric_cols):
     parts = []
 
     for idx, cell in enumerate(row.cells):
-        text = get_cell_text(cell).strip()
+        text = cell.text.strip()
 
         if idx in numeric_cols:
             continue
@@ -984,9 +670,6 @@ def numeric_cells_are_bold(row, numeric_cols):
 
         cell = row.cells[col_idx]
 
-        if isinstance(cell, SimpleCell):
-            continue
-
         for paragraph in cell.paragraphs:
             for run in paragraph.runs:
                 if run.text.strip():
@@ -1009,7 +692,7 @@ def detect_numeric_columns_for_footing(table, sample_rows=15):
     numeric_cols = []
     data_rows = []
 
-    for row in get_table_rows(table):
+    for row in table.rows:
         if is_header_number_row(row):
             continue
 
@@ -1024,7 +707,7 @@ def detect_numeric_columns_for_footing(table, sample_rows=15):
         if len(data_rows) >= sample_rows:
             break
 
-    for col_idx in range(get_table_col_count(table)):
+    for col_idx in range(len(table.columns)):
         if is_percent_column(table, col_idx):
             continue
 
@@ -1034,7 +717,7 @@ def detect_numeric_columns_for_footing(table, sample_rows=15):
             if col_idx >= len(row.cells):
                 continue
 
-            text = get_cell_text(row.cells[col_idx]).strip()
+            text = row.cells[col_idx].text.strip()
 
             if not text:
                 continue
@@ -1053,13 +736,13 @@ def detect_numeric_columns_for_footing(table, sample_rows=15):
 def detect_all_money_value_columns(table):
     cols = []
 
-    for col_idx in range(get_table_col_count(table)):
+    for col_idx in range(len(table.columns)):
         if is_percent_column(table, col_idx):
             continue
 
         count = 0
 
-        for row in get_table_rows(table):
+        for row in table.rows:
             if is_header_number_row(row):
                 continue
 
@@ -1069,7 +752,7 @@ def detect_all_money_value_columns(table):
             if col_idx >= len(row.cells):
                 continue
 
-            number = parse_number(get_cell_text(row.cells[col_idx]), dash_as_zero=True)
+            number = parse_number(row.cells[col_idx].text, dash_as_zero=True)
 
             if number is not None:
                 count += 1
@@ -1089,7 +772,7 @@ def is_header_number_row(row):
     values = []
 
     for cell in row.cells:
-        text = get_cell_text(cell).strip()
+        text = cell.text.strip()
         text = text.replace(" ", "")
         text = text.replace("\n", "")
         text = text.replace("\r", "")
@@ -1115,7 +798,7 @@ def is_likely_header_text_row(row):
     non_empty = []
 
     for cell in row.cells:
-        text = get_cell_text(cell).strip()
+        text = cell.text.strip()
 
         if text:
             non_empty.append(text)
@@ -1135,9 +818,9 @@ def is_likely_header_text_row(row):
 def is_percent_column(table, col_idx):
     header_text = ""
 
-    for row in get_table_rows(table)[:8]:
+    for row in table.rows[:8]:
         if col_idx < len(row.cells):
-            header_text += " " + normalize_text(get_cell_text(row.cells[col_idx]))
+            header_text += " " + normalize_text(row.cells[col_idx].text)
 
     if "%" in header_text:
         return True
@@ -1156,7 +839,7 @@ def is_percent_column(table, col_idx):
 
     sample_values = []
 
-    for row in get_table_rows(table):
+    for row in table.rows:
         if is_header_number_row(row):
             continue
 
@@ -1166,7 +849,7 @@ def is_percent_column(table, col_idx):
         if col_idx >= len(row.cells):
             continue
 
-        raw = get_cell_text(row.cells[col_idx]).strip()
+        raw = row.cells[col_idx].text.strip()
 
         if raw in ["", "-", "–", "—"]:
             continue
@@ -1195,7 +878,7 @@ def is_percent_column(table, col_idx):
 def detect_percentage_columns(table):
     cols = []
 
-    for col_idx in range(get_table_col_count(table)):
+    for col_idx in range(len(table.columns)):
         if is_percent_column(table, col_idx):
             cols.append(col_idx)
 
@@ -1232,7 +915,7 @@ def is_probable_subtotal_row(table, row, row_idx, numeric_cols):
         if col_idx >= len(row.cells):
             continue
 
-        current_value = parse_number(get_cell_text(row.cells[col_idx]), dash_as_zero=True)
+        current_value = parse_number(row.cells[col_idx].text, dash_as_zero=True)
 
         if current_value is None or abs(current_value) < 1:
             continue
@@ -1244,7 +927,7 @@ def is_probable_subtotal_row(table, row, row_idx, numeric_cols):
             if col_idx >= len(child_row.cells):
                 continue
 
-            child_value = parse_number(get_cell_text(child_row.cells[col_idx]), dash_as_zero=True)
+            child_value = parse_number(child_row.cells[col_idx].text, dash_as_zero=True)
 
             if child_value is not None:
                 child_sum += child_value
@@ -1273,7 +956,7 @@ def is_probable_subtotal_row(table, row, row_idx, numeric_cols):
 
 def collect_candidate_child_rows(table, row_idx, numeric_cols, max_children=20):
     candidate_children = []
-    rows = get_table_rows(table)
+    rows = list(table.rows)
 
     for next_idx in range(row_idx + 1, len(rows)):
         next_row = rows[next_idx]
@@ -1303,7 +986,7 @@ def collect_candidate_child_rows(table, row_idx, numeric_cols, max_children=20):
 
 def row_has_meaningful_text(row):
     for cell in row.cells:
-        text = get_cell_text(cell).strip()
+        text = cell.text.strip()
 
         if text and parse_number(text, dash_as_zero=False) is None:
             return True
@@ -1318,7 +1001,7 @@ def get_numeric_values(row, numeric_cols):
         if col_idx >= len(row.cells):
             continue
 
-        number = parse_number(get_cell_text(row.cells[col_idx]), dash_as_zero=True)
+        number = parse_number(row.cells[col_idx].text, dash_as_zero=True)
 
         if number is not None:
             values[col_idx] = number
@@ -1331,9 +1014,6 @@ def is_bold_row(row):
     bold_runs = 0
 
     for cell in row.cells:
-        if isinstance(cell, SimpleCell):
-            continue
-
         for paragraph in cell.paragraphs:
             for run in paragraph.runs:
                 if run.text.strip():
@@ -1349,10 +1029,10 @@ def is_bold_row(row):
 
 
 # =========================================================
-# FOOTING VERIFICATION - WORD
+# FOOTING VERIFICATION
 # =========================================================
 
-def verify_total_row_word(total_row, numeric_cols, vertical_sums):
+def verify_total_row(total_row, numeric_cols, vertical_sums):
     result = {
         "verified": 0,
         "different": 0
@@ -1363,7 +1043,7 @@ def verify_total_row_word(total_row, numeric_cols, vertical_sums):
             continue
 
         cell = total_row.cells[col_idx]
-        existing_number = parse_number(get_cell_text(cell), dash_as_zero=True)
+        existing_number = parse_number(cell.text, dash_as_zero=True)
 
         if existing_number is None:
             continue
@@ -1372,8 +1052,8 @@ def verify_total_row_word(total_row, numeric_cols, vertical_sums):
         tolerance = max(5, abs(existing_number) * 0.00001)
 
         if numbers_are_equal(existing_number, calculated_number, tolerance):
-            add_status_mark_word(cell, "^", RGBColor(0, 176, 80))
-            add_recalculation_note_to_word_cell(
+            add_status_mark(cell, "^", RGBColor(0, 176, 80))
+            add_recalculation_note_to_cell(
                 cell=cell,
                 calculated_number=calculated_number,
                 is_percent=False,
@@ -1381,8 +1061,8 @@ def verify_total_row_word(total_row, numeric_cols, vertical_sums):
             )
             result["verified"] += 1
         else:
-            add_status_mark_word(cell, "X", RGBColor(255, 0, 0))
-            add_recalculation_note_to_word_cell(
+            add_status_mark(cell, "X", RGBColor(255, 0, 0))
+            add_recalculation_note_to_cell(
                 cell=cell,
                 calculated_number=calculated_number,
                 is_percent=False,
@@ -1394,184 +1074,10 @@ def verify_total_row_word(total_row, numeric_cols, vertical_sums):
 
 
 # =========================================================
-# FOOTING VERIFICATION - EXCEL
+# PERCENTAGE VERIFICATION
 # =========================================================
 
-def verify_total_row_excel(total_row, numeric_cols, vertical_sums, ws):
-    result = {
-        "verified": 0,
-        "different": 0
-    }
-
-    for col_idx in numeric_cols:
-        if col_idx >= len(total_row.cells):
-            continue
-
-        simple_cell = total_row.cells[col_idx]
-        existing_number = parse_number(get_cell_text(simple_cell), dash_as_zero=True)
-
-        if existing_number is None:
-            continue
-
-        calculated_number = vertical_sums[col_idx]
-        tolerance = max(5, abs(existing_number) * 0.00001)
-
-        if numbers_are_equal(existing_number, calculated_number, tolerance):
-            mark_excel_cell(
-                ws=ws,
-                simple_cell=simple_cell,
-                status="^",
-                calculated_number=calculated_number,
-                is_percent=False,
-                verified=True
-            )
-            result["verified"] += 1
-        else:
-            mark_excel_cell(
-                ws=ws,
-                simple_cell=simple_cell,
-                status="X",
-                calculated_number=calculated_number,
-                is_percent=False,
-                verified=False
-            )
-            result["different"] += 1
-
-    return result
-
-
-def mark_excel_cell(ws, simple_cell, status, calculated_number, is_percent=False, verified=True):
-    if not simple_cell.ref:
-        return
-
-    cell = ws[simple_cell.ref]
-
-    if is_percent:
-        note_value = format_percent(calculated_number)
-    else:
-        note_value = format_number(calculated_number)
-
-    if verified:
-        cell.comment = Comment(
-            f"{status} Verified\nRekalkulasi: {note_value}",
-            "Sistem"
-        )
-        cell.font = Font(color="008000", bold=True)
-    else:
-        cell.comment = Comment(
-            f"{status} Berbeda\nRekalkulasi: {note_value}",
-            "Sistem"
-        )
-        cell.font = Font(color="FF0000", bold=True)
-
-
-def add_recalculation_row_excel(ws, numeric_cols, vertical_sums):
-    if not any(abs(vertical_sums[col]) > 0 for col in numeric_cols):
-        return False
-
-    new_row_idx = ws.max_row + 1
-    ws.cell(row=new_row_idx, column=1, value="Rekalkulasi Sistem")
-
-    for col_idx in numeric_cols:
-        value = vertical_sums[col_idx]
-
-        if abs(value) > 0:
-            cell = ws.cell(row=new_row_idx, column=col_idx + 1, value=value)
-            cell.font = Font(color="FF0000", bold=True)
-
-    return True
-
-
-# =========================================================
-# FOOTING VERIFICATION - PDF
-# =========================================================
-
-def verify_total_row_pdf(total_row, numeric_cols, vertical_sums, fitz_page):
-    result = {
-        "verified": 0,
-        "different": 0
-    }
-
-    for col_idx in numeric_cols:
-        if col_idx >= len(total_row.cells):
-            continue
-
-        cell = total_row.cells[col_idx]
-        existing_number = parse_number(get_cell_text(cell), dash_as_zero=True)
-
-        if existing_number is None:
-            continue
-
-        calculated_number = vertical_sums[col_idx]
-        tolerance = max(5, abs(existing_number) * 0.00001)
-
-        if numbers_are_equal(existing_number, calculated_number, tolerance):
-            add_pdf_status_mark(
-                fitz_page=fitz_page,
-                cell=cell,
-                mark="^",
-                calculated_number=calculated_number,
-                is_percent=False,
-                color=(0, 0.6, 0)
-            )
-            result["verified"] += 1
-        else:
-            add_pdf_status_mark(
-                fitz_page=fitz_page,
-                cell=cell,
-                mark="X",
-                calculated_number=calculated_number,
-                is_percent=False,
-                color=(1, 0, 0)
-            )
-            result["different"] += 1
-
-    return result
-
-
-def add_pdf_status_mark(fitz_page, cell, mark, calculated_number, is_percent=False, color=(1, 0, 0)):
-    if not isinstance(cell, SimpleCell):
-        return
-
-    if cell.bbox is None:
-        return
-
-    x0, top, x1, bottom = cell.bbox
-
-    if is_percent:
-        note_text = f"Rekalkulasi: {format_percent(calculated_number)}"
-    else:
-        note_text = f"Rekalkulasi: {format_number(calculated_number)}"
-
-    mark_x = x1 + 3
-    mark_y = top + 10
-
-    note_x = x0
-    note_y = bottom + 8
-
-    try:
-        fitz_page.insert_text(
-            fitz.Point(mark_x, mark_y),
-            mark,
-            fontsize=9,
-            color=color
-        )
-
-        fitz_page.insert_text(
-            fitz.Point(note_x, note_y),
-            note_text,
-            fontsize=6,
-            color=color
-        )
-    except Exception:
-        pass
-
-
-# =========================================================
-# PERCENTAGE VERIFICATION - WORD
-# =========================================================
-
-def verify_percentage_columns_word(table, summary=None, table_idx=None):
+def verify_percentage_columns(table, summary=None, table_idx=None):
     percent_cols = detect_percentage_columns(table)
     money_cols = detect_all_money_value_columns(table)
 
@@ -1581,7 +1087,7 @@ def verify_percentage_columns_word(table, summary=None, table_idx=None):
         if formula is None:
             continue
 
-        result = apply_percentage_formula_check_word(table, percent_col, formula)
+        result = apply_percentage_formula_check(table, percent_col, formula)
 
         if summary is not None:
             summary["kolom_persen_dicek"] += 1
@@ -1595,227 +1101,6 @@ def verify_percentage_columns_word(table, summary=None, table_idx=None):
                 "different": result["different"]
             })
 
-
-def apply_percentage_formula_check_word(table, percent_col, formula):
-    result = {
-        "verified": 0,
-        "different": 0
-    }
-
-    for row in get_table_rows(table):
-        if is_header_number_row(row):
-            continue
-
-        if is_likely_header_text_row(row):
-            continue
-
-        if percent_col >= len(row.cells):
-            continue
-
-        existing_value = get_cell_number(row, percent_col, dash_as_zero=False)
-
-        if existing_value is None:
-            continue
-
-        calculated_value = calculate_formula_value(row, formula)
-
-        if calculated_value is None:
-            continue
-
-        cell = row.cells[percent_col]
-
-        if percentage_numbers_equal(existing_value, calculated_value):
-            add_status_mark_word(cell, "^", RGBColor(0, 176, 80))
-            add_recalculation_note_to_word_cell(
-                cell=cell,
-                calculated_number=calculated_value,
-                is_percent=True,
-                color=RGBColor(0, 176, 80)
-            )
-            result["verified"] += 1
-        else:
-            add_status_mark_word(cell, "X", RGBColor(255, 0, 0))
-            add_recalculation_note_to_word_cell(
-                cell=cell,
-                calculated_number=calculated_value,
-                is_percent=True,
-                color=RGBColor(255, 0, 0)
-            )
-            result["different"] += 1
-
-    return result
-
-
-# =========================================================
-# PERCENTAGE VERIFICATION - EXCEL
-# =========================================================
-
-def verify_percentage_columns_excel(table, ws, summary=None):
-    percent_cols = detect_percentage_columns(table)
-    money_cols = detect_all_money_value_columns(table)
-
-    for percent_col in percent_cols:
-        formula = infer_percentage_formula(table, percent_col, money_cols)
-
-        if formula is None:
-            continue
-
-        result = apply_percentage_formula_check_excel(table, percent_col, formula, ws)
-
-        if summary is not None:
-            summary["kolom_persen_dicek"] += 1
-            summary["sel_persen_verified"] += result["verified"]
-            summary["sel_persen_berbeda"] += result["different"]
-            summary["formula_persen_ditemukan"].append({
-                "tabel": ws.title,
-                "kolom_persen": percent_col + 1,
-                "formula": formula["description"],
-                "verified": result["verified"],
-                "different": result["different"]
-            })
-
-
-def apply_percentage_formula_check_excel(table, percent_col, formula, ws):
-    result = {
-        "verified": 0,
-        "different": 0
-    }
-
-    for row in get_table_rows(table):
-        if is_header_number_row(row):
-            continue
-
-        if is_likely_header_text_row(row):
-            continue
-
-        if percent_col >= len(row.cells):
-            continue
-
-        existing_value = get_cell_number(row, percent_col, dash_as_zero=False)
-
-        if existing_value is None:
-            continue
-
-        calculated_value = calculate_formula_value(row, formula)
-
-        if calculated_value is None:
-            continue
-
-        simple_cell = row.cells[percent_col]
-
-        if percentage_numbers_equal(existing_value, calculated_value):
-            mark_excel_cell(
-                ws=ws,
-                simple_cell=simple_cell,
-                status="^",
-                calculated_number=calculated_value,
-                is_percent=True,
-                verified=True
-            )
-            result["verified"] += 1
-        else:
-            mark_excel_cell(
-                ws=ws,
-                simple_cell=simple_cell,
-                status="X",
-                calculated_number=calculated_value,
-                is_percent=True,
-                verified=False
-            )
-            result["different"] += 1
-
-    return result
-
-
-# =========================================================
-# PERCENTAGE VERIFICATION - PDF
-# =========================================================
-
-def verify_percentage_columns_pdf(table, fitz_page, summary=None, table_idx=None):
-    percent_cols = detect_percentage_columns(table)
-    money_cols = detect_all_money_value_columns(table)
-
-    for percent_col in percent_cols:
-        formula = infer_percentage_formula(table, percent_col, money_cols)
-
-        if formula is None:
-            continue
-
-        result = apply_percentage_formula_check_pdf(
-            table=table,
-            percent_col=percent_col,
-            formula=formula,
-            fitz_page=fitz_page
-        )
-
-        if summary is not None:
-            summary["kolom_persen_dicek"] += 1
-            summary["sel_persen_verified"] += result["verified"]
-            summary["sel_persen_berbeda"] += result["different"]
-            summary["formula_persen_ditemukan"].append({
-                "tabel": table_idx,
-                "kolom_persen": percent_col + 1,
-                "formula": formula["description"],
-                "verified": result["verified"],
-                "different": result["different"]
-            })
-
-
-def apply_percentage_formula_check_pdf(table, percent_col, formula, fitz_page):
-    result = {
-        "verified": 0,
-        "different": 0
-    }
-
-    for row in get_table_rows(table):
-        if is_header_number_row(row):
-            continue
-
-        if is_likely_header_text_row(row):
-            continue
-
-        if percent_col >= len(row.cells):
-            continue
-
-        existing_value = get_cell_number(row, percent_col, dash_as_zero=False)
-
-        if existing_value is None:
-            continue
-
-        calculated_value = calculate_formula_value(row, formula)
-
-        if calculated_value is None:
-            continue
-
-        cell = row.cells[percent_col]
-
-        if percentage_numbers_equal(existing_value, calculated_value):
-            add_pdf_status_mark(
-                fitz_page=fitz_page,
-                cell=cell,
-                mark="^",
-                calculated_number=calculated_value,
-                is_percent=True,
-                color=(0, 0.6, 0)
-            )
-            result["verified"] += 1
-        else:
-            add_pdf_status_mark(
-                fitz_page=fitz_page,
-                cell=cell,
-                mark="X",
-                calculated_number=calculated_value,
-                is_percent=True,
-                color=(1, 0, 0)
-            )
-            result["different"] += 1
-
-    return result
-
-
-# =========================================================
-# PERCENTAGE FORMULA
-# =========================================================
 
 def infer_percentage_formula(table, percent_col, money_cols, min_match=2):
     candidates = build_candidate_percentage_formulas(table, percent_col, money_cols)
@@ -1828,7 +1113,7 @@ def infer_percentage_formula(table, percent_col, money_cols, min_match=2):
         tested = 0
         matched = 0
 
-        for row in get_table_rows(table):
+        for row in table.rows:
             if is_header_number_row(row):
                 continue
 
@@ -1939,9 +1224,9 @@ def build_candidate_percentage_formulas(table, percent_col, money_cols):
 def get_column_header_text(table, col_idx):
     text = ""
 
-    for row in get_table_rows(table)[:8]:
+    for row in table.rows[:8]:
         if col_idx < len(row.cells):
-            text += " " + normalize_text(get_cell_text(row.cells[col_idx]))
+            text += " " + normalize_text(row.cells[col_idx].text)
 
     return text
 
@@ -1968,11 +1253,61 @@ def calculate_formula_value(row, formula):
     return None
 
 
+def apply_percentage_formula_check(table, percent_col, formula):
+    result = {
+        "verified": 0,
+        "different": 0
+    }
+
+    for row in table.rows:
+        if is_header_number_row(row):
+            continue
+
+        if is_likely_header_text_row(row):
+            continue
+
+        if percent_col >= len(row.cells):
+            continue
+
+        existing_value = get_cell_number(row, percent_col, dash_as_zero=False)
+
+        if existing_value is None:
+            continue
+
+        calculated_value = calculate_formula_value(row, formula)
+
+        if calculated_value is None:
+            continue
+
+        cell = row.cells[percent_col]
+
+        if percentage_numbers_equal(existing_value, calculated_value):
+            add_status_mark(cell, "^", RGBColor(0, 176, 80))
+            add_recalculation_note_to_cell(
+                cell=cell,
+                calculated_number=calculated_value,
+                is_percent=True,
+                color=RGBColor(0, 176, 80)
+            )
+            result["verified"] += 1
+        else:
+            add_status_mark(cell, "X", RGBColor(255, 0, 0))
+            add_recalculation_note_to_cell(
+                cell=cell,
+                calculated_number=calculated_value,
+                is_percent=True,
+                color=RGBColor(255, 0, 0)
+            )
+            result["different"] += 1
+
+    return result
+
+
 def get_cell_number(row, col_idx, dash_as_zero=True):
     if col_idx >= len(row.cells):
         return None
 
-    return parse_number(get_cell_text(row.cells[col_idx]), dash_as_zero=dash_as_zero)
+    return parse_number(row.cells[col_idx].text, dash_as_zero=dash_as_zero)
 
 
 def percentage_numbers_equal(a, b, tolerance=0.05):
@@ -1980,16 +1315,16 @@ def percentage_numbers_equal(a, b, tolerance=0.05):
 
 
 # =========================================================
-# WORD MARKING
+# MARKING
 # =========================================================
 
 def clean_table_old_marks(table):
-    for row in get_table_rows(table):
+    for row in table.rows:
         for cell in row.cells:
-            clean_existing_marks_and_notes_word(cell)
+            clean_existing_marks_and_notes(cell)
 
 
-def add_status_mark_word(cell, mark, color):
+def add_status_mark(cell, mark, color):
     paragraph = cell.paragraphs[0] if cell.paragraphs else cell.add_paragraph()
     paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.RIGHT
 
@@ -2000,7 +1335,7 @@ def add_status_mark_word(cell, mark, color):
     run.font.color.rgb = color
 
 
-def clean_existing_marks_and_notes_word(cell):
+def clean_existing_marks_and_notes(cell):
     for paragraph in cell.paragraphs:
         if "Rekalkulasi:" in paragraph.text:
             for run in paragraph.runs:
@@ -2016,7 +1351,7 @@ def clean_existing_marks_and_notes_word(cell):
             run.text = text
 
 
-def add_recalculation_note_to_word_cell(cell, calculated_number, is_percent=False, color=None):
+def add_recalculation_note_to_cell(cell, calculated_number, is_percent=False, color=None):
     paragraph = cell.add_paragraph()
     paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.RIGHT
 
@@ -2035,23 +1370,27 @@ def add_recalculation_note_to_word_cell(cell, calculated_number, is_percent=Fals
     run.font.color.rgb = color
 
 
-def add_recalculation_row_word(table, numeric_cols, vertical_sums):
+# =========================================================
+# ADD RECALCULATION ROW
+# =========================================================
+
+def add_recalculation_row(table, numeric_cols, vertical_sums):
     if not any(abs(vertical_sums[col]) > 0 for col in numeric_cols):
         return False
 
     new_row = table.add_row()
     new_row.cells[0].text = "Rekalkulasi Sistem"
 
-    for col_idx in range(get_table_col_count(table)):
+    for col_idx in range(len(table.columns)):
         if col_idx in numeric_cols and abs(vertical_sums[col_idx]) > 0:
             cell = new_row.cells[col_idx]
             cell.text = format_number(vertical_sums[col_idx])
-            set_recalculation_cell_style_word(cell)
+            set_recalculation_cell_style(cell)
 
     return True
 
 
-def set_recalculation_cell_style_word(cell):
+def set_recalculation_cell_style(cell):
     for paragraph in cell.paragraphs:
         paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.RIGHT
 
@@ -2136,27 +1475,21 @@ def numbers_are_equal(a, b, tolerance=1):
 
 
 def normalize_text(text):
-    """
-    Normalisasi teks agar TOTAL/total/Total/JUMLAH/Jumlah/jumlah
-    terbaca sama oleh sistem.
-    """
-
     if text is None:
         return ""
 
     text = str(text)
 
-    text = text.replace("\n", " ")
-    text = text.replace("\r", " ")
-    text = text.replace("\t", " ")
+    text = text.replace(" ", "")
+    text = text.replace("\n", "")
+    text = text.replace("\r", "")
+    text = text.replace("\t", "")
 
     for ch in [
         ":", ".", ",", ";", "-", "–", "—", "/", "\\",
         "(", ")", "[", "]", "{", "}", "'", '"'
     ]:
         text = text.replace(ch, "")
-
-    text = text.replace(" ", "")
 
     return text.strip().upper()
 
