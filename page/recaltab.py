@@ -6,13 +6,10 @@ import re
 import io
 import os
 
-import pdfplumber
-from openpyxl import load_workbook
-import pandas as pd
-
 
 # =========================================================
 # STREAMLIT APP
+# MODELNYA MENGIKUTI KODE LAMA YANG SUDAH WORK
 # =========================================================
 
 def app():
@@ -42,8 +39,8 @@ def app():
         """
         Catatan:
         - Word diproses langsung dari tabel Word.
-        - PDF dan Excel akan dibaca tabelnya lalu diproses memakai logika yang sama seperti Word.
-        - Output untuk semua jenis file dibuat dalam bentuk Word `.docx`.
+        - PDF dan Excel akan dikonversi dulu menjadi tabel Word sementara, lalu diproses dengan logika yang sama.
+        - Output semuanya berupa file Word `.docx`.
         - PDF hasil scan/gambar biasanya tidak terbaca otomatis tanpa OCR.
         """
     )
@@ -131,14 +128,23 @@ def buat_nama_file_hasil(nama_file_upload):
         return "hasil_Rekalkulasi.docx"
 
     nama_file_tanpa_ext = os.path.splitext(nama_file_upload)[0]
+
     return f"{nama_file_tanpa_ext}_Rekalkulasi.docx"
 
 
 # =========================================================
-# CONVERTER PDF / EXCEL KE DOKUMEN WORD SEMENTARA
+# CONVERTER PDF / EXCEL KE WORD SEMENTARA
+# Library PDF/Excel di-import di dalam fungsi agar app tetap bisa di-import
 # =========================================================
 
 def convert_pdf_to_word_table_doc(pdf_bytes):
+    try:
+        import pdfplumber
+    except Exception as e:
+        raise ImportError(
+            "Library pdfplumber belum terpasang. Install dengan: pip install pdfplumber"
+        ) from e
+
     doc = Document()
     doc.add_paragraph("Hasil Ekstraksi Tabel dari PDF")
 
@@ -166,7 +172,11 @@ def convert_pdf_to_word_table_doc(pdf_bytes):
                     continue
 
                 jumlah_tabel += 1
-                add_table_to_docx(doc, cleaned_table, title=f"Tabel PDF {jumlah_tabel}")
+                add_table_to_docx(
+                    doc=doc,
+                    table_data=cleaned_table,
+                    title=f"Tabel PDF {jumlah_tabel}"
+                )
 
     if jumlah_tabel == 0:
         doc.add_paragraph(
@@ -184,6 +194,13 @@ def convert_excel_to_word_table_doc(excel_bytes, nama_file):
     lower_name = nama_file.lower()
 
     if lower_name.endswith((".xlsx", ".xlsm")):
+        try:
+            from openpyxl import load_workbook
+        except Exception as e:
+            raise ImportError(
+                "Library openpyxl belum terpasang. Install dengan: pip install openpyxl"
+            ) from e
+
         wb = load_workbook(io.BytesIO(excel_bytes), data_only=True)
 
         for ws in wb.worksheets:
@@ -205,9 +222,20 @@ def convert_excel_to_word_table_doc(excel_bytes, nama_file):
             cleaned_table = clean_extracted_table(table_data)
 
             if cleaned_table:
-                add_table_to_docx(doc, cleaned_table, title=f"Sheet: {ws.title}")
+                add_table_to_docx(
+                    doc=doc,
+                    table_data=cleaned_table,
+                    title=f"Sheet: {ws.title}"
+                )
 
     elif lower_name.endswith(".xls"):
+        try:
+            import pandas as pd
+        except Exception as e:
+            raise ImportError(
+                "Library pandas/xlrd belum terpasang. Install dengan: pip install pandas xlrd"
+            ) from e
+
         sheets = pd.read_excel(
             io.BytesIO(excel_bytes),
             sheet_name=None,
@@ -231,7 +259,11 @@ def convert_excel_to_word_table_doc(excel_bytes, nama_file):
             cleaned_table = clean_extracted_table(table_data)
 
             if cleaned_table:
-                add_table_to_docx(doc, cleaned_table, title=f"Sheet: {sheet_name}")
+                add_table_to_docx(
+                    doc=doc,
+                    table_data=cleaned_table,
+                    title=f"Sheet: {sheet_name}"
+                )
 
     return doc
 
@@ -515,7 +547,9 @@ def is_total_row(row):
         "SUBTOTAL",
         "SUB TOTAL",
         "JUMLAHSELURUHNYA",
-        "TOTALSELURUHNYA"
+        "TOTALSELURUHNYA",
+        "JUMLAHTOTAL",
+        "TOTALJUMLAH"
     ]
 
     non_empty_texts = []
@@ -529,6 +563,8 @@ def is_total_row(row):
     if not non_empty_texts:
         return False
 
+    # Perbaikan utama:
+    # Cek semua sel, bukan hanya sel pertama.
     for text in non_empty_texts:
         for keyword in keywords:
             key = normalize_text(keyword)
