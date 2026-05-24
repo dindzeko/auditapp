@@ -37,9 +37,11 @@ def app():
 
     st.caption(
         """
-        Metode otomatis:
-        sistem mendeteksi baris JUMLAH/TOTAL, subtotal per kelompok seperti
-        PT/CV/UD ... Jumlah, total implisit tanpa label, dan melewati header.
+        Sistem mendeteksi:
+        1. Total biasa.
+        2. Jumlah/Total per kelompok dalam satu tabel gabungan.
+        3. Total implisit tanpa label.
+        4. Kolom persentase berdasarkan header, bukan berdasarkan angka kecil.
         """
     )
 
@@ -187,7 +189,7 @@ def recalculate_tables(doc, tambah_baris_rekalkulasi=False, cek_persentase=True)
 
         # =================================================
         # PRIORITAS 2:
-        # Kalau bukan tabel gabungan, proses total biasa.
+        # Total biasa.
         # =================================================
 
         total_indices = find_total_row_indices(table)
@@ -274,15 +276,11 @@ def verify_total_rows_by_group(table, numeric_cols, summary=None):
     CV DNM
       data...
       Jumlah
-
-    Dengan fungsi ini, Jumlah CV DNM hanya dihitung dari data CV DNM,
-    bukan dari PT AJA + CV DNM.
     """
 
     rows = list(table.rows)
     total_indices = find_total_row_indices(table)
 
-    # Kalau hanya ada 0 atau 1 baris total, tidak dianggap tabel gabungan.
     if len(total_indices) <= 1:
         return 0
 
@@ -298,7 +296,6 @@ def verify_total_rows_by_group(table, numeric_cols, summary=None):
         if is_header_number_row(row):
             continue
 
-        # Header kelompok seperti PT AJA / CV DNM
         if is_group_header_row(row, numeric_cols):
             group_start_idx = row_idx + 1
             continue
@@ -348,8 +345,6 @@ def is_group_header_row(row, numeric_cols):
     - CV DNM
     - UD MAKMUR
     - TOKO ABC
-    - DINAS ...
-    - BADAN ...
     """
 
     if is_total_row(row):
@@ -385,13 +380,14 @@ def is_group_header_row(row, numeric_cols):
     if not combined_text:
         return False
 
-    # Jangan anggap header kolom sebagai header kelompok.
     header_words = [
         "NO",
         "SATUAN",
         "PENDIDIKAN",
         "NOMOR",
         "PESANAN",
+        "PAKET",
+        "PEKERJAAN",
         "NILAI",
         "HASIL",
         "KONFIRMASI",
@@ -431,8 +427,6 @@ def is_group_header_row(row, numeric_cols):
         if combined_text.startswith(prefix):
             return True
 
-    # Kalau satu baris hanya teks pendek dan tidak punya angka,
-    # bisa jadi label kelompok.
     if len(combined_text.split()) <= 8 and not row_has_number(row):
         return True
 
@@ -440,13 +434,6 @@ def is_group_header_row(row, numeric_cols):
 
 
 def calculate_sums_between_rows(table, start_row_idx, end_row_idx, numeric_cols):
-    """
-    Menjumlahkan angka dari start_row_idx sampai sebelum end_row_idx.
-    Dipakai untuk blok:
-    PT AJA ... Jumlah
-    CV DNM ... Jumlah
-    """
-
     vertical_sums = [0.0] * len(table.columns)
     skipped_subtotal_count = 0
 
@@ -560,7 +547,11 @@ def should_skip_row_automatically(table, row, row_idx, numeric_cols):
     if is_group_header_row(row, numeric_cols):
         return True, "group_header"
 
-    if is_likely_header_text_row(row):
+    # Header teks hanya dilewati kalau tidak punya angka.
+    # Ini penting agar baris data seperti:
+    # 2 | Pengadaan ... | 2.079.833.450,00
+    # tidak ikut dilewati.
+    if is_likely_header_text_row(row) and not row_has_number(row):
         return True, "header_text"
 
     if is_probable_subtotal_row(table, row, row_idx, numeric_cols):
@@ -598,7 +589,7 @@ def is_total_row(row):
     - JUMLAH SELURUHNYA
     - TOTAL KESELURUHAN
 
-    Namun menghindari header kolom seperti:
+    Menghindari header kolom seperti:
     - Jumlah Temuan
     - Jumlah Rekomendasi
     - Jumlah Anggaran
@@ -638,6 +629,8 @@ def is_total_row(row):
         "NOMOR",
         "NO",
         "PESANAN",
+        "PAKET",
+        "PEKERJAAN",
         "NILAI",
         "HASIL",
         "KONFIRMASI",
@@ -694,15 +687,6 @@ def is_total_row(row):
 
 
 def find_implicit_total_row_indices(table, numeric_cols):
-    """
-    Mendeteksi baris total tanpa label.
-
-    Contoh:
-    |                    | Rp | 44.670.257.956 |
-    atau
-    |                    |    | 44.670.257.956 |
-    """
-
     rows = list(table.rows)
     candidates = []
 
@@ -845,7 +829,7 @@ def numeric_cells_are_bold(row, numeric_cols):
 # NUMERIC COLUMN DETECTION
 # =========================================================
 
-def detect_numeric_columns_for_footing(table, sample_rows=20):
+def detect_numeric_columns_for_footing(table, sample_rows=25):
     numeric_cols = []
     data_rows = []
 
@@ -856,9 +840,7 @@ def detect_numeric_columns_for_footing(table, sample_rows=20):
         if is_total_row(row):
             continue
 
-        # group header harus dilewati, tapi numeric_cols belum ada.
-        # Karena itu pakai pengecekan sederhana berbasis angka.
-        if is_likely_header_text_row(row):
+        if is_likely_header_text_row(row) and not row_has_number(row):
             continue
 
         data_rows.append(row)
@@ -905,7 +887,7 @@ def detect_all_money_value_columns(table):
             if is_header_number_row(row):
                 continue
 
-            if is_likely_header_text_row(row):
+            if is_likely_header_text_row(row) and not row_has_number(row):
                 continue
 
             if col_idx >= len(row.cells):
@@ -928,29 +910,47 @@ def detect_all_money_value_columns(table):
 # =========================================================
 
 def is_header_number_row(row):
+    """
+    Deteksi baris nomor header seperti:
+    | 1 | 2 | 3 | 4 |
+    atau:
+    | 1 | 2 | 3=1+2 | 4 |
+
+    Jangan sampai baris data seperti:
+    | 2 | Pengadaan dan Instalasi ... | 2.079.833.450,00 |
+    dianggap header.
+    """
+
     values = []
+    text_like_count = 0
+    numeric_like_count = 0
 
     for cell in row.cells:
         text = cell.text.strip()
-        text = text.replace(" ", "")
-        text = text.replace("\n", "")
-        text = text.replace("\r", "")
+        text_clean = text.replace(" ", "").replace("\n", "").replace("\r", "")
 
-        if text:
-            values.append(text)
+        if not text_clean:
+            continue
+
+        values.append(text_clean)
+
+        if re.search(r"[A-Za-zÀ-ÿ]", text):
+            if not re.match(r"^\d+(\s*=\s*[\d\+\-\*/\(\)]+)?$", text_clean):
+                text_like_count += 1
+
+        if re.match(r"^\d+(\s*=\s*[\d\+\-\*/\(\)]+)?$", text_clean):
+            numeric_like_count += 1
 
     if not values:
         return False
 
-    pattern = re.compile(r"^\d+(\s*=\s*[\d\+\-\*/\(\)]+)?$")
+    if text_like_count >= 1:
+        return False
 
-    matched = 0
+    if numeric_like_count >= max(2, int(len(values) * 0.6)):
+        return True
 
-    for value in values:
-        if pattern.match(value):
-            matched += 1
-
-    return matched >= max(2, int(len(values) * 0.6))
+    return False
 
 
 def is_likely_header_text_row(row):
@@ -1122,7 +1122,7 @@ def collect_candidate_child_rows(table, row_idx, numeric_cols, max_children=20):
         if is_group_header_row(next_row, numeric_cols):
             break
 
-        if is_likely_header_text_row(next_row):
+        if is_likely_header_text_row(next_row) and not row_has_number(next_row):
             continue
 
         if candidate_children and is_bold_row(next_row):
@@ -1272,7 +1272,7 @@ def infer_percentage_formula(table, percent_col, money_cols, min_match=2):
             if is_header_number_row(row):
                 continue
 
-            if is_likely_header_text_row(row):
+            if is_likely_header_text_row(row) and not row_has_number(row):
                 continue
 
             expected = get_cell_number(row, percent_col, dash_as_zero=False)
@@ -1418,7 +1418,7 @@ def apply_percentage_formula_check(table, percent_col, formula):
         if is_header_number_row(row):
             continue
 
-        if is_likely_header_text_row(row):
+        if is_likely_header_text_row(row) and not row_has_number(row):
             continue
 
         if percent_col >= len(row.cells):
@@ -1491,18 +1491,31 @@ def add_status_mark(cell, mark, color):
 
 
 def clean_existing_marks_and_notes(cell):
+    """
+    Menghapus tanda hasil rekalkulasi lama.
+    Dibuat hati-hati agar tidak menghapus huruf X pada teks asli,
+    misalnya WKP IX atau kata yang mengandung X.
+    """
+
     for paragraph in cell.paragraphs:
-        if "Rekalkulasi:" in paragraph.text:
+        paragraph_text = paragraph.text or ""
+
+        if "Rekalkulasi:" in paragraph_text:
             for run in paragraph.runs:
                 run.text = ""
             continue
 
         for run in paragraph.runs:
             text = run.text
-            text = text.replace(" ^", "")
-            text = text.replace(" X", "")
-            text = text.replace("^", "")
-            text = text.replace("X", "")
+
+            # Hapus tanda yang berdiri sendiri di akhir run.
+            text = re.sub(r"\s+\^\s*$", "", text)
+            text = re.sub(r"\s+X\s*$", "", text)
+
+            # Kalau run hanya berisi tanda.
+            if text.strip() in ["^", "X"]:
+                text = ""
+
             run.text = text
 
 
@@ -1569,6 +1582,10 @@ def parse_number(text, dash_as_zero=True):
     if text == "":
         return None
 
+    # Ambil hanya bagian sebelum catatan rekalkulasi.
+    if "Rekalkulasi:" in text:
+        text = text.split("Rekalkulasi:")[0]
+
     text = text.replace("\n", "")
     text = text.replace("\r", "")
     text = text.replace("\t", "")
@@ -1579,12 +1596,11 @@ def parse_number(text, dash_as_zero=True):
     text = text.replace("rp", "")
     text = text.replace("%", "")
 
-    text = text.replace("^", "")
-    text = text.replace("X", "")
+    # Hapus tanda verifikasi kalau berdiri sendiri.
+    text = re.sub(r"[\^]", "", text)
+    text = re.sub(r"X$", "", text)
 
-    text = re.sub(r"Rekalkulasi:[-\d\.\,\(\)]+", "", text)
-
-    if text in ["-", "–", "—"]:
+    if text in ["", "-", "–", "—"]:
         return 0.0 if dash_as_zero else None
 
     is_negative = False
