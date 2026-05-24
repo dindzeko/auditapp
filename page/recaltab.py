@@ -9,6 +9,7 @@ import os
 
 # =========================================================
 # STREAMLIT APP
+# MODELNYA MENGIKUTI KODE LAMA YANG SUDAH WORK
 # =========================================================
 
 def app():
@@ -38,8 +39,7 @@ def app():
         """
         Catatan:
         - Word diproses langsung dari tabel Word.
-        - PDF akan dideteksi dulu halaman mana saja yang memiliki tabel, lalu hanya halaman bertabel yang diproses.
-        - Excel dikonversi dulu menjadi tabel Word sementara.
+        - PDF dan Excel akan dikonversi dulu menjadi tabel Word sementara, lalu diproses dengan logika yang sama.
         - Output semuanya berupa file Word `.docx`.
         - PDF hasil scan/gambar biasanya tidak terbaca otomatis tanpa OCR.
         """
@@ -64,35 +64,6 @@ def app():
         value=False
     )
 
-    with st.expander("Pengaturan PDF", expanded=False):
-        pdf_halaman_awal = st.number_input(
-            "Mulai deteksi dari halaman",
-            min_value=1,
-            value=1,
-            step=1
-        )
-
-        pdf_maks_halaman = st.number_input(
-            "Maksimal halaman yang dicek",
-            min_value=1,
-            value=50,
-            step=1
-        )
-
-        pdf_maks_baris_tabel = st.number_input(
-            "Maksimal baris per tabel PDF",
-            min_value=10,
-            value=300,
-            step=10
-        )
-
-        pdf_maks_kolom_tabel = st.number_input(
-            "Maksimal kolom per tabel PDF",
-            min_value=2,
-            value=25,
-            step=1
-        )
-
     uploaded_file = st.file_uploader(
         "Upload File Word, PDF, atau Excel",
         type=["docx", "pdf", "xlsx", "xlsm", "xls"]
@@ -109,25 +80,12 @@ def app():
 
             elif nama_file_lower.endswith(".pdf"):
                 pdf_bytes = uploaded_file.read()
-
-                doc = convert_pdf_to_word_table_doc(
-                    pdf_bytes=pdf_bytes,
-                    halaman_awal=int(pdf_halaman_awal),
-                    maks_halaman=int(pdf_maks_halaman),
-                    maks_baris_tabel=int(pdf_maks_baris_tabel),
-                    maks_kolom_tabel=int(pdf_maks_kolom_tabel)
-                )
-
+                doc = convert_pdf_to_word_table_doc(pdf_bytes)
                 label_download = "📥 Unduh Hasil Rekalkulasi PDF dalam Word"
 
             elif nama_file_lower.endswith((".xlsx", ".xlsm", ".xls")):
                 excel_bytes = uploaded_file.read()
-
-                doc = convert_excel_to_word_table_doc(
-                    excel_bytes=excel_bytes,
-                    nama_file=nama_file
-                )
-
+                doc = convert_excel_to_word_table_doc(excel_bytes, nama_file)
                 label_download = "📥 Unduh Hasil Rekalkulasi Excel dalam Word"
 
             else:
@@ -170,26 +128,16 @@ def buat_nama_file_hasil(nama_file_upload):
         return "hasil_Rekalkulasi.docx"
 
     nama_file_tanpa_ext = os.path.splitext(nama_file_upload)[0]
+
     return f"{nama_file_tanpa_ext}_Rekalkulasi.docx"
 
 
 # =========================================================
 # CONVERTER PDF / EXCEL KE WORD SEMENTARA
+# Library PDF/Excel di-import di dalam fungsi agar app tetap bisa di-import
 # =========================================================
 
-def convert_pdf_to_word_table_doc(
-    pdf_bytes,
-    halaman_awal=1,
-    maks_halaman=50,
-    maks_baris_tabel=300,
-    maks_kolom_tabel=25
-):
-    """
-    PDF diproses 2 tahap:
-    1. Deteksi otomatis halaman yang punya tabel.
-    2. Hanya halaman bertabel yang diekstrak dan dikonversi ke tabel Word.
-    """
-
+def convert_pdf_to_word_table_doc(pdf_bytes):
     try:
         import pdfplumber
     except Exception as e:
@@ -201,122 +149,20 @@ def convert_pdf_to_word_table_doc(
     doc.add_paragraph("Hasil Ekstraksi Tabel dari PDF")
 
     jumlah_tabel = 0
-    halaman_bertabel = []
 
     with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
-        total_pages = len(pdf.pages)
-
-        start_idx = max(0, halaman_awal - 1)
-        end_idx = min(total_pages, start_idx + maks_halaman)
-
-        if start_idx >= total_pages:
-            doc.add_paragraph("Halaman awal melebihi jumlah halaman PDF.")
-            return doc
-
-        total_dicek = end_idx - start_idx
-
-        progress = st.progress(0)
-        status = st.empty()
-
-        # =================================================
-        # TAHAP 1: DETEKSI HALAMAN BERTABEL
-        # =================================================
-
-        for urut, page_idx in enumerate(range(start_idx, end_idx), start=1):
-            page = pdf.pages[page_idx]
-
-            status.write(
-                f"Tahap 1/2 - Mendeteksi tabel pada halaman {page_idx + 1} "
-                f"dari {total_pages} ({urut}/{total_dicek})..."
-            )
-
-            found_tables = []
-
+        for page_idx, page in enumerate(pdf.pages, start=1):
             try:
-                found_tables = page.find_tables()
+                tables = page.extract_tables()
             except Exception:
-                found_tables = []
+                tables = []
 
-            tabel_valid = []
+            if not tables:
+                continue
 
-            for found_table in found_tables:
-                try:
-                    table_data_preview = found_table.extract()
-                except Exception:
-                    table_data_preview = None
+            doc.add_paragraph(f"Halaman PDF {page_idx}")
 
-                if not table_data_preview:
-                    continue
-
-                cleaned_preview = clean_extracted_table(table_data_preview)
-
-                if not cleaned_preview:
-                    continue
-
-                row_count = len(cleaned_preview)
-                col_count = max(len(row) for row in cleaned_preview) if cleaned_preview else 0
-
-                if row_count < 2:
-                    continue
-
-                if col_count < 2:
-                    continue
-
-                if row_count > maks_baris_tabel:
-                    continue
-
-                if col_count > maks_kolom_tabel:
-                    continue
-
-                tabel_valid.append(found_table)
-
-            if tabel_valid:
-                halaman_bertabel.append({
-                    "page_idx": page_idx,
-                    "tables": tabel_valid
-                })
-
-            progress.progress(urut / total_dicek)
-
-        if not halaman_bertabel:
-            progress.empty()
-            status.empty()
-
-            doc.add_paragraph(
-                "Tidak ada tabel yang berhasil ditemukan pada rentang halaman yang dicek. "
-                "Kemungkinan PDF berupa scan/gambar, tabel tidak bergaris, atau struktur tabel tidak terbaca oleh pdfplumber."
-            )
-
-            return doc
-
-        doc.add_paragraph(
-            "Halaman bertabel yang terdeteksi: "
-            + ", ".join(str(item["page_idx"] + 1) for item in halaman_bertabel)
-        )
-
-        # =================================================
-        # TAHAP 2: EKSTRAK HANYA HALAMAN BERTABEL
-        # =================================================
-
-        total_halaman_bertabel = len(halaman_bertabel)
-
-        for urut, item in enumerate(halaman_bertabel, start=1):
-            page_idx = item["page_idx"]
-            found_tables = item["tables"]
-
-            status.write(
-                f"Tahap 2/2 - Memproses halaman bertabel {page_idx + 1} "
-                f"({urut}/{total_halaman_bertabel})..."
-            )
-
-            doc.add_paragraph(f"Halaman PDF {page_idx + 1}")
-
-            for found_table in found_tables:
-                try:
-                    table_data = found_table.extract()
-                except Exception:
-                    continue
-
+            for table_data in tables:
                 if not table_data:
                     continue
 
@@ -325,37 +171,17 @@ def convert_pdf_to_word_table_doc(
                 if not cleaned_table:
                     continue
 
-                row_count = len(cleaned_table)
-                col_count = max(len(row) for row in cleaned_table) if cleaned_table else 0
-
-                if row_count > maks_baris_tabel:
-                    doc.add_paragraph(
-                        f"Tabel dilewati karena terlalu besar ({row_count} baris)."
-                    )
-                    continue
-
-                if col_count > maks_kolom_tabel:
-                    doc.add_paragraph(
-                        f"Tabel dilewati karena terlalu banyak kolom ({col_count} kolom)."
-                    )
-                    continue
-
                 jumlah_tabel += 1
-
                 add_table_to_docx(
                     doc=doc,
                     table_data=cleaned_table,
                     title=f"Tabel PDF {jumlah_tabel}"
                 )
 
-            progress.progress(urut / total_halaman_bertabel)
-
-        progress.empty()
-        status.empty()
-
     if jumlah_tabel == 0:
         doc.add_paragraph(
-            "Ada halaman yang terdeteksi memiliki tabel, tetapi tabel tidak berhasil diekstrak menjadi data yang valid."
+            "Tidak ada tabel yang berhasil dibaca dari PDF. "
+            "Kemungkinan PDF berupa scan/gambar atau struktur tabel tidak terbaca."
         )
 
     return doc
@@ -737,6 +563,8 @@ def is_total_row(row):
     if not non_empty_texts:
         return False
 
+    # Perbaikan utama:
+    # Cek semua sel, bukan hanya sel pertama.
     for text in non_empty_texts:
         for keyword in keywords:
             key = normalize_text(keyword)
