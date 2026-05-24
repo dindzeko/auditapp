@@ -4,22 +4,26 @@ from docx.shared import Pt, RGBColor
 from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
 import re
 import io
-import os
 
 
 # =========================================================
 # STREAMLIT APP
-# MODELNYA MENGIKUTI KODE LAMA YANG SUDAH WORK
 # =========================================================
 
 def app():
-    st.title("📄 Verifikasi Footing dan Persentase Tabel Word/PDF/Excel")
+    st.set_page_config(
+        page_title="Verifikasi Tabel Word",
+        page_icon="📄",
+        layout="wide"
+    )
+
+    st.title("📄 Verifikasi Footing dan Persentase Tabel Word")
 
     st.write(
         """
-        Upload dokumen Word `.docx`, PDF `.pdf`, atau Excel `.xlsx/.xlsm/.xls`.
-        Aplikasi akan memverifikasi angka pada tabel, terutama baris `JUMLAH/TOTAL`,
-        baris total tanpa label, dan kolom persentase.
+        Upload dokumen Word `.docx`. Aplikasi akan memverifikasi angka pada tabel,
+        terutama baris `JUMLAH/TOTAL`, subtotal per kelompok, total tanpa label,
+        dan kolom persentase.
         """
     )
 
@@ -32,16 +36,10 @@ def app():
     )
 
     st.caption(
-        "Metode otomatis: sistem melewati header, baris jumlah/total, subtotal/kelompok, dan total tanpa label yang terdeteksi di bagian bawah tabel."
-    )
-
-    st.warning(
         """
-        Catatan:
-        - Word diproses langsung dari tabel Word.
-        - PDF dan Excel akan dikonversi dulu menjadi tabel Word sementara, lalu diproses dengan logika yang sama.
-        - Output semuanya berupa file Word `.docx`.
-        - PDF hasil scan/gambar biasanya tidak terbaca otomatis tanpa OCR.
+        Metode otomatis:
+        sistem mendeteksi baris JUMLAH/TOTAL, subtotal per kelompok seperti
+        PT/CV/UD ... Jumlah, total implisit tanpa label, dan melewati header.
         """
     )
 
@@ -65,32 +63,13 @@ def app():
     )
 
     uploaded_file = st.file_uploader(
-        "Upload File Word, PDF, atau Excel",
-        type=["docx", "pdf", "xlsx", "xlsm", "xls"]
+        "Upload File Word (.docx)",
+        type=["docx"]
     )
 
     if uploaded_file is not None:
         try:
-            nama_file = uploaded_file.name
-            nama_file_lower = nama_file.lower()
-
-            if nama_file_lower.endswith(".docx"):
-                doc = Document(uploaded_file)
-                label_download = "📥 Unduh Hasil Rekalkulasi Word"
-
-            elif nama_file_lower.endswith(".pdf"):
-                pdf_bytes = uploaded_file.read()
-                doc = convert_pdf_to_word_table_doc(pdf_bytes)
-                label_download = "📥 Unduh Hasil Rekalkulasi PDF dalam Word"
-
-            elif nama_file_lower.endswith((".xlsx", ".xlsm", ".xls")):
-                excel_bytes = uploaded_file.read()
-                doc = convert_excel_to_word_table_doc(excel_bytes, nama_file)
-                label_download = "📥 Unduh Hasil Rekalkulasi Excel dalam Word"
-
-            else:
-                st.error("Format file tidak didukung.")
-                return
+            doc = Document(uploaded_file)
 
             with st.spinner("Memproses dokumen..."):
                 summary = recalculate_tables(
@@ -109,10 +88,10 @@ def app():
                 st.subheader("Ringkasan Proses")
                 st.json(summary)
 
-            nama_file_hasil = buat_nama_file_hasil(nama_file)
+            nama_file_hasil = buat_nama_file_hasil(uploaded_file.name)
 
             st.download_button(
-                label=label_download,
+                label="📥 Unduh Hasil Rekalkulasi",
                 data=output,
                 file_name=nama_file_hasil,
                 mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
@@ -120,214 +99,19 @@ def app():
 
         except Exception as e:
             st.error(f"Terjadi kesalahan: {str(e)}")
-            st.error("Pastikan file yang diupload valid dan tabelnya bisa dibaca.")
+            st.error("Pastikan file yang diupload adalah dokumen Word `.docx` valid.")
 
 
 def buat_nama_file_hasil(nama_file_upload):
     if not nama_file_upload:
         return "hasil_Rekalkulasi.docx"
 
-    nama_file_tanpa_ext = os.path.splitext(nama_file_upload)[0]
+    if nama_file_upload.lower().endswith(".docx"):
+        nama_file_tanpa_ext = nama_file_upload[:-5]
+    else:
+        nama_file_tanpa_ext = nama_file_upload
 
     return f"{nama_file_tanpa_ext}_Rekalkulasi.docx"
-
-
-# =========================================================
-# CONVERTER PDF / EXCEL KE WORD SEMENTARA
-# Library PDF/Excel di-import di dalam fungsi agar app tetap bisa di-import
-# =========================================================
-
-def convert_pdf_to_word_table_doc(pdf_bytes):
-    try:
-        import pdfplumber
-    except Exception as e:
-        raise ImportError(
-            "Library pdfplumber belum terpasang. Install dengan: pip install pdfplumber"
-        ) from e
-
-    doc = Document()
-    doc.add_paragraph("Hasil Ekstraksi Tabel dari PDF")
-
-    jumlah_tabel = 0
-
-    with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
-        for page_idx, page in enumerate(pdf.pages, start=1):
-            try:
-                tables = page.extract_tables()
-            except Exception:
-                tables = []
-
-            if not tables:
-                continue
-
-            doc.add_paragraph(f"Halaman PDF {page_idx}")
-
-            for table_data in tables:
-                if not table_data:
-                    continue
-
-                cleaned_table = clean_extracted_table(table_data)
-
-                if not cleaned_table:
-                    continue
-
-                jumlah_tabel += 1
-                add_table_to_docx(
-                    doc=doc,
-                    table_data=cleaned_table,
-                    title=f"Tabel PDF {jumlah_tabel}"
-                )
-
-    if jumlah_tabel == 0:
-        doc.add_paragraph(
-            "Tidak ada tabel yang berhasil dibaca dari PDF. "
-            "Kemungkinan PDF berupa scan/gambar atau struktur tabel tidak terbaca."
-        )
-
-    return doc
-
-
-def convert_excel_to_word_table_doc(excel_bytes, nama_file):
-    doc = Document()
-    doc.add_paragraph("Hasil Ekstraksi Tabel dari Excel")
-
-    lower_name = nama_file.lower()
-
-    if lower_name.endswith((".xlsx", ".xlsm")):
-        try:
-            from openpyxl import load_workbook
-        except Exception as e:
-            raise ImportError(
-                "Library openpyxl belum terpasang. Install dengan: pip install openpyxl"
-            ) from e
-
-        wb = load_workbook(io.BytesIO(excel_bytes), data_only=True)
-
-        for ws in wb.worksheets:
-            table_data = []
-
-            for row in ws.iter_rows():
-                row_values = []
-
-                for cell in row:
-                    value = cell.value
-
-                    if value is None:
-                        row_values.append("")
-                    else:
-                        row_values.append(str(value))
-
-                table_data.append(row_values)
-
-            cleaned_table = clean_extracted_table(table_data)
-
-            if cleaned_table:
-                add_table_to_docx(
-                    doc=doc,
-                    table_data=cleaned_table,
-                    title=f"Sheet: {ws.title}"
-                )
-
-    elif lower_name.endswith(".xls"):
-        try:
-            import pandas as pd
-        except Exception as e:
-            raise ImportError(
-                "Library pandas/xlrd belum terpasang. Install dengan: pip install pandas xlrd"
-            ) from e
-
-        sheets = pd.read_excel(
-            io.BytesIO(excel_bytes),
-            sheet_name=None,
-            header=None
-        )
-
-        for sheet_name, df in sheets.items():
-            table_data = []
-
-            for _, row in df.iterrows():
-                row_values = []
-
-                for value in row:
-                    if pd.isna(value):
-                        row_values.append("")
-                    else:
-                        row_values.append(str(value))
-
-                table_data.append(row_values)
-
-            cleaned_table = clean_extracted_table(table_data)
-
-            if cleaned_table:
-                add_table_to_docx(
-                    doc=doc,
-                    table_data=cleaned_table,
-                    title=f"Sheet: {sheet_name}"
-                )
-
-    return doc
-
-
-def clean_extracted_table(table_data):
-    cleaned = []
-
-    for row in table_data:
-        if row is None:
-            continue
-
-        new_row = []
-
-        for cell in row:
-            if cell is None:
-                new_row.append("")
-            else:
-                text = str(cell)
-                text = text.replace("\r", "\n")
-                text = text.strip()
-                new_row.append(text)
-
-        if any(cell.strip() for cell in new_row):
-            cleaned.append(new_row)
-
-    if not cleaned:
-        return []
-
-    max_cols = max(len(row) for row in cleaned)
-
-    normalized = []
-
-    for row in cleaned:
-        row = row + [""] * (max_cols - len(row))
-        normalized.append(row)
-
-    return normalized
-
-
-def add_table_to_docx(doc, table_data, title=None):
-    if title:
-        p = doc.add_paragraph()
-        run = p.add_run(title)
-        run.bold = True
-
-    if not table_data:
-        return
-
-    rows = len(table_data)
-    cols = max(len(row) for row in table_data)
-
-    table = doc.add_table(rows=rows, cols=cols)
-    table.style = "Table Grid"
-
-    for r_idx, row_data in enumerate(table_data):
-        for c_idx in range(cols):
-            value = ""
-
-            if c_idx < len(row_data):
-                value = row_data[c_idx]
-
-            table.cell(r_idx, c_idx).text = value
-
-    doc.add_paragraph("")
 
 
 # =========================================================
@@ -341,6 +125,7 @@ def recalculate_tables(doc, tambah_baris_rekalkulasi=False, cek_persentase=True)
         "tabel_tanpa_kolom_numerik": 0,
         "baris_total_ditemukan": 0,
         "baris_total_implisit_ditemukan": 0,
+        "baris_total_per_kelompok_ditemukan": 0,
         "baris_subtotal_dilewati": 0,
         "sel_footing_verified": 0,
         "sel_footing_berbeda": 0,
@@ -372,6 +157,38 @@ def recalculate_tables(doc, tambah_baris_rekalkulasi=False, cek_persentase=True)
             continue
 
         summary["tabel_diproses"] += 1
+
+        # =================================================
+        # PRIORITAS 1:
+        # Proses tabel gabungan per kelompok.
+        # Contoh:
+        # PT AJA
+        # data...
+        # Jumlah
+        # CV DNM
+        # data...
+        # Jumlah
+        # =================================================
+
+        processed_group_totals = verify_total_rows_by_group(
+            table=table,
+            numeric_cols=numeric_cols,
+            summary=summary
+        )
+
+        if processed_group_totals > 0:
+            if cek_persentase:
+                verify_percentage_columns(
+                    table=table,
+                    summary=summary,
+                    table_idx=table_idx
+                )
+            continue
+
+        # =================================================
+        # PRIORITAS 2:
+        # Kalau bukan tabel gabungan, proses total biasa.
+        # =================================================
 
         total_indices = find_total_row_indices(table)
 
@@ -438,6 +255,231 @@ def recalculate_tables(doc, tambah_baris_rekalkulasi=False, cek_persentase=True)
             )
 
     return summary
+
+
+# =========================================================
+# GROUP / SUBTABLE TOTAL DETECTION
+# =========================================================
+
+def verify_total_rows_by_group(table, numeric_cols, summary=None):
+    """
+    Memproses semua baris Jumlah/Total dalam satu tabel Word
+    jika tabel tersebut sebenarnya berisi beberapa blok/subtabel.
+
+    Contoh:
+    PT AJA
+      data...
+      Jumlah
+
+    CV DNM
+      data...
+      Jumlah
+
+    Dengan fungsi ini, Jumlah CV DNM hanya dihitung dari data CV DNM,
+    bukan dari PT AJA + CV DNM.
+    """
+
+    rows = list(table.rows)
+    total_indices = find_total_row_indices(table)
+
+    # Kalau hanya ada 0 atau 1 baris total, tidak dianggap tabel gabungan.
+    if len(total_indices) <= 1:
+        return 0
+
+    group_start_idx = None
+    last_after_total_idx = 0
+
+    processed_total_count = 0
+    skipped_subtotal_total = 0
+    verified_total = 0
+    different_total = 0
+
+    for row_idx, row in enumerate(rows):
+        if is_header_number_row(row):
+            continue
+
+        # Header kelompok seperti PT AJA / CV DNM
+        if is_group_header_row(row, numeric_cols):
+            group_start_idx = row_idx + 1
+            continue
+
+        if is_total_row(row):
+            if group_start_idx is not None:
+                start_idx = group_start_idx
+            else:
+                start_idx = last_after_total_idx
+
+            vertical_sums, skipped_count = calculate_sums_between_rows(
+                table=table,
+                start_row_idx=start_idx,
+                end_row_idx=row_idx,
+                numeric_cols=numeric_cols
+            )
+
+            result = verify_total_row(
+                total_row=row,
+                numeric_cols=numeric_cols,
+                vertical_sums=vertical_sums
+            )
+
+            processed_total_count += 1
+            skipped_subtotal_total += skipped_count
+            verified_total += result["verified"]
+            different_total += result["different"]
+
+            last_after_total_idx = row_idx + 1
+            group_start_idx = None
+
+    if summary is not None:
+        summary["baris_total_per_kelompok_ditemukan"] += processed_total_count
+        summary["baris_subtotal_dilewati"] += skipped_subtotal_total
+        summary["sel_footing_verified"] += verified_total
+        summary["sel_footing_berbeda"] += different_total
+
+    return processed_total_count
+
+
+def is_group_header_row(row, numeric_cols):
+    """
+    Deteksi baris pemisah kelompok/vendor di dalam tabel gabungan.
+
+    Contoh:
+    - PT AJA
+    - CV DNM
+    - UD MAKMUR
+    - TOKO ABC
+    - DINAS ...
+    - BADAN ...
+    """
+
+    if is_total_row(row):
+        return False
+
+    if is_header_number_row(row):
+        return False
+
+    texts = []
+
+    for idx, cell in enumerate(row.cells):
+        text = cell.text.strip()
+
+        if not text:
+            continue
+
+        if idx in numeric_cols:
+            number = parse_number(text, dash_as_zero=False)
+            if number is not None:
+                return False
+
+        clean = normalize_text_keep_space(text)
+
+        if clean:
+            texts.append(clean)
+
+    if not texts:
+        return False
+
+    combined_text = " ".join(texts).strip()
+    combined_no_space = normalize_text(combined_text)
+
+    if not combined_text:
+        return False
+
+    # Jangan anggap header kolom sebagai header kelompok.
+    header_words = [
+        "NO",
+        "SATUAN",
+        "PENDIDIKAN",
+        "NOMOR",
+        "PESANAN",
+        "NILAI",
+        "HASIL",
+        "KONFIRMASI",
+        "SELISIH",
+        "TAHUN",
+        "URAIAN",
+        "KETERANGAN",
+        "JUMLAH",
+        "TOTAL"
+    ]
+
+    header_hit = sum(1 for word in header_words if word in combined_no_space)
+
+    if header_hit >= 2:
+        return False
+
+    group_prefixes = [
+        "PT ",
+        "CV ",
+        "UD ",
+        "PD ",
+        "TOKO ",
+        "KOPERASI ",
+        "YAYASAN ",
+        "DINAS ",
+        "BADAN ",
+        "BIRO ",
+        "SEKRETARIAT ",
+        "SEKOLAH ",
+        "SMAN ",
+        "SMKN ",
+        "SMPN ",
+        "SDN "
+    ]
+
+    for prefix in group_prefixes:
+        if combined_text.startswith(prefix):
+            return True
+
+    # Kalau satu baris hanya teks pendek dan tidak punya angka,
+    # bisa jadi label kelompok.
+    if len(combined_text.split()) <= 8 and not row_has_number(row):
+        return True
+
+    return False
+
+
+def calculate_sums_between_rows(table, start_row_idx, end_row_idx, numeric_cols):
+    """
+    Menjumlahkan angka dari start_row_idx sampai sebelum end_row_idx.
+    Dipakai untuk blok:
+    PT AJA ... Jumlah
+    CV DNM ... Jumlah
+    """
+
+    vertical_sums = [0.0] * len(table.columns)
+    skipped_subtotal_count = 0
+
+    for row_idx in range(start_row_idx, end_row_idx):
+        row = table.rows[row_idx]
+
+        if is_group_header_row(row, numeric_cols):
+            continue
+
+        skip, reason = should_skip_row_automatically(
+            table=table,
+            row=row,
+            row_idx=row_idx,
+            numeric_cols=numeric_cols
+        )
+
+        if skip:
+            if reason == "subtotal":
+                skipped_subtotal_count += 1
+            continue
+
+        for col_idx in numeric_cols:
+            if col_idx >= len(row.cells):
+                continue
+
+            number = parse_number(row.cells[col_idx].text, dash_as_zero=True)
+
+            if number is None:
+                continue
+
+            vertical_sums[col_idx] += number
+
+    return vertical_sums, skipped_subtotal_count
 
 
 # =========================================================
@@ -515,6 +557,9 @@ def should_skip_row_automatically(table, row, row_idx, numeric_cols):
     if is_total_row(row):
         return True, "total"
 
+    if is_group_header_row(row, numeric_cols):
+        return True, "group_header"
+
     if is_likely_header_text_row(row):
         return True, "header_text"
 
@@ -539,49 +584,125 @@ def find_total_row_indices(table):
 
 
 def is_total_row(row):
-    keywords = [
+    """
+    Deteksi baris total/jumlah secara fleksibel.
+
+    Bisa mendeteksi:
+    - JUMLAH
+    - Jumlah
+    - jumlah
+    - TOTAL
+    - Total
+    - total
+    - Grand Total
+    - JUMLAH SELURUHNYA
+    - TOTAL KESELURUHAN
+
+    Namun menghindari header kolom seperti:
+    - Jumlah Temuan
+    - Jumlah Rekomendasi
+    - Jumlah Anggaran
+    """
+
+    total_keywords_exact = {
         "JUMLAH",
         "TOTAL",
         "GRANDTOTAL",
         "GRAND TOTAL",
-        "SUBTOTAL",
-        "SUB TOTAL",
         "JUMLAHSELURUHNYA",
-        "TOTALSELURUHNYA",
+        "JUMLAH SELURUHNYA",
+        "TOTALKESELURUHAN",
+        "TOTAL KESELURUHAN",
         "JUMLAHTOTAL",
-        "TOTALJUMLAH"
+        "JUMLAH TOTAL"
+    }
+
+    total_keywords_prefix = [
+        "JUMLAH",
+        "TOTAL",
+        "GRANDTOTAL",
+        "GRAND TOTAL"
     ]
 
-    non_empty_texts = []
+    header_like_words = [
+        "TEMUAN",
+        "REKOMENDASI",
+        "ANGGARAN",
+        "REALISASI",
+        "TAHUN",
+        "LHP",
+        "SESUAI",
+        "BELUM",
+        "TINDAKLANJUT",
+        "DITINDAKLANJUTI",
+        "NOMOR",
+        "NO",
+        "PESANAN",
+        "NILAI",
+        "HASIL",
+        "KONFIRMASI",
+        "SELISIH"
+    ]
+
+    texts = []
 
     for cell in row.cells:
-        text = normalize_text(cell.text)
+        raw_text = cell.text.strip()
 
-        if text:
-            non_empty_texts.append(text)
+        if not raw_text:
+            continue
 
-    if not non_empty_texts:
+        norm_no_space = normalize_text(raw_text)
+        norm_with_space = normalize_text_keep_space(raw_text)
+
+        if norm_no_space:
+            texts.append({
+                "raw": raw_text,
+                "no_space": norm_no_space,
+                "with_space": norm_with_space
+            })
+
+    if not texts:
         return False
 
-    # Perbaikan utama:
-    # Cek semua sel, bukan hanya sel pertama.
-    for text in non_empty_texts:
-        for keyword in keywords:
-            key = normalize_text(keyword)
+    # Baris total biasanya punya minimal satu angka.
+    # Ini mencegah header "Jumlah Temuan" dianggap total.
+    if not row_has_number(row):
+        return False
 
-            if text == key:
-                return True
+    for item in texts:
+        text_no_space = item["no_space"]
+        text_with_space = item["with_space"]
 
-            if text.startswith(key):
-                return True
+        if text_no_space in total_keywords_exact:
+            return True
 
-            if key in text and len(text) <= len(key) + 25:
+        if text_with_space in total_keywords_exact:
+            return True
+
+        for keyword in total_keywords_prefix:
+            key_no_space = normalize_text(keyword)
+            key_with_space = normalize_text_keep_space(keyword)
+
+            if text_no_space.startswith(key_no_space) or text_with_space.startswith(key_with_space):
+                if any(word in text_no_space for word in header_like_words):
+                    continue
+
                 return True
 
     return False
 
 
 def find_implicit_total_row_indices(table, numeric_cols):
+    """
+    Mendeteksi baris total tanpa label.
+
+    Contoh:
+    |                    | Rp | 44.670.257.956 |
+    atau
+    |                    |    | 44.670.257.956 |
+    """
+
     rows = list(table.rows)
     candidates = []
 
@@ -724,7 +845,7 @@ def numeric_cells_are_bold(row, numeric_cols):
 # NUMERIC COLUMN DETECTION
 # =========================================================
 
-def detect_numeric_columns_for_footing(table, sample_rows=15):
+def detect_numeric_columns_for_footing(table, sample_rows=20):
     numeric_cols = []
     data_rows = []
 
@@ -735,6 +856,8 @@ def detect_numeric_columns_for_footing(table, sample_rows=15):
         if is_total_row(row):
             continue
 
+        # group header harus dilewati, tapi numeric_cols belum ada.
+        # Karena itu pakai pengecekan sederhana berbasis angka.
         if is_likely_header_text_row(row):
             continue
 
@@ -852,61 +975,46 @@ def is_likely_header_text_row(row):
 
 
 def is_percent_column(table, col_idx):
+    """
+    Deteksi kolom persentase secara aman.
+
+    Jangan menganggap angka kecil sebagai persen,
+    karena tabel jumlah temuan/rekomendasi sering berisi angka kecil.
+    """
+
     header_text = ""
 
     for row in table.rows[:8]:
         if col_idx < len(row.cells):
-            header_text += " " + normalize_text(row.cells[col_idx].text)
+            header_text += " " + normalize_text_keep_space(row.cells[col_idx].text)
 
-    if "%" in header_text:
-        return True
+    header_no_space = normalize_text(header_text)
+    header_with_space = normalize_text_keep_space(header_text)
 
-    if "PERSEN" in header_text:
-        return True
+    percent_keywords = [
+        "%",
+        "PERSEN",
+        "PERSENTASE",
+        "PROSENTASE",
+        "PRESENTASE",
+        "RASIO"
+    ]
 
-    if "PERSENTASE" in header_text:
-        return True
-
-    if "RASIO" in header_text:
-        return True
-
-    if "NAIK" in header_text and "TURUN" in header_text:
-        return True
-
-    sample_values = []
-
-    for row in table.rows:
-        if is_header_number_row(row):
-            continue
-
-        if is_likely_header_text_row(row):
-            continue
-
-        if col_idx >= len(row.cells):
-            continue
-
-        raw = row.cells[col_idx].text.strip()
-
-        if raw in ["", "-", "–", "—"]:
-            continue
-
-        number = parse_number(raw, dash_as_zero=False)
-
-        if number is not None:
-            sample_values.append(number)
-
-        if len(sample_values) >= 6:
-            break
-
-    if len(sample_values) >= 3:
-        small_count = 0
-
-        for value in sample_values:
-            if -500 <= value <= 10000:
-                small_count += 1
-
-        if small_count >= 3:
+    for keyword in percent_keywords:
+        if keyword in header_no_space or keyword in header_with_space:
             return True
+
+    if (
+        ("NAIK" in header_no_space or "KENAIKAN" in header_no_space)
+        and ("TURUN" in header_no_space or "PENURUNAN" in header_no_space)
+    ):
+        return True
+
+    if "NAIKTURUN" in header_no_space:
+        return True
+
+    if "KENAIKANPENURUNAN" in header_no_space:
+        return True
 
     return False
 
@@ -919,6 +1027,14 @@ def detect_percentage_columns(table):
             cols.append(col_idx)
 
     return sorted(list(set(cols)))
+
+
+def row_has_number(row):
+    for cell in row.cells:
+        if parse_number(cell.text, dash_as_zero=False) is not None:
+            return True
+
+    return False
 
 
 # =========================================================
@@ -1001,6 +1117,9 @@ def collect_candidate_child_rows(table, row_idx, numeric_cols, max_children=20):
             continue
 
         if is_total_row(next_row):
+            break
+
+        if is_group_header_row(next_row, numeric_cols):
             break
 
         if is_likely_header_text_row(next_row):
@@ -1514,18 +1633,26 @@ def normalize_text(text):
     if text is None:
         return ""
 
+    return (
+        str(text)
+        .replace(" ", "")
+        .replace("\n", "")
+        .replace("\r", "")
+        .replace("\t", "")
+        .strip()
+        .upper()
+    )
+
+
+def normalize_text_keep_space(text):
+    if text is None:
+        return ""
+
     text = str(text)
-
-    text = text.replace(" ", "")
-    text = text.replace("\n", "")
-    text = text.replace("\r", "")
-    text = text.replace("\t", "")
-
-    for ch in [
-        ":", ".", ",", ";", "-", "–", "—", "/", "\\",
-        "(", ")", "[", "]", "{", "}", "'", '"'
-    ]:
-        text = text.replace(ch, "")
+    text = text.replace("\n", " ")
+    text = text.replace("\r", " ")
+    text = text.replace("\t", " ")
+    text = re.sub(r"\s+", " ", text)
 
     return text.strip().upper()
 
