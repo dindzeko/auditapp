@@ -13,11 +13,11 @@ import os
 # =========================================================
 
 def app():
-    st.title("📄 Verifikasi Footing dan Persentase Tabel")
+    st.title("📄 Verifikasi Footing dan Persentase Tabel Word/PDF/Excel")
 
     st.write(
         """
-        Upload dokumen Word 
+        Upload dokumen Word `.docx`, PDF `.pdf`, atau Excel `.xlsx/.xlsm/.xls`.
         Aplikasi akan memverifikasi angka pada tabel, terutama baris `JUMLAH/TOTAL`,
         baris total tanpa label, dan kolom persentase.
         """
@@ -39,6 +39,10 @@ def app():
         """
         Catatan:
         - Word diproses langsung dari tabel Word.
+        - PDF dan Excel akan dikonversi dulu menjadi tabel Word sementara, lalu diproses dengan logika yang sama.
+        - Output semuanya berupa file Word `.docx`.
+        - PDF hasil scan/gambar biasanya tidak terbaca otomatis tanpa OCR.
+        """
     )
 
     col1, col2 = st.columns(2)
