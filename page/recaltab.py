@@ -4,6 +4,7 @@ from docx.shared import Pt, RGBColor
 from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
 import re
 import io
+from difflib import SequenceMatcher
 
 
 # =========================================================
@@ -23,6 +24,9 @@ def app():
         """
         Upload dokumen Word `.docx`. Aplikasi akan mengecek penjumlahan tabel,
         terutama baris `Jumlah`, `JUMLAH`, `Total`, dan `TOTAL`.
+
+        Versi ini sudah diperbaiki untuk menangani tabel yang terpotong antar halaman,
+        header tabel berulang, dan satu tabel logis yang terbaca sebagai beberapa tabel Word.
         """
     )
 
@@ -34,14 +38,7 @@ def app():
         """
     )
 
-    st.caption(
-        """
-        Versi ini dibuat lebih ringan agar tidak muter-muter:
-        deteksi subtotal otomatis yang berat dimatikan.
-        """
-    )
-
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
 
     with col1:
         tambah_baris_rekalkulasi = st.checkbox(
@@ -50,6 +47,12 @@ def app():
         )
 
     with col2:
+        gabungkan_tabel_lanjutan = st.checkbox(
+            "Gabungkan tabel lanjutan antar halaman",
+            value=True
+        )
+
+    with col3:
         tampilkan_debug = st.checkbox(
             "Tampilkan ringkasan proses",
             value=True
@@ -71,6 +74,7 @@ def app():
                 summary = recalculate_tables(
                     doc=doc,
                     tambah_baris_rekalkulasi=tambah_baris_rekalkulasi,
+                    gabungkan_tabel_lanjutan=gabungkan_tabel_lanjutan,
                     progress=progress,
                     status_text=status_text
                 )
@@ -115,131 +119,97 @@ def buat_nama_file_hasil(nama_file_upload):
 # MAIN PROCESS
 # =========================================================
 
-def recalculate_tables(doc, tambah_baris_rekalkulasi=False, progress=None, status_text=None):
+def recalculate_tables(
+    doc,
+    tambah_baris_rekalkulasi=False,
+    gabungkan_tabel_lanjutan=True,
+    progress=None,
+    status_text=None
+):
     summary = {
-        "jumlah_tabel": len(doc.tables),
-        "tabel_diproses": 0,
-        "tabel_tanpa_kolom_numerik": 0,
+        "jumlah_tabel_fisik_word": len(doc.tables),
+        "jumlah_kelompok_tabel_logis": 0,
+        "kelompok_diproses": 0,
+        "kelompok_tanpa_kolom_numerik": 0,
         "baris_total_biasa_ditemukan": 0,
         "baris_total_per_kelompok_ditemukan": 0,
         "baris_rekalkulasi_ditambahkan": 0,
         "sel_verified": 0,
         "sel_berbeda": 0,
-        "detail_tabel": []
+        "detail_kelompok": []
     }
 
-    total_tables = len(doc.tables)
+    if not doc.tables:
+        return summary
 
-    for table_idx, table in enumerate(doc.tables, start=1):
-        if progress is not None and total_tables > 0:
-            progress.progress(table_idx / total_tables)
-
-        if status_text is not None:
-            status_text.write(f"Memproses tabel {table_idx} dari {total_tables}...")
-
-        if not table.rows:
-            continue
-
+    for table in doc.tables:
         clean_table_old_marks(table)
 
-        numeric_cols = detect_numeric_columns_for_footing(table)
+    if gabungkan_tabel_lanjutan:
+        logical_groups = build_logical_table_groups(doc.tables)
+    else:
+        logical_groups = []
+        for idx, table in enumerate(doc.tables):
+            logical_groups.append({
+                "group_no": idx + 1,
+                "tables": [table],
+                "table_indices": [idx + 1],
+                "reason": "mode tanpa penggabungan tabel lanjutan"
+            })
+
+    summary["jumlah_kelompok_tabel_logis"] = len(logical_groups)
+
+    total_groups = len(logical_groups)
+
+    for group_idx, group in enumerate(logical_groups, start=1):
+        if progress is not None and total_groups > 0:
+            progress.progress(group_idx / total_groups)
+
+        if status_text is not None:
+            status_text.write(
+                f"Memproses kelompok tabel logis {group_idx} dari {total_groups}..."
+            )
+
+        row_refs = collect_row_refs_from_group(group)
+
+        if not row_refs:
+            continue
+
+        numeric_cols = detect_numeric_columns_for_logical_group(row_refs)
 
         detail = {
-            "tabel": table_idx,
-            "jumlah_baris": len(table.rows),
-            "jumlah_kolom": len(table.columns),
+            "kelompok": group_idx,
+            "tabel_fisik_word": group["table_indices"],
+            "jumlah_fragment": len(group["tables"]),
+            "jumlah_baris_logis": len(row_refs),
             "numeric_cols": [c + 1 for c in numeric_cols],
+            "reason": group.get("reason", ""),
             "status": ""
         }
 
         if not numeric_cols:
-            summary["tabel_tanpa_kolom_numerik"] += 1
+            summary["kelompok_tanpa_kolom_numerik"] += 1
             detail["status"] = "Dilewati, tidak ada kolom numerik"
-            summary["detail_tabel"].append(detail)
+            summary["detail_kelompok"].append(detail)
             continue
 
-        summary["tabel_diproses"] += 1
+        summary["kelompok_diproses"] += 1
 
-        total_indices = find_total_row_indices(table)
+        total_row_positions = find_total_row_positions(row_refs)
 
-        # =================================================
-        # MODEL 1:
-        # Tabel gabungan dalam satu tabel Word.
-        # Contoh:
-        # PT AJA
-        # data...
-        # Jumlah
-        # CV DNM
-        # data...
-        # Jumlah
-        # =================================================
-
-        if len(total_indices) > 1:
-            result_group = verify_total_rows_by_group(
-                table=table,
-                numeric_cols=numeric_cols
-            )
-
-            summary["baris_total_per_kelompok_ditemukan"] += result_group["total_rows"]
-            summary["sel_verified"] += result_group["verified"]
-            summary["sel_berbeda"] += result_group["different"]
-
-            detail["status"] = "Diproses sebagai tabel gabungan per kelompok"
-            detail["baris_total_per_kelompok"] = result_group["total_rows"]
-            detail["verified"] = result_group["verified"]
-            detail["different"] = result_group["different"]
-            summary["detail_tabel"].append(detail)
-            continue
-
-        # =================================================
-        # MODEL 2:
-        # Tabel biasa, hanya satu baris Jumlah/Total.
-        # =================================================
-
-        if len(total_indices) == 1:
-            total_row_idx = total_indices[0]
-
-            vertical_sums = calculate_sums_between_rows(
-                table=table,
-                start_row_idx=0,
-                end_row_idx=total_row_idx,
-                numeric_cols=numeric_cols
-            )
-
-            result = verify_total_row(
-                total_row=table.rows[total_row_idx],
-                numeric_cols=numeric_cols,
-                vertical_sums=vertical_sums
-            )
-
-            summary["baris_total_biasa_ditemukan"] += 1
-            summary["sel_verified"] += result["verified"]
-            summary["sel_berbeda"] += result["different"]
-
-            detail["status"] = "Diproses sebagai tabel total biasa"
-            detail["baris_total"] = total_row_idx + 1
-            detail["verified"] = result["verified"]
-            detail["different"] = result["different"]
-            summary["detail_tabel"].append(detail)
-            continue
-
-        # =================================================
-        # MODEL 3:
-        # Tidak ada baris Jumlah/Total.
-        # Jika user mau, tambahkan baris Rekalkulasi Sistem.
-        # =================================================
-
-        if len(total_indices) == 0:
+        if len(total_row_positions) == 0:
             if tambah_baris_rekalkulasi:
-                vertical_sums = calculate_sums_between_rows(
-                    table=table,
-                    start_row_idx=0,
-                    end_row_idx=len(table.rows),
+                last_table = group["tables"][-1]
+
+                vertical_sums = calculate_sums_between_row_refs(
+                    row_refs=row_refs,
+                    start_pos=0,
+                    end_pos=len(row_refs),
                     numeric_cols=numeric_cols
                 )
 
                 added = add_recalculation_row(
-                    table=table,
+                    table=last_table,
                     numeric_cols=numeric_cols,
                     vertical_sums=vertical_sums
                 )
@@ -252,7 +222,52 @@ def recalculate_tables(doc, tambah_baris_rekalkulasi=False, progress=None, statu
             else:
                 detail["status"] = "Tidak ada baris Jumlah/Total, dilewati"
 
-            summary["detail_tabel"].append(detail)
+            summary["detail_kelompok"].append(detail)
+            continue
+
+        if len(total_row_positions) == 1:
+            total_pos = total_row_positions[0]
+
+            vertical_sums = calculate_sums_between_row_refs(
+                row_refs=row_refs,
+                start_pos=0,
+                end_pos=total_pos,
+                numeric_cols=numeric_cols
+            )
+
+            result = verify_total_row(
+                total_row=row_refs[total_pos]["row"],
+                numeric_cols=numeric_cols,
+                vertical_sums=vertical_sums
+            )
+
+            summary["baris_total_biasa_ditemukan"] += 1
+            summary["sel_verified"] += result["verified"]
+            summary["sel_berbeda"] += result["different"]
+
+            detail["status"] = "Diproses sebagai satu tabel logis dengan satu baris total"
+            detail["baris_total_logis"] = total_pos + 1
+            detail["verified"] = result["verified"]
+            detail["different"] = result["different"]
+            summary["detail_kelompok"].append(detail)
+            continue
+
+        if len(total_row_positions) > 1:
+            result_group = verify_total_rows_by_logical_group(
+                row_refs=row_refs,
+                numeric_cols=numeric_cols
+            )
+
+            summary["baris_total_per_kelompok_ditemukan"] += result_group["total_rows"]
+            summary["sel_verified"] += result_group["verified"]
+            summary["sel_berbeda"] += result_group["different"]
+
+            detail["status"] = "Diproses sebagai tabel dengan beberapa baris total/subtotal"
+            detail["baris_total_per_kelompok"] = result_group["total_rows"]
+            detail["verified"] = result_group["verified"]
+            detail["different"] = result_group["different"]
+            summary["detail_kelompok"].append(detail)
+            continue
 
     if status_text is not None:
         status_text.write("Selesai memproses semua tabel.")
@@ -261,20 +276,213 @@ def recalculate_tables(doc, tambah_baris_rekalkulasi=False, progress=None, statu
 
 
 # =========================================================
+# LOGICAL TABLE GROUPING
+# =========================================================
+
+def build_logical_table_groups(tables):
+    """
+    Menggabungkan tabel fisik Word yang sebenarnya merupakan satu tabel logis.
+    Cocok untuk kasus tabel terpotong antar halaman dan header muncul ulang.
+    """
+
+    groups = []
+    current_group = None
+    previous_info = None
+
+    for idx, table in enumerate(tables):
+        info = analyze_table_structure(table, idx + 1)
+
+        if current_group is None:
+            current_group = {
+                "group_no": len(groups) + 1,
+                "tables": [table],
+                "table_indices": [idx + 1],
+                "infos": [info],
+                "reason": "awal kelompok"
+            }
+            previous_info = info
+            continue
+
+        if is_continuation_table(previous_info, info):
+            current_group["tables"].append(table)
+            current_group["table_indices"].append(idx + 1)
+            current_group["infos"].append(info)
+            current_group["reason"] = "digabung karena header/struktur tabel mirip atau nomor urut berlanjut"
+        else:
+            groups.append(current_group)
+            current_group = {
+                "group_no": len(groups) + 1,
+                "tables": [table],
+                "table_indices": [idx + 1],
+                "infos": [info],
+                "reason": "awal kelompok baru"
+            }
+
+        previous_info = info
+
+    if current_group is not None:
+        groups.append(current_group)
+
+    return groups
+
+
+def analyze_table_structure(table, table_index):
+    row_count = len(table.rows)
+    col_count = len(table.columns)
+
+    header_signature = get_table_header_signature(table)
+    first_no = get_first_no_value(table)
+    last_no = get_last_no_value(table)
+    has_total = any(is_total_row(row) for row in table.rows)
+    numeric_cols_preview = detect_numeric_columns_for_physical_table(table)
+
+    return {
+        "table_index": table_index,
+        "row_count": row_count,
+        "col_count": col_count,
+        "header_signature": header_signature,
+        "first_no": first_no,
+        "last_no": last_no,
+        "has_total": has_total,
+        "numeric_cols_preview": numeric_cols_preview
+    }
+
+
+def get_table_header_signature(table):
+    """
+    Membuat identitas header tabel.
+    Mengambil 1-3 baris awal yang kelihatan seperti header.
+    """
+
+    header_parts = []
+
+    max_header_rows = min(4, len(table.rows))
+
+    for row_idx in range(max_header_rows):
+        row = table.rows[row_idx]
+
+        if is_total_row(row):
+            continue
+
+        if is_header_number_row(row):
+            continue
+
+        if is_likely_column_header_row(row):
+            texts = []
+            for cell in row.cells:
+                text = normalize_text_keep_space(cell.text)
+                if text:
+                    texts.append(text)
+            if texts:
+                header_parts.append(" | ".join(texts))
+
+    if not header_parts and len(table.rows) > 0:
+        first_row_texts = []
+        for cell in table.rows[0].cells:
+            text = normalize_text_keep_space(cell.text)
+            if text:
+                first_row_texts.append(text)
+        header_parts.append(" | ".join(first_row_texts))
+
+    signature = " || ".join(header_parts)
+    signature = normalize_header_signature(signature)
+
+    return signature
+
+
+def normalize_header_signature(text):
+    text = normalize_text_keep_space(text)
+
+    text = re.sub(r"\b20\d{2}\b", "TAHUN", text)
+    text = re.sub(r"\b19\d{2}\b", "TAHUN", text)
+    text = re.sub(r"\d+", "N", text)
+
+    text = text.replace(".", "")
+    text = re.sub(r"\s+", " ", text)
+
+    return text.strip()
+
+
+def is_continuation_table(prev_info, curr_info):
+    """
+    Menentukan apakah tabel saat ini adalah lanjutan dari tabel sebelumnya.
+    """
+
+    if prev_info is None or curr_info is None:
+        return False
+
+    if prev_info["col_count"] != curr_info["col_count"]:
+        return False
+
+    prev_sig = prev_info.get("header_signature", "")
+    curr_sig = curr_info.get("header_signature", "")
+
+    header_similarity = similarity_ratio(prev_sig, curr_sig)
+
+    numbering_continues = False
+    if prev_info.get("last_no") is not None and curr_info.get("first_no") is not None:
+        numbering_continues = curr_info["first_no"] > prev_info["last_no"]
+
+    same_numeric_pattern = (
+        prev_info.get("numeric_cols_preview") == curr_info.get("numeric_cols_preview")
+        and len(prev_info.get("numeric_cols_preview", [])) > 0
+    )
+
+    # Kasus paling kuat: header sama/mirip.
+    if header_similarity >= 0.78:
+        return True
+
+    # Kasus tabel lanjutan hasil konversi: nomor berlanjut dan pola kolom angka sama.
+    if numbering_continues and same_numeric_pattern and header_similarity >= 0.45:
+        return True
+
+    # Kasus header fragment pertama kurang lengkap, tetapi nomor urut jelas berlanjut.
+    if numbering_continues and same_numeric_pattern:
+        if not prev_info.get("has_total", False):
+            return True
+
+    return False
+
+
+def similarity_ratio(a, b):
+    if not a or not b:
+        return 0.0
+
+    return SequenceMatcher(None, a, b).ratio()
+
+
+def collect_row_refs_from_group(group):
+    row_refs = []
+
+    for table_pos, table in enumerate(group["tables"]):
+        table_index = group["table_indices"][table_pos]
+
+        for row_idx, row in enumerate(table.rows):
+            row_refs.append({
+                "table": table,
+                "table_index": table_index,
+                "row": row,
+                "row_index": row_idx,
+                "global_pos": len(row_refs)
+            })
+
+    return row_refs
+
+
+# =========================================================
 # GROUP TOTAL PROCESS
 # =========================================================
 
-def verify_total_rows_by_group(table, numeric_cols):
+def verify_total_rows_by_logical_group(row_refs, numeric_cols):
     """
-    Memproses tabel gabungan yang punya lebih dari satu baris Jumlah/Total.
-
-    Contoh:
-    PT AJA
-    data...
+    Memproses satu tabel logis yang punya lebih dari satu baris Jumlah/Total.
+    Cocok untuk model:
+    PT A
+    data
     Jumlah
 
-    CV DNM
-    data...
+    CV B
+    data
     Jumlah
     """
 
@@ -284,27 +492,26 @@ def verify_total_rows_by_group(table, numeric_cols):
         "different": 0
     }
 
-    group_start_idx = 0
-    last_after_total_idx = 0
+    group_start_pos = 0
+    last_after_total_pos = 0
 
-    for row_idx, row in enumerate(table.rows):
-        if is_header_number_row(row):
+    for pos, ref in enumerate(row_refs):
+        row = ref["row"]
+
+        if is_repeated_header_row(row):
             continue
 
         if is_group_header_row(row, numeric_cols):
-            group_start_idx = row_idx + 1
+            group_start_pos = pos + 1
             continue
 
         if is_total_row(row):
-            if group_start_idx is not None:
-                start_idx = group_start_idx
-            else:
-                start_idx = last_after_total_idx
+            start_pos = group_start_pos if group_start_pos is not None else last_after_total_pos
 
-            vertical_sums = calculate_sums_between_rows(
-                table=table,
-                start_row_idx=start_idx,
-                end_row_idx=row_idx,
+            vertical_sums = calculate_sums_between_row_refs(
+                row_refs=row_refs,
+                start_pos=start_pos,
+                end_pos=pos,
                 numeric_cols=numeric_cols
             )
 
@@ -318,116 +525,25 @@ def verify_total_rows_by_group(table, numeric_cols):
             result_total["verified"] += result["verified"]
             result_total["different"] += result["different"]
 
-            last_after_total_idx = row_idx + 1
-            group_start_idx = None
+            last_after_total_pos = pos + 1
+            group_start_pos = pos + 1
 
     return result_total
-
-
-def is_group_header_row(row, numeric_cols):
-    """
-    Mendeteksi baris pemisah kelompok/vendor/unit.
-
-    Contoh:
-    - PT AJA
-    - CV DNM
-    - UD MAKMUR
-    - TOKO ABC
-    """
-
-    if is_total_row(row):
-        return False
-
-    if is_header_number_row(row):
-        return False
-
-    if row_has_number(row):
-        return False
-
-    texts = []
-
-    for cell in row.cells:
-        text = cell.text.strip()
-        if text:
-            texts.append(normalize_text_keep_space(text))
-
-    if not texts:
-        return False
-
-    combined_text = " ".join(texts).strip()
-    combined_no_space = normalize_text(combined_text)
-
-    if not combined_text:
-        return False
-
-    # Jangan sampai header tabel dianggap group header.
-    header_words = [
-        "NO",
-        "SATUAN",
-        "PENDIDIKAN",
-        "NOMOR",
-        "PESANAN",
-        "PAKET",
-        "PEKERJAAN",
-        "NILAI",
-        "HASIL",
-        "KONFIRMASI",
-        "SELISIH",
-        "URAIAN",
-        "KETERANGAN"
-    ]
-
-    header_hit = sum(1 for word in header_words if word in combined_no_space)
-
-    if header_hit >= 2:
-        return False
-
-    group_prefixes = [
-        "PT ",
-        "CV ",
-        "UD ",
-        "PD ",
-        "TOKO ",
-        "KOPERASI ",
-        "YAYASAN ",
-        "DINAS ",
-        "BADAN ",
-        "BIRO ",
-        "SEKRETARIAT ",
-        "SEKOLAH ",
-        "SMAN ",
-        "SMKN ",
-        "SMPN ",
-        "SDN "
-    ]
-
-    for prefix in group_prefixes:
-        if combined_text.startswith(prefix):
-            return True
-
-    # Fallback:
-    # baris teks pendek tanpa angka sering merupakan nama kelompok.
-    if len(combined_text.split()) <= 8:
-        return True
-
-    return False
 
 
 # =========================================================
 # SUM AND VERIFY
 # =========================================================
 
-def calculate_sums_between_rows(table, start_row_idx, end_row_idx, numeric_cols):
-    """
-    Menjumlahkan angka dari start_row_idx sampai sebelum end_row_idx.
-    Fungsi ini sengaja dibuat ringan.
-    Tidak memakai deteksi subtotal otomatis yang berat.
-    """
+def calculate_sums_between_row_refs(row_refs, start_pos, end_pos, numeric_cols):
+    max_col = get_max_col_from_row_refs(row_refs)
+    vertical_sums = [0.0] * max_col
 
-    vertical_sums = [0.0] * len(table.columns)
+    for pos in range(start_pos, end_pos):
+        if pos < 0 or pos >= len(row_refs):
+            continue
 
-    for row_idx in range(start_row_idx, end_row_idx):
-        row = table.rows[row_idx]
+        row = row_refs[pos]["row"]
 
         skip, _ = should_skip_row_automatically(
             row=row,
@@ -449,6 +565,16 @@ def calculate_sums_between_rows(table, start_row_idx, end_row_idx, numeric_cols)
             vertical_sums[col_idx] += number
 
     return vertical_sums
+
+
+def get_max_col_from_row_refs(row_refs):
+    max_col = 0
+
+    for ref in row_refs:
+        row = ref["row"]
+        max_col = max(max_col, len(row.cells))
+
+    return max_col
 
 
 def verify_total_row(total_row, numeric_cols, vertical_sums):
@@ -491,10 +617,8 @@ def verify_total_row(total_row, numeric_cols, vertical_sums):
 
 
 def should_skip_row_automatically(row, numeric_cols):
-    """
-    Versi ringan.
-    Tidak ada deteksi subtotal otomatis yang kompleks.
-    """
+    if is_repeated_header_row(row):
+        return True, "repeated_header"
 
     if is_header_number_row(row):
         return True, "header_number"
@@ -505,7 +629,7 @@ def should_skip_row_automatically(row, numeric_cols):
     if is_group_header_row(row, numeric_cols):
         return True, "group_header"
 
-    if is_likely_header_text_row(row) and not row_has_number(row):
+    if is_likely_header_text_row(row):
         return True, "header_text"
 
     return False, ""
@@ -515,34 +639,23 @@ def should_skip_row_automatically(row, numeric_cols):
 # TOTAL ROW DETECTION
 # =========================================================
 
-def find_total_row_indices(table):
-    total_indices = []
+def find_total_row_positions(row_refs):
+    total_positions = []
 
-    for idx, row in enumerate(table.rows):
-        if is_total_row(row):
-            total_indices.append(idx)
+    for pos, ref in enumerate(row_refs):
+        if is_total_row(ref["row"]):
+            total_positions.append(pos)
 
-    return total_indices
+    return total_positions
 
 
 def is_total_row(row):
     """
     Deteksi baris Jumlah/Total.
 
-    Aman untuk:
-    - Jumlah
-    - JUMLAH
-    - jumlah
-    - Total
-    - TOTAL
-    - total
-    - Grand Total
-
-    Tidak menganggap header seperti "Jumlah Temuan" sebagai total.
+    Tidak terlalu bergantung pada kewajiban ada angka,
+    karena kadang hasil konversi membuat angka total tidak terbaca sempurna.
     """
-
-    if not row_has_number(row):
-        return False
 
     total_words_exact = {
         "JUMLAH",
@@ -574,7 +687,9 @@ def is_total_row(row):
         "NILAI",
         "HASIL",
         "KONFIRMASI",
-        "SELISIH"
+        "SELISIH",
+        "KOLOM",
+        "URAIAN"
     ]
 
     texts = []
@@ -584,7 +699,6 @@ def is_total_row(row):
         if not raw:
             continue
 
-        # Kalau cell berisi angka saja, jangan masuk kandidat label.
         if parse_number(raw, dash_as_zero=False) is not None:
             continue
 
@@ -597,6 +711,8 @@ def is_total_row(row):
     if not texts:
         return False
 
+    row_has_any_number = row_has_number(row)
+
     for no_space, with_space in texts:
         if no_space in total_words_exact or with_space in total_words_exact:
             return True
@@ -604,6 +720,11 @@ def is_total_row(row):
         if no_space.startswith("JUMLAH") or no_space.startswith("TOTAL") or no_space.startswith("GRANDTOTAL"):
             if any(word in no_space for word in header_like_words):
                 continue
+
+            # Supaya kata "Jumlah ..." di header tidak mudah dianggap total.
+            if not row_has_any_number and len(no_space) > 25:
+                continue
+
             return True
 
     return False
@@ -613,75 +734,128 @@ def is_total_row(row):
 # NUMERIC COLUMN DETECTION
 # =========================================================
 
-def detect_numeric_columns_for_footing(table):
+def detect_numeric_columns_for_logical_group(row_refs):
+    if not row_refs:
+        return []
+
+    max_col = get_max_col_from_row_refs(row_refs)
     numeric_cols = []
 
-    for col_idx in range(len(table.columns)):
-        if is_no_column(table, col_idx):
+    for col_idx in range(max_col):
+        if is_no_column_from_row_refs(row_refs, col_idx):
             continue
 
-        if is_percent_column(table, col_idx):
+        if is_percent_column_from_row_refs(row_refs, col_idx):
             continue
 
         numeric_count = 0
+        data_row_count = 0
 
-        for row in table.rows:
+        for ref in row_refs:
+            row = ref["row"]
+
+            if is_repeated_header_row(row):
+                continue
+
             if is_header_number_row(row):
                 continue
 
             if is_total_row(row):
                 continue
 
-            if is_likely_header_text_row(row) and not row_has_number(row):
+            if is_likely_header_text_row(row):
                 continue
 
             if col_idx >= len(row.cells):
                 continue
 
+            data_row_count += 1
             number = parse_number(row.cells[col_idx].text, dash_as_zero=True)
 
             if number is not None:
                 numeric_count += 1
 
-            if numeric_count >= 1:
-                numeric_cols.append(col_idx)
-                break
+        if numeric_count >= 1:
+            numeric_cols.append(col_idx)
 
     return numeric_cols
 
 
-def is_no_column(table, col_idx):
-    """
-    Mencegah kolom No ikut dihitung.
-    """
+def detect_numeric_columns_for_physical_table(table):
+    row_refs = []
 
+    for row_idx, row in enumerate(table.rows):
+        row_refs.append({
+            "table": table,
+            "table_index": 0,
+            "row": row,
+            "row_index": row_idx,
+            "global_pos": row_idx
+        })
+
+    return detect_numeric_columns_for_logical_group(row_refs)
+
+
+def is_no_column_from_row_refs(row_refs, col_idx):
     header_text = ""
 
-    for row in table.rows[:5]:
+    for ref in row_refs[:8]:
+        row = ref["row"]
         if col_idx < len(row.cells):
             header_text += " " + normalize_text_keep_space(row.cells[col_idx].text)
 
     header_text = normalize_text_keep_space(header_text)
     header_no_space = normalize_text(header_text)
 
+    no_keywords = [
+        "NO",
+        "NO.",
+        "NOMOR"
+    ]
+
     if header_no_space in ["NO", "NOMOR"]:
+        return True
+
+    if header_text in no_keywords:
         return True
 
     if header_text.startswith("NO "):
         return True
 
+    # Fallback: jika mayoritas isi kolom angka kecil berurutan, kemungkinan kolom nomor.
+    values = []
+
+    for ref in row_refs:
+        row = ref["row"]
+
+        if is_repeated_header_row(row) or is_header_number_row(row) or is_total_row(row):
+            continue
+
+        if col_idx >= len(row.cells):
+            continue
+
+        val = parse_number(row.cells[col_idx].text, dash_as_zero=False)
+
+        if val is not None:
+            values.append(val)
+
+    if len(values) >= 3:
+        small_integer_count = 0
+        for val in values:
+            if abs(val - int(val)) < 0.00001 and 0 <= val <= 500:
+                small_integer_count += 1
+
+        if small_integer_count >= max(3, int(len(values) * 0.8)):
+            return True
+
     return False
 
 
-def is_percent_column(table, col_idx):
-    """
-    Deteksi kolom persen hanya berdasarkan header.
-    Angka kecil tidak otomatis dianggap persen.
-    """
-
+def is_percent_column_from_row_refs(row_refs, col_idx):
     header_text = ""
 
-    for row in table.rows[:8]:
+    for ref in row_refs[:10]:
+        row = ref["row"]
         if col_idx < len(row.cells):
             header_text += " " + normalize_text_keep_space(row.cells[col_idx].text)
 
@@ -708,14 +882,20 @@ def is_percent_column(table, col_idx):
 # ROW DETECTION
 # =========================================================
 
+def is_repeated_header_row(row):
+    if is_header_number_row(row):
+        return True
+
+    if is_likely_column_header_row(row):
+        return True
+
+    return False
+
+
 def is_header_number_row(row):
     """
     Deteksi baris nomor header seperti:
     | 1 | 2 | 3 | 4 |
-
-    Jangan sampai baris data seperti:
-    | 2 | Pengadaan dan Instalasi ... | 2.079.833.450,00 |
-    dianggap header.
     """
 
     values = []
@@ -750,7 +930,91 @@ def is_header_number_row(row):
     return False
 
 
+def is_likely_column_header_row(row):
+    """
+    Header kolom seperti:
+    No. | Tahun Pajak | Saldo Per 1 Januari 2026 | Ketetapan 2026 | ...
+    harus diabaikan walaupun mengandung angka tahun.
+    """
+
+    combined = " ".join(
+        normalize_text_keep_space(cell.text)
+        for cell in row.cells
+        if cell.text and cell.text.strip()
+    )
+
+    if not combined:
+        return False
+
+    combined_no_space = normalize_text(combined)
+
+    header_keywords = [
+        "NO",
+        "NOMOR",
+        "URAIAN",
+        "KETERANGAN",
+        "TAHUN",
+        "PAJAK",
+        "SALDO",
+        "KETETAPAN",
+        "PEMBAYARAN",
+        "DESEMBER",
+        "JANUARI",
+        "NILAI",
+        "REALISASI",
+        "ANGGARAN",
+        "JUMLAH BARANG",
+        "JUMLAHBARANG",
+        "SATUAN",
+        "VOLUME",
+        "HARGA",
+        "TOTAL"
+    ]
+
+    hit = 0
+    for keyword in header_keywords:
+        if normalize_text(keyword) in combined_no_space:
+            hit += 1
+
+    if hit >= 2:
+        # Jangan sampai baris total dianggap header.
+        if is_total_row_light(row):
+            return False
+        return True
+
+    return False
+
+
+def is_total_row_light(row):
+    combined = " ".join(
+        normalize_text_keep_space(cell.text)
+        for cell in row.cells
+        if cell.text and cell.text.strip()
+    )
+
+    combined_no_space = normalize_text(combined)
+
+    if combined_no_space in ["JUMLAH", "TOTAL", "GRANDTOTAL"]:
+        return True
+
+    if combined_no_space.startswith("JUMLAH") and row_has_number(row):
+        return True
+
+    if combined_no_space.startswith("TOTAL") and row_has_number(row):
+        return True
+
+    return False
+
+
 def is_likely_header_text_row(row):
+    """
+    Baris teks murni tanpa angka nominal.
+    Header kolom tetap dianggap header walaupun ada angka tahun.
+    """
+
+    if is_likely_column_header_row(row):
+        return True
+
     non_empty = []
 
     for cell in row.cells:
@@ -776,6 +1040,159 @@ def row_has_number(row):
             return True
 
     return False
+
+
+def is_group_header_row(row, numeric_cols):
+    """
+    Deteksi baris pemisah kelompok/vendor/unit.
+
+    Dibuat lebih hati-hati dibanding kode lama.
+    Tidak semua teks pendek otomatis dianggap group header.
+    """
+
+    if is_total_row(row):
+        return False
+
+    if is_repeated_header_row(row):
+        return False
+
+    if row_has_number(row):
+        return False
+
+    texts = []
+
+    for cell in row.cells:
+        text = cell.text.strip()
+        if text:
+            texts.append(normalize_text_keep_space(text))
+
+    if not texts:
+        return False
+
+    combined_text = " ".join(texts).strip()
+    combined_no_space = normalize_text(combined_text)
+
+    if not combined_text:
+        return False
+
+    header_words = [
+        "NO",
+        "TAHUN",
+        "PAJAK",
+        "SALDO",
+        "KETETAPAN",
+        "PEMBAYARAN",
+        "DESEMBER",
+        "JANUARI",
+        "SATUAN",
+        "PENDIDIKAN",
+        "NOMOR",
+        "PESANAN",
+        "PAKET",
+        "PEKERJAAN",
+        "NILAI",
+        "HASIL",
+        "KONFIRMASI",
+        "SELISIH",
+        "URAIAN",
+        "KETERANGAN"
+    ]
+
+    header_hit = sum(1 for word in header_words if word in combined_no_space)
+
+    if header_hit >= 2:
+        return False
+
+    group_prefixes = [
+        "PT ",
+        "CV ",
+        "UD ",
+        "PD ",
+        "TOKO ",
+        "KOPERASI ",
+        "YAYASAN ",
+        "DINAS ",
+        "BADAN ",
+        "BIRO ",
+        "SEKRETARIAT ",
+        "SEKOLAH ",
+        "SMAN ",
+        "SMKN ",
+        "SMPN ",
+        "SDN ",
+        "UPT ",
+        "RSUD ",
+        "PUSKESMAS "
+    ]
+
+    for prefix in group_prefixes:
+        if combined_text.startswith(prefix):
+            return True
+
+    # Fallback aman:
+    # hanya dianggap group header bila hanya 1-2 cell terisi,
+    # teks cukup pendek, dan bukan header tabel.
+    non_empty_cell_count = len(texts)
+
+    if non_empty_cell_count <= 2 and len(combined_text.split()) <= 8:
+        return True
+
+    return False
+
+
+# =========================================================
+# NUMBERING DETECTION FOR CONTINUATION
+# =========================================================
+
+def get_first_no_value(table):
+    for row in table.rows:
+        if is_repeated_header_row(row):
+            continue
+
+        val = get_no_value_from_row(row)
+
+        if val is not None:
+            return val
+
+    return None
+
+
+def get_last_no_value(table):
+    last_val = None
+
+    for row in table.rows:
+        if is_repeated_header_row(row):
+            continue
+
+        if is_total_row(row):
+            continue
+
+        val = get_no_value_from_row(row)
+
+        if val is not None:
+            last_val = val
+
+    return last_val
+
+
+def get_no_value_from_row(row):
+    if len(row.cells) == 0:
+        return None
+
+    text = row.cells[0].text.strip()
+
+    if not text:
+        return None
+
+    text = text.replace(".", "").strip()
+
+    if not re.match(r"^\d+$", text):
+        return None
+
+    try:
+        return int(text)
+    except ValueError:
+        return None
 
 
 # =========================================================
@@ -805,7 +1222,6 @@ def clean_existing_marks_and_notes(cell):
         for run in paragraph.runs:
             text = run.text
 
-            # Hapus tanda berdiri sendiri di akhir run.
             text = re.sub(r"\s+\^\s*$", "", text)
             text = re.sub(r"\s+X\s*$", "", text)
 
@@ -847,17 +1263,26 @@ def add_recalculation_note_to_cell(cell, calculated_number, color=None):
 # =========================================================
 
 def add_recalculation_row(table, numeric_cols, vertical_sums):
-    if not any(abs(vertical_sums[col]) > 0 for col in numeric_cols):
+    if not numeric_cols:
+        return False
+
+    if not any(
+        col < len(vertical_sums) and abs(vertical_sums[col]) > 0
+        for col in numeric_cols
+    ):
         return False
 
     new_row = table.add_row()
-    new_row.cells[0].text = "Rekalkulasi Sistem"
+
+    if len(new_row.cells) > 0:
+        new_row.cells[0].text = "Rekalkulasi Sistem"
 
     for col_idx in range(len(table.columns)):
-        if col_idx in numeric_cols and abs(vertical_sums[col_idx]) > 0:
-            cell = new_row.cells[col_idx]
-            cell.text = format_number(vertical_sums[col_idx])
-            set_recalculation_cell_style(cell)
+        if col_idx in numeric_cols and col_idx < len(vertical_sums):
+            if abs(vertical_sums[col_idx]) > 0:
+                cell = new_row.cells[col_idx]
+                cell.text = format_number(vertical_sums[col_idx])
+                set_recalculation_cell_style(cell)
 
     return True
 
@@ -886,7 +1311,6 @@ def parse_number(text, dash_as_zero=True):
     if text == "":
         return None
 
-    # Kalau sudah ada catatan rekalkulasi, ambil bagian angka awalnya saja.
     if "Rekalkulasi:" in text:
         text = text.split("Rekalkulasi:")[0]
 
@@ -900,7 +1324,6 @@ def parse_number(text, dash_as_zero=True):
     text = text.replace("rp", "")
     text = text.replace("%", "")
 
-    # Hapus tanda hasil kalau berdiri sendiri.
     text = re.sub(r"\^", "", text)
     text = re.sub(r"X$", "", text)
 
