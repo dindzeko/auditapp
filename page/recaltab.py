@@ -21,8 +21,7 @@ def app():
 
     st.write(
         """
-        Upload dokumen Word `.docx`. Aplikasi akan memverifikasi angka pada tabel,
-        terutama baris `JUMLAH/TOTAL`, baris total tanpa label, dan kolom persentase.
+        Upload dokumen Wajib Bentuk Word `.docx`. Aplikasi akan membantu melakukan telstruk.
         """
     )
 
