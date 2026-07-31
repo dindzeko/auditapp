@@ -60,7 +60,7 @@ if "subpage" not in st.session_state:
 
 # ----------- HALAMAN UTAMA -----------
 def main_page():
-    st.title("Selamat Datang di AuditApp!")
+    st.title("Selamat Datang di AuditApp SHZ")
     st.write("""
     Aplikasi ini dirancang untuk membantu mempermudah pekerjaan Audit. 
     Di halaman utama ini, Anda akan menemukan informasi dasar dan panduan untuk memulai.
