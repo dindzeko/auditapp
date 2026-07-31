@@ -7,15 +7,35 @@ import io
 
 
 # =========================================================
+# KONSTANTA (BARU)
+# =========================================================
+# STRUCTURE_TOLERANCE : dipakai untuk MENDETEKSI struktur tabel
+#   (apakah suatu baris adalah subtotal / total implisit).
+#   Versi lama: max(5, abs(nilai) * 0.00001) -> proporsional, membengkak
+#   jadi ratusan ribu untuk nilai miliaran. Diganti absolut kecil.
+#
+# DEFAULT_FOOTING_TOLERANCE : toleransi VERIFIKASI footing (Rp).
+#   Bisa diatur dari UI. Dulu proporsional (bug: makin besar angka,
+#   makin longgar). Sekarang absolut & dikontrol auditor.
+STRUCTURE_TOLERANCE = 2.0
+DEFAULT_FOOTING_TOLERANCE = 1.0
+
+
+# =========================================================
 # STREAMLIT APP
 # =========================================================
 
 def app():
-    st.set_page_config(
-        page_title="Verifikasi Tabel Word",
-        page_icon="📄",
-        layout="wide"
-    )
+    # =====================================================
+    # PERUBAHAN #1: st.set_page_config() DIHAPUS.
+    # Fungsi ini dipanggil sebagai sub-halaman oleh router app.py,
+    # sedangkan set_page_config hanya boleh dipanggil SEKALI dan HARUS
+    # jadi perintah Streamlit pertama. Kalau dibiarkan -> error saat
+    # RecalTab dibuka lewat menu AuditApp.
+    # Untuk layout wide seluruh app, taruh
+    #     st.set_page_config(page_title="AuditApp", layout="wide")
+    # sebagai baris pertama di app.py.
+    # =====================================================
 
     st.title("📄 Verifikasi Footing dan Persentase Tabel Word")
 
@@ -34,7 +54,7 @@ def app():
     )
 
     st.caption(
-        "DISCLAIMER : PERHITUNGAN SISTEM BISA JADI SALAH.APABILA DITEMUKAN ANGKA SELISIH MAKA PERIKSA KEMBALI DAN KONFIRMASI DENGAN ENTITAS BILA DIPERLUKAN"
+        "DISCLAIMER : PERHITUNGAN SISTEM BISA JADI SALAH. APABILA DITEMUKAN ANGKA SELISIH MAKA PERIKSA KEMBALI DAN KONFIRMASI DENGAN ENTITAS BILA DIPERLUKAN"
     )
 
     col1, col2 = st.columns(2)
@@ -42,23 +62,45 @@ def app():
     with col1:
         tambah_baris_rekalkulasi = st.checkbox(
             "Jika tidak ada baris JUMLAH/TOTAL/total implisit, tambahkan baris Rekalkulasi Sistem",
-            value=False
+            value=False,
+            key="recaltab_tambah_baris"
         )
 
     with col2:
         cek_persentase = st.checkbox(
             "Cek kolom persentase otomatis",
-            value=True
+            value=True,
+            key="recaltab_cek_persen"
         )
 
-    tampilkan_debug = st.checkbox(
-        "Tampilkan ringkasan proses",
-        value=False
-    )
+    # PERUBAHAN #2: kontrol toleransi footing (absolut, default 1 Rp).
+    col3, col4 = st.columns(2)
+
+    with col3:
+        footing_tolerance = st.number_input(
+            "Toleransi footing (Rp)",
+            min_value=0.0,
+            value=DEFAULT_FOOTING_TOLERANCE,
+            step=1.0,
+            help=(
+                "Selisih maksimal antara total tertulis dan hasil hitung sistem "
+                "agar tetap dianggap SESUAI. Untuk pembulatan biasanya cukup 1-2 rupiah. "
+                "JANGAN dibuat besar; toleransi longgar bisa menutupi selisih footing."
+            ),
+            key="recaltab_footing_tol"
+        )
+
+    with col4:
+        tampilkan_debug = st.checkbox(
+            "Tampilkan ringkasan proses",
+            value=False,
+            key="recaltab_debug"
+        )
 
     uploaded_file = st.file_uploader(
         "Upload File Word (.docx)",
-        type=["docx"]
+        type=["docx"],
+        key="recaltab_uploader"
     )
 
     if uploaded_file is not None:
@@ -69,7 +111,8 @@ def app():
                 summary = recalculate_tables(
                     doc=doc,
                     tambah_baris_rekalkulasi=tambah_baris_rekalkulasi,
-                    cek_persentase=cek_persentase
+                    cek_persentase=cek_persentase,
+                    footing_tolerance=footing_tolerance
                 )
 
                 output = io.BytesIO()
@@ -77,6 +120,18 @@ def app():
                 output.seek(0)
 
             st.success("Rekalkulasi selesai!")
+
+            # PERUBAHAN #3: peringatan merged cell (sel gabungan).
+            tabel_merged = summary.get("tabel_dengan_merged_cell", [])
+
+            if tabel_merged:
+                st.warning(
+                    "⚠️ Terdeteksi sel gabungan (merged cell) pada tabel nomor: "
+                    f"{', '.join(map(str, tabel_merged))}. "
+                    "Pada tabel dengan merged cell, pemetaan kolom bisa bergeser sehingga "
+                    "hasil footing berpotensi TIDAK akurat. Sistem sudah mencoba mencegah "
+                    "penghitungan ganda, namun hasil pada tabel ini WAJIB direviu manual."
+                )
 
             if tampilkan_debug:
                 st.subheader("Ringkasan Proses")
@@ -88,7 +143,8 @@ def app():
                 label="📥 Unduh Hasil Rekalkulasi",
                 data=output,
                 file_name=nama_file_hasil,
-                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                key="recaltab_download"
             )
 
         except Exception as e:
@@ -109,14 +165,47 @@ def buat_nama_file_hasil(nama_file_upload):
 
 
 # =========================================================
+# HELPER MERGED CELL (BARU - PERUBAHAN #3)
+# =========================================================
+
+def row_has_horizontal_merge(row):
+    """
+    True jika ada dua sel dalam satu baris yang merujuk ke elemen <w:tc>
+    yang sama (indikasi horizontal merge). python-docx mengembalikan objek
+    _Cell yang sama berulang kali untuk sel gabungan.
+    """
+    seen = set()
+
+    for cell in row.cells:
+        tc_id = id(cell._tc)
+
+        if tc_id in seen:
+            return True
+
+        seen.add(tc_id)
+
+    return False
+
+
+def table_has_merged_cell(table):
+    for row in table.rows:
+        if row_has_horizontal_merge(row):
+            return True
+
+    return False
+
+
+# =========================================================
 # MAIN PROCESS
 # =========================================================
 
-def recalculate_tables(doc, tambah_baris_rekalkulasi=False, cek_persentase=True):
+def recalculate_tables(doc, tambah_baris_rekalkulasi=False, cek_persentase=True,
+                       footing_tolerance=DEFAULT_FOOTING_TOLERANCE):
     summary = {
         "jumlah_tabel": len(doc.tables),
         "tabel_diproses": 0,
         "tabel_tanpa_kolom_numerik": 0,
+        "tabel_dengan_merged_cell": [],   # PERUBAHAN #3
         "baris_total_ditemukan": 0,
         "baris_total_implisit_ditemukan": 0,
         "baris_subtotal_dilewati": 0,
@@ -132,6 +221,10 @@ def recalculate_tables(doc, tambah_baris_rekalkulasi=False, cek_persentase=True)
     for table_idx, table in enumerate(doc.tables, start=1):
         if not table.rows:
             continue
+
+        # PERUBAHAN #3: catat tabel yang punya merged cell.
+        if table_has_merged_cell(table):
+            summary["tabel_dengan_merged_cell"].append(table_idx)
 
         clean_table_old_marks(table)
 
@@ -153,8 +246,6 @@ def recalculate_tables(doc, tambah_baris_rekalkulasi=False, cek_persentase=True)
 
         total_indices = find_total_row_indices(table)
 
-        # Jika tidak ada JUMLAH/TOTAL eksplisit, cari total implisit.
-        # Contoh: baris bawah hanya berisi Rp 44.670.257.956 tanpa label "JUMLAH".
         implicit_total_indices = []
 
         if not total_indices:
@@ -186,7 +277,8 @@ def recalculate_tables(doc, tambah_baris_rekalkulasi=False, cek_persentase=True)
             result = verify_total_row(
                 total_row=total_row,
                 numeric_cols=numeric_cols,
-                vertical_sums=vertical_sums
+                vertical_sums=vertical_sums,
+                tolerance=footing_tolerance
             )
 
             summary["sel_footing_verified"] += result["verified"]
@@ -223,6 +315,31 @@ def recalculate_tables(doc, tambah_baris_rekalkulasi=False, cek_persentase=True)
 # =========================================================
 # SUM CALCULATION
 # =========================================================
+# PERUBAHAN #3: dedup berdasarkan identitas elemen <w:tc>.
+# Pada baris dengan merged cell, satu nilai numerik bisa muncul di
+# beberapa indeks kolom -> tanpa dedup akan dijumlahkan ganda.
+
+def _sum_row_into(vertical_sums, row, numeric_cols, seen_tc_ids):
+    for col_idx in numeric_cols:
+        if col_idx >= len(row.cells):
+            continue
+
+        cell = row.cells[col_idx]
+        tc_id = id(cell._tc)
+
+        # Jangan hitung sel yang sama dua kali (akibat horizontal merge).
+        if tc_id in seen_tc_ids:
+            continue
+
+        seen_tc_ids.add(tc_id)
+
+        number = parse_number(cell.text, dash_as_zero=True)
+
+        if number is None:
+            continue
+
+        vertical_sums[col_idx] += number
+
 
 def calculate_sums_before_total_row(table, total_row_idx, numeric_cols):
     vertical_sums = [0.0] * len(table.columns)
@@ -243,16 +360,8 @@ def calculate_sums_before_total_row(table, total_row_idx, numeric_cols):
                 skipped_subtotal_count += 1
             continue
 
-        for col_idx in numeric_cols:
-            if col_idx >= len(row.cells):
-                continue
-
-            number = parse_number(row.cells[col_idx].text, dash_as_zero=True)
-
-            if number is None:
-                continue
-
-            vertical_sums[col_idx] += number
+        seen_tc_ids = set()
+        _sum_row_into(vertical_sums, row, numeric_cols, seen_tc_ids)
 
     return vertical_sums, skipped_subtotal_count
 
@@ -274,16 +383,8 @@ def calculate_sums_all_rows(table, numeric_cols):
                 skipped_subtotal_count += 1
             continue
 
-        for col_idx in numeric_cols:
-            if col_idx >= len(row.cells):
-                continue
-
-            number = parse_number(row.cells[col_idx].text, dash_as_zero=True)
-
-            if number is None:
-                continue
-
-            vertical_sums[col_idx] += number
+        seen_tc_ids = set()
+        _sum_row_into(vertical_sums, row, numeric_cols, seen_tc_ids)
 
     return vertical_sums, skipped_subtotal_count
 
@@ -371,7 +472,6 @@ def find_implicit_total_row_indices(table, numeric_cols):
     rows = list(table.rows)
     candidates = []
 
-    # Cek maksimal 8 baris terakhir agar tidak terlalu agresif.
     start_idx = max(0, len(rows) - 8)
 
     for idx in range(len(rows) - 1, start_idx - 1, -1):
@@ -417,7 +517,6 @@ def is_implicit_total_row_candidate(table, row_idx, numeric_cols):
 
     numeric_is_bold = numeric_cells_are_bold(row, numeric_cols)
 
-    # Cek apakah angka baris ini cocok dengan penjumlahan baris di atasnya.
     vertical_sums, _ = calculate_sums_before_total_row(
         table=table,
         total_row_idx=row_idx,
@@ -442,23 +541,18 @@ def is_implicit_total_row_candidate(table, row_idx, numeric_cols):
             continue
 
         checked_count += 1
-        tolerance = max(5, abs(existing_number) * 0.00001)
+        # PERUBAHAN #2: toleransi struktur absolut (bukan proporsional).
+        tolerance = STRUCTURE_TOLERANCE
 
         if numbers_are_equal(existing_number, calculated_number, tolerance):
             match_count += 1
 
-    # Paling aman: kalau cocok dengan jumlah di atas, anggap total implisit.
     if checked_count > 0 and match_count >= 1:
         return True
 
-    # Jika tidak cocok, tetapi baris bawah tanpa label dan angka bold,
-    # tetap anggap total implisit agar tidak dijumlahkan ulang.
-    # Nanti verify_total_row akan memberi X jika memang berbeda.
     if label_is_empty_or_weak and numeric_is_bold:
         return True
 
-    # Jika tanpa label dan posisinya benar-benar baris paling bawah,
-    # sering ini merupakan total tanpa label.
     if label_is_empty_or_weak and row_idx == len(table.rows) - 1:
         return True
 
@@ -466,10 +560,6 @@ def is_implicit_total_row_candidate(table, row_idx, numeric_cols):
 
 
 def get_row_label_text(row, numeric_cols):
-    """
-    Mengambil teks non-numerik dari baris, selain kolom angka yang dihitung.
-    """
-
     parts = []
 
     for idx, cell in enumerate(row.cells):
@@ -656,6 +746,7 @@ def is_percent_column(table, col_idx):
         if col_idx < len(row.cells):
             header_text += " " + normalize_text(row.cells[col_idx].text)
 
+    # Deteksi utama berbasis header (paling andal).
     if "%" in header_text:
         return True
 
@@ -671,6 +762,18 @@ def is_percent_column(table, col_idx):
     if "NAIK" in header_text and "TURUN" in header_text:
         return True
 
+    # =====================================================
+    # PERUBAHAN #5: fallback berbasis rentang nilai DIPERKETAT.
+    # Versi lama: -500..10000 dgn min 3 sampel -> terlalu longgar,
+    # kolom kuantitas / rupiah kecil ikut dianggap persen lalu
+    # DIKECUALIKAN dari cek footing (berbahaya).
+    # Sekarang: rentang -100..300, butuh mayoritas kuat (>=80%),
+    # DAN minimal ada satu nilai berdesimal (persen umumnya berdesimal;
+    # kolom "jumlah unit" biasanya bilangan bulat).
+    # Konsekuensi disengaja: bila persen kebetulan semua bulat & tanpa
+    # header, kolom tsb tidak auto-terdeteksi. Ini sisi aman -> lebih
+    # baik persen tak tercek daripada kolom uang luput dari footing.
+    # =====================================================
     sample_values = []
 
     for row in table.rows:
@@ -693,17 +796,16 @@ def is_percent_column(table, col_idx):
         if number is not None:
             sample_values.append(number)
 
-        if len(sample_values) >= 6:
+        if len(sample_values) >= 8:
             break
 
-    if len(sample_values) >= 3:
-        small_count = 0
+    if len(sample_values) >= 4:
+        in_range = sum(1 for v in sample_values if -100 <= v <= 300)
+        has_decimal = any(abs(v - round(v)) > 1e-9 for v in sample_values)
 
-        for value in sample_values:
-            if -500 <= value <= 10000:
-                small_count += 1
+        threshold = max(4, int(len(sample_values) * 0.8))
 
-        if small_count >= 3:
+        if in_range >= threshold and has_decimal:
             return True
 
     return False
@@ -771,7 +873,8 @@ def is_probable_subtotal_row(table, row, row_idx, numeric_cols):
             continue
 
         checked += 1
-        tolerance = max(5, abs(current_value) * 0.00001)
+        # PERUBAHAN #2: toleransi struktur absolut.
+        tolerance = STRUCTURE_TOLERANCE
 
         if numbers_are_equal(current_value, child_sum, tolerance):
             matched += 1
@@ -866,25 +969,34 @@ def is_bold_row(row):
 # FOOTING VERIFICATION
 # =========================================================
 
-def verify_total_row(total_row, numeric_cols, vertical_sums):
+def verify_total_row(total_row, numeric_cols, vertical_sums, tolerance=DEFAULT_FOOTING_TOLERANCE):
     result = {
         "verified": 0,
         "different": 0
     }
+
+    # PERUBAHAN #3: hindari menandai sel yang sama dua kali (merged cell).
+    seen_tc_ids = set()
 
     for col_idx in numeric_cols:
         if col_idx >= len(total_row.cells):
             continue
 
         cell = total_row.cells[col_idx]
+
+        tc_id = id(cell._tc)
+        if tc_id in seen_tc_ids:
+            continue
+        seen_tc_ids.add(tc_id)
+
         existing_number = parse_number(cell.text, dash_as_zero=True)
 
         if existing_number is None:
             continue
 
         calculated_number = vertical_sums[col_idx]
-        tolerance = max(5, abs(existing_number) * 0.00001)
 
+        # PERUBAHAN #2: toleransi absolut dari UI (bukan proporsional).
         if numbers_are_equal(existing_number, calculated_number, tolerance):
             add_status_mark(cell, "^", RGBColor(0, 176, 80))
             add_recalculation_note_to_cell(
@@ -1152,6 +1264,18 @@ def percentage_numbers_equal(a, b, tolerance=0.05):
 # MARKING
 # =========================================================
 
+def _delete_paragraph(paragraph):
+    """Hapus elemen paragraf sepenuhnya (bukan sekadar kosongkan teks)."""
+    element = paragraph._element
+    parent = element.getparent()
+
+    if parent is not None:
+        parent.remove(element)
+
+    paragraph._p = None
+    paragraph._element = None
+
+
 def clean_table_old_marks(table):
     for row in table.rows:
         for cell in row.cells:
@@ -1164,25 +1288,33 @@ def add_status_mark(cell, mark, color):
 
     run = paragraph.add_run(f" {mark}")
     run.font.name = "Calibri"
-    run.font.size = Pt(16)
+    run.font.size = Pt(16)   # ukuran 16 dipakai sbagai penanda mark (lihat cleanup)
     run.font.bold = True
     run.font.color.rgb = color
 
 
 def clean_existing_marks_and_notes(cell):
-    for paragraph in cell.paragraphs:
+    # =====================================================
+    # PERUBAHAN #4: pembersihan mark yang AMAN.
+    # Versi lama melakukan text.replace("X","") / ("^","") pada SEMUA
+    # run -> huruf X kapital pada teks sah (TAX, BOX, IX, TXN, dst)
+    # ikut terhapus diam-diam saat file diproses ulang.
+    #
+    # Sekarang:
+    # - Paragraf catatan "Rekalkulasi:" dihapus sebagai ELEMEN (tidak
+    #   menyisakan paragraf kosong yang menumpuk).
+    # - Run mark dihapus HANYA jika isinya persis "^"/"X" DAN berukuran
+    #   16pt (ciri khas mark yang dibuat add_status_mark). Teks biasa
+    #   tidak tersentuh.
+    # =====================================================
+    for paragraph in list(cell.paragraphs):
         if "Rekalkulasi:" in paragraph.text:
-            for run in paragraph.runs:
-                run.text = ""
+            _delete_paragraph(paragraph)
             continue
 
-        for run in paragraph.runs:
-            text = run.text
-            text = text.replace(" ^", "")
-            text = text.replace(" X", "")
-            text = text.replace("^", "")
-            text = text.replace("X", "")
-            run.text = text
+        for run in list(paragraph.runs):
+            if run.text.strip() in ["^", "X"] and run.font.size == Pt(16):
+                run.text = ""
 
 
 def add_recalculation_note_to_cell(cell, calculated_number, is_percent=False, color=None):
