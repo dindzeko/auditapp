@@ -34,7 +34,7 @@ def app():
     )
 
     st.caption(
-        "Metode otomatis: sistem melewati header, baris jumlah, subtotal/kelompok, dan total tanpa label yang terdeteksi di bagian bawah tabel."
+        "DISCLAIMER : PERHITUNGAN SISTEM BISA JADI SALAH.APABILA DITEMUKAN ANGKA SELISIH MAKA PERIKSA KEMBALI DAN KONFIRMASI DENGAN ENTITAS BILA DIPERLUKAN"
     )
 
     col1, col2 = st.columns(2)
