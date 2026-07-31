@@ -37,6 +37,7 @@ try:
     from page.susutsemester import app as susutsemester_app
     from page.batchglyearly import app as batchtahunan_app
     from page.batchsemesteran import app as batchsemesteran_app
+    from page.batchbulanan import app as batchbulanan_app
     from page.ahp import app as ahp_app
     from page.mus import app as mus_app
     from page.benfords import app as benfords_app
@@ -77,8 +78,8 @@ def main_page():
 def depresiasi():
     st.title("Rekalkulasi Penyusutan Aset Tetap")
     
-    # Membagi layout menjadi 4 kolom
-    col1, col2, col3, col4 = st.columns(4)
+    # Membagi layout menjadi 5 kolom
+    col1, col2, col3, col4, col5 = st.columns(5)
     
     with col1:
         if st.button("Susut Tahunan", use_container_width=True):
@@ -92,6 +93,9 @@ def depresiasi():
     with col4:
         if st.button("Batch Semesteran", use_container_width=True):
             st.session_state["subpage"] = "Batch Semesteran"
+    with col5:
+        if st.button("Batch Bulanan", use_container_width=True):
+            st.session_state["subpage"] = "Batch Bulanan"
             
     # Render subpage sesuai session state
     if st.session_state["subpage"] == "Susut Tahunan":
@@ -112,6 +116,11 @@ def depresiasi():
     elif st.session_state["subpage"] == "Batch Semesteran":
         try:
             batchsemesteran_app()
+        except Exception as e:
+            st.error(f"Error: {str(e)}")
+    elif st.session_state["subpage"] == "Batch Bulanan":
+        try:
+            batchbulanan_app()
         except Exception as e:
             st.error(f"Error: {str(e)}")
 
